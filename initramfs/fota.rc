@@ -1,0 +1,91 @@
+on init
+
+sysclktz 0
+
+loglevel 3
+
+# setup the global environment
+    export PATH /sbin:/system/sbin:/system/bin:/system/xbin:/data/fota/
+    export LD_LIBRARY_PATH /system/lib:/system/lib/egl
+    export ANDROID_BOOTLOGO 1
+    export ANDROID_ROOT /system
+    export ANDROID_ASSETS /system/app
+    export ANDROID_DATA /data
+    export EXTERNAL_STORAGE /sdcard
+    export BOOTCLASSPATH /system/framework/core.jar:/system/framework/ext.jar:/system/framework/framework.jar:/system/framework/android.policy.jar:/system/framework/services.jar
+
+# Backward compatibility
+    symlink /system/etc /etc
+    symlink /sys/kernel/debug /d
+
+# to enable wifi
+     setprop wifi.interface "eth0"
+# end of wifi
+
+# create mountpoints and mount tmpfs on sqlite_stmt_journals
+    insmod /lib/modules/fsr.ko
+    insmod /lib/modules/fsr_stl.ko
+    insmod /lib/modules/rfs_glue.ko
+    insmod /lib/modules/rfs_fat.ko    
+
+# install dpram, multipdp module
+    insmod /lib/modules/param.ko
+    insmod /lib/modules/multipdp.ko
+    
+    insmod /lib/modules/param.ko
+    
+    insmod /lib/modules/vibrator.ko
+
+# for fmradio
+    insmod /lib/modules/Si4709_driver.ko
+
+# load GAD module for debugging
+    insmod /lib/modules/gad.ko
+
+    mkdir /sdcard 0000 system system
+    mkdir /system
+    mkdir /efs
+    mkdir /data 0771 system system
+    mkdir /cache 0770 system cache
+    mkdir /data
+    mkdir /data/property 0700 root root
+
+    mount rfs /dev/block/stl6 /system check=no
+
+    # mount yaffs2 /dev/bml6 /data nosuid nodev
+    mount rfs /dev/block/stl7 /data nosuid nodev check=no
+    chown system system /data
+    chmod 0777 /data
+
+
+
+
+ 
+
+
+
+on boot
+# basic network init
+    ifup lo
+    hostname localhost
+    domainname localdomain
+
+
+	class_start default
+
+## Daemon processes to be run by init.
+##
+#service console /system/bin/sh
+    #console
+
+on property:persist.service.adb.enable=1
+    start adbd
+
+on property:persist.service.adb.enable=0
+    stop adbd  
+
+service vold /system/bin/vold
+    socket vold stream 0660 root mount
+service redbend_ua /sbin/redbend_ua all
+    oneshot
+
