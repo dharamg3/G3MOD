@@ -1,0 +1,1 @@
+cmd_sound/soc/s5p/built-in.o :=  /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o sound/soc/s5p/built-in.o sound/soc/s5p/s5p-pcm.o sound/soc/s5p/s5p-i2s.o sound/soc/s5p/snd-soc-apollo-wm8994.o 

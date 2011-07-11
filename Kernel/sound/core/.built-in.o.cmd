@@ -1,0 +1,1 @@
+cmd_sound/core/built-in.o :=  /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o sound/core/built-in.o sound/core/snd.o sound/core/snd-timer.o sound/core/snd-hrtimer.o sound/core/snd-pcm.o sound/core/snd-page-alloc.o sound/core/oss/built-in.o 

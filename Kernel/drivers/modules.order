@@ -1,0 +1,5 @@
+kernel/drivers/scsi/scsi_wait_scan.ko
+kernel/drivers/net/tun.ko
+kernel/drivers/onedram/onedram.ko
+kernel/drivers/svnet/svnet.ko
+kernel/drivers/modemctl/modemctl.ko

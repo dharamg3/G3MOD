@@ -1,0 +1,1 @@
+cmd_net/netfilter/xt_TCPMSS.ko := /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL -r  -T /root/Desktop/Dharam/Kernel/scripts/module-common.lds --build-id -o net/netfilter/xt_TCPMSS.ko net/netfilter/xt_TCPMSS.o net/netfilter/xt_TCPMSS.mod.o

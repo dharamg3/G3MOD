@@ -1,0 +1,1 @@
+cmd_drivers/modemctl/modemctl.ko := /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL -r  -T /root/Desktop/Dharam/Kernel/scripts/module-common.lds --build-id -o drivers/modemctl/modemctl.ko drivers/modemctl/modemctl.o drivers/modemctl/modemctl.mod.o

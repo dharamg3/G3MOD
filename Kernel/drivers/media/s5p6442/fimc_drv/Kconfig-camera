@@ -1,0 +1,31 @@
+choice
+	prompt "External Camera"
+	depends on VIDEO_FIMC
+
+config VIDEO_S5K4BA
+	tristate "Samsung S5K4BA"
+	depends on VIDEO_FIMC
+	---help---
+	  Samsung S5K4BA mobile camera support
+
+config VIDEO_S5K3BA
+	tristate "Samsung S5K3BA"
+	depends on VIDEO_FIMC
+	---help---
+	  Samsung S5K3BA mobile camera support
+
+config VIDEO_S5K4CA
+	tristate "Samsung S5K4CA"
+	depends on VIDEO_FIMC
+	---help---
+	  This driver supports s5k4ba SoC camera module
+
+	  
+config MT9V113
+	tristate "MT9V113"
+	depends on VIDEO_FIMC
+	---help---
+	  MT9V113 camera support
+
+
+endchoice

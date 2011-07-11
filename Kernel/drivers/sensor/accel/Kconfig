@@ -1,0 +1,24 @@
+#
+# Accelerometer Sensor Configuration
+#
+
+
+
+config ACCEL                                                              
+	bool "Accelerometer Sensor"
+	default y
+	help
+	This option enables accelerometer sensors  
+	   
+
+config ACCEL_BMA020
+	depends on ACCEL
+	tristate "BMA020 driver for s5p6442"
+	default y
+	help
+	  This option enables accelerometer sensors using bma020 driver.
+
+
+
+	  
+

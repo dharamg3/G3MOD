@@ -1,0 +1,1 @@
+cmd_drivers/video/samsung/built-in.o :=  /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o drivers/video/samsung/built-in.o drivers/video/samsung/s3cfb.o drivers/video/samsung/s3cfb_fimd6x.o drivers/video/samsung/s3cfb_s6d04d1.o 

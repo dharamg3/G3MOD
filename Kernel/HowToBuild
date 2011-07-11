@@ -1,0 +1,13 @@
+1. Edit Makefile for CROSS_COMPILE.
+   Default value is "CROSS_COMPILE   := /opt/toolchains/arm-2009q3/bin/arm-none-linux-gnueabi-"
+
+2. Run ./build.sh
+
+3. You can find kernel image at arch/arm/boot/zImage.
+
+4. You can find modules.
+   drivers/ondram/onedram.ko
+   drivers/modemctl/modemctl.ko
+   drivers/svnet/svnet.ko
+   modules/vibetonz/vibrator.ko
+   modules/fm_si4709/Si4709_driver.ko

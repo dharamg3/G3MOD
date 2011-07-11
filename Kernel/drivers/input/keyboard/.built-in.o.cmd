@@ -1,0 +1,1 @@
+cmd_drivers/input/keyboard/built-in.o :=  /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o drivers/input/keyboard/built-in.o drivers/input/keyboard/atkbd.o drivers/input/keyboard/s3c-keypad.o 

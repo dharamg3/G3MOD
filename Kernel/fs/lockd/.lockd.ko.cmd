@@ -1,0 +1,1 @@
+cmd_fs/lockd/lockd.ko := /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL -r  -T /root/Desktop/Dharam/Kernel/scripts/module-common.lds --build-id -o fs/lockd/lockd.ko fs/lockd/lockd.o fs/lockd/lockd.mod.o

@@ -1,0 +1,10 @@
+#
+# Makefile for MFC device driver designed by Samsung Electronics 2010
+#
+config S5P6442_MFC
+        bool "Samsung MFC (Multi Format Codec - FIMV 1.0) Driver"
+        depends on CPU_S5P6442
+        default y
+        ---help---
+          This is a Samsung Multi Format Codecs (MFC) FIMV V1.0 - driver for Samsung S5P6442/S3C64XX
+

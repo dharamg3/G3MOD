@@ -1,0 +1,27 @@
+#
+# MAGNETIC Sensor Configuration
+#
+
+
+
+config PROXIMITY                                                              
+	bool "PROXIMITY Sensor"
+	default y
+	help
+	This option enables proximity sensors  
+	   
+
+config PROXIMITY_CM3607
+	depends on PROXIMITY
+	tristate "Proximity sensor driver for s5p6442"
+	default n
+	help
+	  This option enables proximity sensor using cm3607.
+	  
+
+config PROXIMITY_GP2A
+	depends on PROXIMITY
+	tristate "Proximity sensor driver for s5p6442"
+	default y
+	help
+	  This option enables proximity sensor using GP2AP002S00F.

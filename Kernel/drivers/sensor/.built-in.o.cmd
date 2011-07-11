@@ -1,0 +1,1 @@
+cmd_drivers/sensor/built-in.o :=  /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o drivers/sensor/built-in.o drivers/sensor/proximity/built-in.o drivers/sensor/accel/built-in.o drivers/sensor/compass/built-in.o 

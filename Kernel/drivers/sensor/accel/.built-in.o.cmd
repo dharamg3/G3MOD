@@ -1,0 +1,1 @@
+cmd_drivers/sensor/accel/built-in.o :=  /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o drivers/sensor/accel/built-in.o drivers/sensor/accel/bma020_i2c.o drivers/sensor/accel/bma020.o drivers/sensor/accel/bma020_acc.o 

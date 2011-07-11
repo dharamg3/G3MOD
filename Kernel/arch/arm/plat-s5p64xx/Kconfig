@@ -1,0 +1,245 @@
+# arch/arm/plat-s5p64xx/Kconfig
+#
+# Copyright 2008 Openmoko, Inc.
+# Copyright 2008 Simtec Electronics
+#	Ben Dooks <ben@simtec.co.uk>
+#
+# Licensed under GPLv2
+
+config PLAT_S5P64XX
+	bool
+	depends on ARCH_S5P64XX
+	select PLAT_S3C
+	select ARM_VIC
+	default y
+	select NO_IOPORT
+	select ARCH_REQUIRE_GPIOLIB
+	select S3C_GPIO_TRACK
+	select S3C_GPIO_PULL_UPDOWN
+	select S3C_GPIO_CFG_S5P64XX
+	help
+	  Base platform code for any Samsung S5P64XX device
+
+if PLAT_S5P64XX
+
+# Configuration options shared by all S5P64XX implementations
+
+config CPU_S5P6442_INIT
+	bool
+	help
+	  Initialisation code for the S5P6440. 
+
+config CPU_S5P6442_CLOCK
+	bool
+	help
+	  Clock support code for the S5P6440.
+
+# platform specific device setup
+
+config S5P64XX_SETUP_I2C0
+	bool
+	default y
+	help
+	  Common setup code for i2c bus 0.
+
+	  Note, currently since i2c0 is always compiled, this setup helper
+	  is always compiled with it.
+
+config S5P64XX_SETUP_I2C1
+	bool
+	help
+	  Common setup code for i2c bus 1.
+
+config S5P64XX_SETUP_I2C2
+	bool
+	help
+	  Common setup code for i2c bus 2.
+
+# tony
+
+config S3C_DEV_HSMMC
+        bool
+        help
+          Compile in platform device definitions for HSMMC channel 0
+
+config S3C_DEV_HSMMC1
+        bool
+        help
+          Compile in platform device definitions for HSMMC channel 1
+
+config S3C_DEV_HSMMC2
+        bool
+        help
+          Compile in platform device definitions for HSMMC channel 2
+
+config S3C_DEV_I2C1
+        bool
+        help
+          Compile in platform device definitions for I2C channel 1
+
+config S3C_DEV_I2C2
+        bool
+        help
+          Compile in platform device definitions for I2C channel 2
+
+
+config S5P64XX_ADCTS
+	bool
+	default y
+	help
+	  Common setup code for adc and touchscreen
+
+# FIMC part
+config S5P64XX_DEV_FIMC0
+	bool
+	default y
+	help
+	  Compile in platform device definitions for FIMC controller 0
+
+config S5P64XX_DEV_FIMC1
+	bool
+	default y
+	help
+	  Compile in platform device definitions for FIMC controller 1
+
+config S5P64XX_DEV_FIMC2
+	bool
+	default y
+	help
+	  Compile in platform device definitions for FIMC controller 2
+
+config S5P64XX_SETUP_FIMC0
+	bool
+	default y
+	help
+	  Common setup code for FIMC controller 0.
+
+config S5P64XX_SETUP_FIMC1
+	bool
+	default y
+	help
+	  Common setup code for FIMC controller 1.
+
+config S5P64XX_SETUP_FIMC2
+	bool
+	default y
+	help
+	  Common setup code for FIMC controller 2.
+	  
+# FB part
+config S5P64XX_DEV_FB
+	bool
+	depends on FB_S3C
+	default y
+	help
+	  Compile in platform device definitions for FIMD controller
+
+choice
+        prompt "PWM device support"
+        default NO_PWM
+
+config S5P64XX_PWM
+        bool "Support Old API"
+        help
+          Support for exporting the PWM timer blocks via old type API
+
+config TIMER_PWM
+        bool "PWM device support"
+        help
+           Support for exporting the PWM timer blocks via the pwm device
+
+config NO_PWM
+        bool "No PWM support"
+        help
+           PWM is not supported
+
+endchoice
+
+choice
+		prompt "Touchscreen type"
+		default R_TYPE
+
+config S5P64XX_TS_R_TYPE
+		bool "Use R-Type Touchscreen"
+		select TOUCHSCREEN_S3C
+		help 
+		  Support R-Type Touchscreen only
+	
+config S5P64XX_TS_C_TYPE
+		bool "Use C-Type Touchscreen"
+#		select TOUCHSCREEN_QT602240
+		help
+		  Support C-Type Touchscreen only
+
+endchoice
+
+#config S5P64XX_PWM
+#	bool "S5P64XX PWM support"
+#	select S5P_HAVE_PWM
+#	help
+#	  Support for exporting the PWM timer blocks via the pwm device system.
+
+config S5P64XX_POWER_GATING
+	bool "Support S5P64XX Power Gating"
+	depends on PM
+	default n
+	help
+	  block power enable / disble when each block is active / idle
+
+config S5P64XX_POWER_GATING_DEBUG
+	bool "Support S5P64XX Power Gating Debug"
+	depends on S5P64XX_POWER_GATING
+	default n
+	help
+	  s5p64xx power gating debug message enable / disable
+
+config S5P64XX_CLOCK_GATING
+	bool "Support S5P64XX Clock Gating"
+	depends on PM
+	default n
+	help
+	  clock enable / disble when each IP is active / idle
+
+config S5P64XX_CLOCK_GATING_DEBUG
+	bool "Support S5P64XX Clock Gating Debug"
+	depends on S5P64XX_CLOCK_GATING
+	default n
+	help
+	  s5p64xx clock gating debug message enable / disable
+
+config S5P64XX_LPAUDIO
+	bool "Support S5P64XX Low Power(LP) Audio"
+	depends on CPU_IDLE
+	default n
+	help
+	  s5p64xx low power audio enable / disable
+
+config ANDROID_BUF_NUM
+	depends on S5P64XX_LPAUDIO
+	int
+	default 4
+
+config S5P64XX_HIGH_RES_TIMERS
+	bool "HRtimer and Dynamic Tick support"
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	select HIGH_RES_TIMERS
+	default n
+	help
+	  Support for HRtimer and Dynamic Tick System
+
+choice
+	prompt "Select HRT source timer"
+	depends on S5P64XX_HIGH_RES_TIMERS
+	default HRT_PWM
+
+config HRT_PWM
+	bool "PWM timers(2/4)"
+	help
+	  PWM timers are used as HRT
+config HRT_RTC
+	bool "RTC/SYSTEM TIMER"
+	help
+	  RTC and System timer are used as HRT
+endchoice
+endif

@@ -1,0 +1,5 @@
+config CONFIG_VIBETONZ
+	default m
+	tristate "Broadcom WiFi Driver"
+	---help---
+		Select this option to build Broadcom wlan driver
