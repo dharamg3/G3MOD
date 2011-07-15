@@ -631,7 +631,9 @@ deps_sound/soc/codecs/wm8994.o := \
     $(wildcard include/config/samsung/fascinate.h) \
     $(wildcard include/config/samsung/epic.h) \
     $(wildcard include/config/fb/s3c/ams701ka.h) \
+    $(wildcard include/config/kor/model/m180s.h) \
     $(wildcard include/config/m110s.h) \
+    $(wildcard include/config/mach/samsung/variation/tegra.h) \
     $(wildcard include/config/tdmb/t3700.h) \
   sound/soc/codecs/wm8994.h \
     $(wildcard include/config/snd/soc/wm8994/pcm.h) \

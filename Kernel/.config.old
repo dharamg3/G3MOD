@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.32.9
-# Sun Jul 10 04:38:16 2011
+# Thu Jul 14 11:53:54 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -284,7 +284,8 @@ CONFIG_SEC_HEADSET=y
 CONFIG_S5P_HIGH_RES_TIMERS_HZ=500
 CONFIG_LITE=y
 CONFIG_PERFORMANCE=y
-# CONFIG_ULTIMATE is not set
+CONFIG_ULTIMATE=y
+# CONFIG_EXTREME is not set
 
 #
 # Processor Type

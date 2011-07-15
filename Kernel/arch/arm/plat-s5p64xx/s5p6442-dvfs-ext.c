@@ -36,7 +36,7 @@ static spinlock_t dvfs_lock;
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 struct cpufreq_frequency_table freq_table_ov[] = {
-	{0, 1420*KHZ_T},
+	{0, 1400*KHZ_T},
 	{1, 1200*KHZ_T},
 	{2, 1000*KHZ_T},
 	{3, 800*KHZ_T},
@@ -59,7 +59,7 @@ static unsigned char transition_state_ov[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_ov[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-	{1420000, 1550, 1200, 0},	
+	{1400000, 1525, 1200, 0},	
 	{1200000, 1500, 1200, 1},	
 	{1000000, 1400, 1200, 2},
          {800000, 1300, 1200, 3},

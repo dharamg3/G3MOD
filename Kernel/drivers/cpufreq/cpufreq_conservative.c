@@ -29,8 +29,8 @@
  * It helps to keep variable names smaller, simpler
  */
 
-#define DEF_FREQUENCY_UP_THRESHOLD		(95)//70
-#define DEF_FREQUENCY_DOWN_THRESHOLD		(95)//40
+#define DEF_FREQUENCY_UP_THRESHOLD		(40)//70
+#define DEF_FREQUENCY_DOWN_THRESHOLD		(30)//40
 #ifdef CONFIG_CPU_S5P6442
 #define DEF_MAX_FREQ_TIME_HZ			(15*HZ)
 #define DEF_SAMPLING_FREQ_STEP	20
@@ -51,7 +51,7 @@ extern unsigned int s5p6442_target_frq(unsigned int pred_freq, int flag);
  * this governor will not work.
  * All times here are in uS.
  */
-#define MIN_SAMPLING_RATE_RATIO			(1)//2
+#define MIN_SAMPLING_RATE_RATIO			(2)//2
 
 static unsigned int min_sampling_rate;
 

@@ -227,7 +227,7 @@ static void Free_3D_ChunkMem(void* virtAddr,  int ithMem)
 #define G3D_CHUCNK_AVALIABLE	0
 #define G3D_CHUCNK_RESERVED		1
 
-#define TIMER_INTERVAL HZ/2  //HZ/4
+#define TIMER_INTERVAL HZ  //HZ/4
 
 typedef struct {
 	int		size;

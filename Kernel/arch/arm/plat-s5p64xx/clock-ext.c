@@ -40,7 +40,7 @@
 
 /* ARMCLK, D0CLK, P0CLK, D1CLK, P1CLK, APLL_RATIO, D0CLK_RATIO, P0CLK_RATIO, D1CLK_RATIO, P1CLK_RATIO */
 u32 s5p_cpu_clk_tab_ov[][10] = {
-	{ 1420*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,  6, 0, 0, 1, 0, 1},	
+	{ 1400*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,  6, 0, 0, 1, 0, 1},	
 	{ 1200*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,  5, 0, 0, 1, 0, 1},
 	{ 1000*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,  4, 0, 0, 1, 0, 1},
         { 800*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,   3, 0, 0, 1, 0, 1}, 
@@ -51,7 +51,7 @@ u32 s5p_cpu_clk_tab_ov[][10] = {
 
 u32 s5p_cpu_pll_tab[][4] = {
 // A P L L                                 M P L L
-{((1 << 31) | (710 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (700 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
 {((1 << 31) | (600 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
 {((1 << 31) | (500 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
 {((1 << 31) | (800 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
@@ -456,7 +456,7 @@ static struct clk init_clocks[] = {
 	}, {
 		.name           = "mfc",
 		.id             = -1,
-		.parent         = &clk_hd1,   
+		.parent         = &clk_hd1,   //changed from hd1 to hd0
         	.enable         = s5p64xx_clk_ip0_ctrl,
 		.ctrlbit        = S5P_CLKGATE_IP0_MFC,
 	}, {
