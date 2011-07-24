@@ -1333,7 +1333,6 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	u32 mux_stat0;
 	u32 mux_stat1;
 
-	s5p6442_clock800();
 	printk(KERN_DEBUG "%s: registering clocks\n", __func__);
 
 	clkdiv0 = __raw_readl(S5P_CLK_DIV0);
@@ -1351,7 +1350,7 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	clkSrc0 = __raw_readl(S5P_CLK_SRC0);
 #ifdef MUXD0D1_A2M
 	clkSrc0 |= 1 << S5P_CLKSRC0_MUXD0_SHIFT;   //MUXD0
-      //  clkSrc0 |= 1 << S5P_CLKSRC0_MUXD1_SHIFT;   //MUXD1
+        clkSrc0 |= 1 << S5P_CLKSRC0_MUXD1_SHIFT;   //MUXD1
 	__raw_writel(clkSrc0, S5P_CLK_SRC0); 
 #endif
 	clkSrc1 = __raw_readl(S5P_CLK_SRC1);
@@ -1418,10 +1417,8 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 			pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
 			break;
 		case 0x2:	/* A2M source */
-		//	a2m = apll / GET_DIV(clkdiv0, S5P_CLKDIV0_A2M);
-		//	hclkd1 = a2m / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
-		//	pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
-			hclkd1 = mpll / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
+			a2m = apll / GET_DIV(clkdiv0, S5P_CLKDIV0_A2M);
+			hclkd1 = a2m / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
 			pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
 			break;
 		default:
@@ -1495,8 +1492,6 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
         clk_set_rate(&clk_mmc0.clk, 50*MHZ);
         clk_set_rate(&clk_mmc1.clk, 50*MHZ);
         clk_set_rate(&clk_mmc2.clk, 50*MHZ);
-
-	clk_set_rate(&clk_g2d.clk, 400*MHZ);
 }
 
 static struct clk *clks[] __initdata = {

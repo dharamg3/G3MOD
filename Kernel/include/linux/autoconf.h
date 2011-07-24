@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Thu Jul 14 11:57:50 2011
+ * Mon Jul 18 22:05:55 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
@@ -84,7 +84,6 @@
 #define CONFIG_MODULES 1
 #define CONFIG_SND_VOODOO 1
 #define CONFIG_I2C_CHARDEV 1
-#define CONFIG_EXTREME 1
 #define CONFIG_EXT2_FS 1
 #define CONFIG_VIDEO_SAMSUNG_MEMSIZE_FIMC0 0
 #define CONFIG_INPUT_MISC 1

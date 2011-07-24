@@ -143,7 +143,7 @@ typedef struct
 } report_finger_info_t;
 
 #define MAX_NUM_FINGER	10
-#define USE_NUM_FINGER	3
+#define USE_NUM_FINGER	5
 static report_finger_info_t fingerInfo[MAX_NUM_FINGER];
 
 /* firmware 2009.09.24 CHJ - start 1/2 */

@@ -39,39 +39,47 @@
 #define INIT_XTAL			12 * MHZ
 
 /* ARMCLK, D0CLK, P0CLK, D1CLK, P1CLK, APLL_RATIO, D0CLK_RATIO, P0CLK_RATIO, D1CLK_RATIO, P1CLK_RATIO */
-u32 s5p_cpu_clk_tab_ov[][10] = {
-	{ 1400*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,  6, 0, 0, 1, 0, 1},	
-	{ 1200*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,  5, 0, 0, 1, 0, 1},
-	{ 1000*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,  4, 0, 0, 1, 0, 1},
-        { 800*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,   3, 0, 0, 1, 0, 1}, 
-        { 600*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,   3, 0, 0, 1, 0, 1},
-        { 400*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,   3, 0, 0, 1, 0, 1},
-        { 200*MHZ, 185*MHZ, (185*MHZ)/2, 185*MHZ,   3, 0, 0, 1, 0, 1},
+static  u32 s5p_cpu_clk_tab_666_166MHz[][10] = {
+        {1400*MHZ,166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {1200*MHZ,166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {1000*MHZ,166*MHZ, (180*MHZ)/2, 180*MHZ, (180*MHZ)/2, 0, 0, 1, 0, 1},
+        {800*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {600*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {400*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+	{200*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1}, 
 };
 
 u32 s5p_cpu_pll_tab[][4] = {
-// A P L L                                 M P L L
-{((1 << 31) | (700 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
-{((1 << 31) | (600 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
-{((1 << 31) | (500 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
-{((1 << 31) | (800 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
-{((1 << 31) | (600 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
-{((1 << 31) | (400 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
-{((1 << 31) | (200 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3)},
+// A P L L                                 M P L L                                   E P L L                                     V P L L
+{((1 << 31) | (700 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)}, 
+{((1 << 31) | (600 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)}, 
+{((1 << 31) | (500 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},  
+{((1 << 31) | (800 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (600 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (400 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (200 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+};
+
+static u32 s5p_cpu_clkdiv_tab[][3] = {
+{0x10100000, 0x00000000, 0x00000000},
+{0x10100000, 0x00000000, 0x00000000},
+{0x10100000, 0x00000000, 0x00000000},
+{0x10100000, 0x00000000, 0x00000000},
+{0x10100000, 0x00000000, 0x00000000},
+{0x10100000, 0x00000000, 0x00000000},
+{0x10100000, 0x00000000, 0x00000000},
 };
 
 #define GET_DIV(clk, field) ((((clk) & field##_MASK) >> field##_SHIFT) + 1)
 
+static const u32 s5p_avg_prd_refresh_rate[2] = { AVG_PRD_REFRESH_INTERVAL_166MHZ, AVG_PRD_REFRESH_INTERVAL_83MHZ, };
 unsigned int S5P6442_FREQ_TAB = 0;
 
-u32 (*s5p_cpu_clk_tab[1])[10] = {
-	s5p_cpu_clk_tab_ov,
-} ;
 
 static u32 s5p_cpu_clk_tab_size(void)
 {
 	u32 size;
-	size = ARRAY_SIZE(s5p_cpu_clk_tab_ov);
+	size = ARRAY_SIZE(s5p_cpu_clk_tab_666_166MHz);
 
 	return size;
 }
@@ -94,33 +102,34 @@ unsigned long s5p_fclk_round_rate(struct clk *clk, unsigned long rate)
 {
 	u32 iter;
 	u32 size;
+	static const u32 (*cpu_clk_tab)[1];
+
+	//cpu_clk_tab = s5p_cpu_clk_tab[S5P6442_FREQ_TAB];
 
 	size = s5p_cpu_clk_tab_size();
 
 	for(iter = 1 ; iter < size ; iter++) {
-		if(rate > s5p_cpu_clk_tab[S5P6442_FREQ_TAB][iter][0])
-			return s5p_cpu_clk_tab[S5P6442_FREQ_TAB][iter-1][0];
+		if(rate > s5p_cpu_clk_tab_666_166MHz[iter][0])
+			return s5p_cpu_clk_tab_666_166MHz[iter-1][0];
 	}
 
-	return s5p_cpu_clk_tab[S5P6442_FREQ_TAB][iter - 1][0];
+	return s5p_cpu_clk_tab_666_166MHz[iter - 1][0];
 }
-
 
 #ifdef CONFIG_CPU_FREQ
 int s5p6442_clk_set_rate(unsigned int target_freq,
                                 unsigned int index )
 {
-	int cur_freq;
 	int pll_change = 0;
+	int cur_freq;
 	unsigned int mask;
 	u32 clk_div0;
 	u32 size;
-	unsigned long apll, a2m, xtal;
 	int timeout = 1000; //10 msec //10 usec uints
 	static int flag = 0;
-	static unsigned int hd0_clk;
-	static unsigned int hd1_clk;
-	static unsigned int arm_clk, clk_tmp;
+        static unsigned int hd0_clk;
+        static unsigned int hd1_clk;
+        static unsigned int arm_clk, clk_tmp;
 	static  u32 (*cpu_clk_tab)[10];
 	static int cur_idx;
 
@@ -128,31 +137,23 @@ int s5p6442_clk_set_rate(unsigned int target_freq,
 		hd0_clk = clk_hd0.rate;
 		hd1_clk = clk_hd1.rate;
 		arm_clk = clk_f.rate;
-		flag = 1;
 		cur_idx = 3;
+		flag = 1;
 	}
 
-//	printk("---> [s5p6442_clk_set_rate] TARGET_FREQ : %d - Index : %d\n", target_freq, index);
-	cpu_clk_tab = s5p_cpu_clk_tab[S5P6442_FREQ_TAB];
+	cpu_clk_tab = s5p_cpu_clk_tab_666_166MHz;
 
 	size = s5p_cpu_clk_tab_size();
 
-	if(index >= size) {
+	if(index >= size) 
 		return 1;
-	}
-
 	
 	if (index == cur_idx)
 		return 0;
-
-
-
+	
 	if(cpu_clk_tab[index][6] > 0)
-		__raw_writel(AVG_PRD_REFRESH_INTERVAL_83MHZ, S5P_DRAMC_TIMINGAREF);
-
-
-	__raw_writel(0x00001111, S5P_CLK_SRC0);
-
+		__raw_writel(s5p_avg_prd_refresh_rate[S5P6442_FREQ_TAB * 2 + 1], S5P_DRAMC_TIMINGAREF);
+	
 	mask = (~S5P_CLKDIV0_APLL_MASK) & (~S5P_CLKDIV0_D0CLK_MASK) & (~S5P_CLKDIV0_P0CLK_MASK) & (~S5P_CLKDIV0_D1CLK_MASK) & (~S5P_CLKDIV0_P1CLK_MASK);
 	clk_div0 = __raw_readl(S5P_CLK_DIV0) & mask;
 	clk_div0 |= cpu_clk_tab[index][5] << S5P_CLKDIV0_APLL_SHIFT;
@@ -160,117 +161,74 @@ int s5p6442_clk_set_rate(unsigned int target_freq,
 	clk_div0 |= (cpu_clk_tab[index][7]) << S5P_CLKDIV0_P0CLK_SHIFT;
 	clk_div0 |= (cpu_clk_tab[index][8]) << S5P_CLKDIV0_D1CLK_SHIFT;
 	clk_div0 |= (cpu_clk_tab[index][9]) << S5P_CLKDIV0_P1CLK_SHIFT;
-
+		
 #ifdef MUXD0D1_A2M
 	clk_div0 &= ~(S5P_CLKDIV0_A2M_MASK );
-//		printk("--> s5p6442 - enable muxd0 : set div0_a2m : %d\n", cpu_clk_tab[index][4]);
-	clk_div0 |= (cpu_clk_tab[index][4] << S5P_CLKDIV0_A2M_SHIFT);
+	clk_div0 |= (cpu_clk_tab[index][4] << S5P_CLKDIV0_A2M_SHIFT);		
 #endif /* MUXD0D1_A2M */
 
 
-//      printk("---> [s5p6442_clk_set_rate] clksrc0 before : %0x\n", __raw_readl(S5P_CLK_SRC0));
-
-	if (index == 0) {
-		__raw_writel(0xe10, S5P_APLL_LOCK);
-		__raw_writel(((1 << 31) | (800 << 16) | (2 << 8) | 2), S5P_APLL_CON);
-	}
-
 	if (index > cur_idx) {
-
 		clk_tmp = __raw_readl(S5P_APLL_CON);
-//		printk("----> s5p6442 : APLL_CON = %x  - will be changed to apll_tab = %x (index=%d)\n", clk_tmp, s5p_cpu_pll_tab[index][0], index);
 		if (clk_tmp != s5p_cpu_pll_tab[index][0]) {
 		    pll_change = 1;
 		  __raw_writel(0xe10, S5P_APLL_LOCK);
 		  __raw_writel(s5p_cpu_pll_tab[index][0],S5P_APLL_CON);
-//		    printk("----> s5p6442 : apll changed\n");
 		}
 
 		clk_tmp = __raw_readl(S5P_MPLL_CON);
-//		printk("----> s5p6442 : MPLL_CON = %x  - will be changed to mpll_tab = %x (index=%d)\n", clk_tmp, s5p_cpu_pll_tab[index][1],index);
 		if (clk_tmp != s5p_cpu_pll_tab[index][1]) {
 		    pll_change = 1;
 		    __raw_writel(0xe10, S5P_MPLL_LOCK);
 		    __raw_writel(s5p_cpu_pll_tab[index][1],S5P_MPLL_CON);
-//		    printk("----> s5p6442 : mpll changed\n");
 		}
 
-//	        printk("----> s5p6442 : clk_div0 before : %x \n", __raw_readl(S5P_CLK_DIV0));
 		s5p6442_changeDivider(clk_div0, S5P_CLK_DIV0);
-//	        printk("----> s5p6442 : clk_div0 after : %x \n", __raw_readl(S5P_CLK_DIV0));
 	}
 	else
 	{
-
-//		printk("----> s5p6442 : clk_div0 before : %x \n", __raw_readl(S5P_CLK_DIV0));
 		s5p6442_changeDivider(clk_div0, S5P_CLK_DIV0);
-//		printk("----> s5p6442 : clk_div0 after : %x \n", __raw_readl(S5P_CLK_DIV0));
-
 		clk_tmp = __raw_readl(S5P_APLL_CON);
-//		printk("----> s5p6442 : APLL_CON = %x  - will be changed to apll_tab = %x (index=%d)\n", clk_tmp, s5p_cpu_pll_tab[index][0], index);
 		if (clk_tmp != s5p_cpu_pll_tab[index][0]) {
 		    pll_change = 1;
 		  __raw_writel(0xe10, S5P_APLL_LOCK);
 		  __raw_writel(s5p_cpu_pll_tab[index][0],S5P_APLL_CON);
-//		    printk("----> s5p6442 : apll changed\n");
 		}
 
 		clk_tmp = __raw_readl(S5P_MPLL_CON);
-//		printk("----> s5p6442 : MPLL_CON = %x  - will be changed to mpll_tab = %x (index=%d)\n", clk_tmp, s5p_cpu_pll_tab[index][1],index);
 		if (clk_tmp != s5p_cpu_pll_tab[index][1]) {
 		    pll_change = 1;
 		   __raw_writel(0xe10, S5P_MPLL_LOCK);
                    __raw_writel(s5p_cpu_pll_tab[index][1],S5P_MPLL_CON);
-//		    printk("----> s5p6442 : mpll changed\n");
 		}
 	}
 
-	__raw_writel(0x00101111, S5P_CLK_SRC0);
 
-	//s5p6442_postclock();
-
-//todel	s5p_cpu_clkdiv_tab[index][0] = __raw_readl(S5P_CLK_DIV0);
+	__raw_writel(0x00001111, S5P_CLK_SRC0);
 
 	arm_clk = s5p_fclk_get_rate();
-
 	if(cpu_clk_tab[index][6] == 0)
-		__raw_writel(AVG_PRD_REFRESH_INTERVAL_166MHZ, S5P_DRAMC_TIMINGAREF);
+		__raw_writel(s5p_avg_prd_refresh_rate[S5P6442_FREQ_TAB * 2], S5P_DRAMC_TIMINGAREF);
 
 	while(__raw_readl(S5P_CLK_DIV_STAT0) && (timeout > 0)){
-                timeout--;
-                udelay(10);
+	                timeout--;
+	                udelay(10);
 	}
-
 
 	if (pll_change == 1) {
 		s5p_cpu_pll_tab[index][0] = __raw_readl(S5P_APLL_CON);
 		s5p_cpu_pll_tab[index][1] = __raw_readl(S5P_MPLL_CON);
-//		printk("----> s5p6442 : stored new values : apll %x mpll %x\n", s5p_cpu_pll_tab[index][0], s5p_cpu_pll_tab[index][1]);
 	}
 
-//	printk("---> [s5p6442_clk_set_rate] sapll after : %0x\n", __raw_readl(S5P_APLL_CON));
-//	printk("---> [s5p6442_clk_set_rate] smpll after : %0x\n", __raw_readl(S5P_MPLL_CON));
-//	printk("---> [s5p6442_clk_set_rate] clk_div0 : %x  current: %x - s5p_fclk_rate = %d\n", clk_div0, __raw_readl(S5P_CLK_DIV0) & mask, s5p_fclk_get_rate());
-
-
-#ifdef MUXD0D1_A2M
-	a2m = arm_clk / GET_DIV(__raw_readl(S5P_CLK_DIV0), S5P_CLKDIV0_A2M);
 	clk_f.rate = arm_clk / (cpu_clk_tab[index][5] + 1);
-	clk_hd0.rate = a2m / (cpu_clk_tab[index][6] + 1);
-#else
-        clk_f.rate = arm_clk / (cpu_clk_tab[index][5] + 1);
-        clk_hd0.rate = (hd0_clk / (cpu_clk_tab[index][6] + 1));
-#endif
-        clk_hd1.rate = (hd1_clk / (cpu_clk_tab[index][8] + 1));
+	clk_hd0.rate = (hd0_clk / (cpu_clk_tab[index][6] + 1));
+	clk_hd1.rate = (hd1_clk / (cpu_clk_tab[index][8] + 1));
 	clk_pd0.rate = clk_hd0.rate/ (cpu_clk_tab[index][7] + 1);
 	clk_pd1.rate = clk_hd1.rate/ (cpu_clk_tab[index][9] + 1);
 
 	/* For backward compatibility */
 	clk_h.rate = clk_hd1.rate;
 	clk_p.rate = clk_pd1.rate;
-	printk("#####arm_clk %d hd0_clk %d p0_clk %d hd1_clk %d p1_clk %d clkdiv0  %x timeout %d\n", clk_f.rate, clk_hd0.rate, clk_pd0.rate,
-		              clk_hd1.rate, clk_pd1.rate, clk_div0, timeout);
-
 	cur_idx = index;
 
 	return 0;
@@ -430,7 +388,7 @@ static struct clk init_clocks_disable[] = {
 		.enable  	= s5p64xx_hclk0_ctrl,
 		.ctrlbit 	= S5P_CLKCON_HCLK0_POST0
 	},
-#endif
+#endif	
 };
 
 static struct clk init_clocks[] = {
@@ -456,13 +414,13 @@ static struct clk init_clocks[] = {
 	}, {
 		.name           = "mfc",
 		.id             = -1,
-		.parent         = &clk_hd1,   //changed from hd1 to hd0
-        	.enable         = s5p64xx_clk_ip0_ctrl,
+		.parent         = &clk_hd1,
+		.enable         = s5p64xx_clk_ip0_ctrl,
 		.ctrlbit        = S5P_CLKGATE_IP0_MFC,
 	}, {
 		.name           = "jpeg",
 		.id             = -1,
-		.parent         = &clk_hd0,  //hd0
+		.parent         = &clk_hd0,
 		.enable         = s5p64xx_clk_ip0_ctrl,
 		.ctrlbit        = S5P_CLKGATE_IP0_JPEG,
 	}, {
@@ -482,7 +440,7 @@ static struct clk init_clocks[] = {
 	{
 		.name           = "otg",
 		.id             = -1,
-		.parent         = &clk_hd1,   //hd1
+		.parent         = &clk_hd1,
 		.enable         = s5p64xx_clk_ip1_ctrl,
 		.ctrlbit        = S5P_CLKGATE_IP1_USBOTG,
 	}, {
@@ -490,23 +448,23 @@ static struct clk init_clocks[] = {
 		.id             = -1,
 		.parent         = &clk_hd1,
 		.enable         = s5p64xx_clk_ip1_ctrl,
-		.ctrlbit        = S5P_CLKGATE_IP1_TVENC, 
-	}, { 
+		.ctrlbit        = S5P_CLKGATE_IP1_TVENC,
+	}, {
 		.name           = "mixer",
 		.id             = -1,
-		.parent         = &clk_hd1,  
+		.parent         = &clk_hd1,
 		.enable         = s5p64xx_clk_ip1_ctrl,
 		.ctrlbit        = S5P_CLKGATE_IP1_MIXER,
 	}, {
 		.name           = "vp",
 		.id             = -1,
-		.parent         = &clk_hd1,   // HD1
+		.parent         = &clk_hd1,
 		.enable         = s5p64xx_clk_ip1_ctrl,
 		.ctrlbit        = S5P_CLKGATE_IP1_VP,
-	}, { 
+	}, {
 		.name           = "lcd",	// fimd ?
 		.id             = -1,
-		.parent         = &clk_hd1,  //hd1
+		.parent         = &clk_hd1,
 		.enable         = s5p64xx_clk_ip1_ctrl,
 		.ctrlbit        = S5P_CLKGATE_IP1_FIMD,
 	},  {
@@ -542,19 +500,19 @@ static struct clk init_clocks[] = {
 	{
 		.name		= "systimer",
 		.id		= -1,
-		.parent		= &clk_pd1,  //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_SYSTIMER,
 	}, {
 		.name		= "watchdog",
 		.id		= -1,
-		.parent		= &clk_pd1, //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_WDT,
 	}, {
 		.name		= "rtc",
 		.id		= -1,
-		.parent		= &clk_pd1,  //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_RTC,
 	}, {
@@ -578,49 +536,49 @@ static struct clk init_clocks[] = {
 	}, {
 		.name		= "i2c",
 		.id		= 0,
-		.parent		= &clk_pd1, //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_I2C0,
 	}, {
 		.name		= "i2c",
 		.id		= 1,
-		.parent		= &clk_pd1, //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_I2C1,
 	}, {
 		.name		= "i2c",
 		.id		= 2,
-		.parent		= &clk_pd1,  //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_I2C2,
 	}, {
 		.name		= "spi",
 		.id		= 0,
-		.parent		= &clk_pd1, //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_SPI0,
 	}, {
 		.name		= "timers",
 		.id		= -1,
-		.parent		= &clk_pd1,   //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_PWM,
 	}, {
 		.name		= "lcd",
 		.id		= -1,
-		.parent		= &clk_hd1,   //hd1
+		.parent		= &clk_hd1,
 		.enable		= s5p64xx_clk_ip1_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP1_FIMD,
 	},{
 		.name		= "adc",
 		.id		= -1,
-		.parent		= &clk_pd1, //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_TSADC,
 	}, {
 		.name		= "keypad",
 		.id		= -1,
-		.parent		= &clk_pd1,    // pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_KEYIF,
 	},
@@ -629,7 +587,7 @@ static struct clk init_clocks[] = {
 	{
 		.name		= "i2s_v50",
 		.id		= 0,
-		.parent		= &clk_pd1,   //pd1
+		.parent		= &clk_pd1,
 		.enable		= s5p64xx_clk_ip3_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP3_I2S0, /* I2S0 is v5.0 */
 	},{
@@ -637,7 +595,7 @@ static struct clk init_clocks[] = {
 		.id		= 0,
 		.parent		= &clk_p,
 		.enable		= s5p64xx_clk_ip3_ctrl,
-		.ctrlbit	= S5P_CLKGATE_IP3_I2S1,  /* I2S1 is v3.2 */ 
+		.ctrlbit	= S5P_CLKGATE_IP3_I2S1, /* I2S1 is v3.2 */
 	}, {
 		.name		= "pcm",
 	        .id     = 0,
@@ -653,7 +611,7 @@ static struct clk init_clocks[] = {
 	},{
 		.name		= "mfc",
 		.id		= -1,
-		.parent		= &clk_hd1,  //hd1
+		.parent		= &clk_hd1,
 		.enable		= s5p64xx_clk_ip0_ctrl,
 		.ctrlbit	= S5P_CLKGATE_IP0_MFC,
         },
