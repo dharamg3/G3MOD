@@ -39,37 +39,6 @@ if cd /system/etc/init.d >/dev/null 2>&1 ; then
 fi
 echo $(date) USER INIT DONE
 
-if [ -e /sys/module/lowmemorykiller/parameters/minfree ]; then
-echo "2560,4096,6144,12288,14336,18432" > /sys/module/lowmemorykiller/parameters/minfree
-fi
-
-if [ -e /proc/sys/vm/swappiness ]; then
-echo "50" > /proc/sys/vm/swappiness
-fi
-
-if [ -e /proc/sys/vm/vfs_cache_pressure ]; then
-echo "10" > /proc/sys/vm/vfs_cache_pressure
-fi
-
-if [ -e /proc/sys/vm/dirty_expire_centisecs ]; then
-	echo "500" > /proc/sys/vm/dirty_expire_centisecs
-fi
-
-if [ -e /proc/sys/vm/dirty_writeback_centisecs ]; then
-	echo "1000" > /proc/sys/vm/dirty_writeback_centisecs
-fi
-
-if [ -e /proc/sys/vm/dirty_ratio ]; then
-	echo "90" > /proc/sys/vm/dirty_ratio
-fi
-
-if [ -e /proc/sys/vm/dirty_background_ratio ]; then
-	echo "5" > /proc/sys/vm/dirty_background_ratio
-fi
-
-echo "2" > /proc/sys/net/ipv6/conf/all/use_tempaddr
-
-
 # rootfs and system should be closed for now
 /sbin/busybox mount -o remount,ro /system
 
