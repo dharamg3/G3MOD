@@ -40,11 +40,11 @@
 
 /* ARMCLK, D0CLK, P0CLK, D1CLK, P1CLK, APLL_RATIO, D0CLK_RATIO, P0CLK_RATIO, D1CLK_RATIO, P1CLK_RATIO */
 static  u32 s5p_cpu_clk_tab_666_166MHz[][10] = {
-        {1000*MHZ,166*MHZ, (180*MHZ)/2, 180*MHZ, (180*MHZ)/2, 0, 0, 1, 0, 1},
+        {1000*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
         {800*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
         {600*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
         {400*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
-	{200*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1}, 
+	{200*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 1, 0, 1, 0}, 
 };
 
 u32 s5p_cpu_pll_tab[][4] = {

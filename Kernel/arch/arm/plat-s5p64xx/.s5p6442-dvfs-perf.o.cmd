@@ -499,6 +499,7 @@ deps_arch/arm/plat-s5p64xx/s5p6442-dvfs-perf.o := \
     $(wildcard include/config/have/pwm.h) \
     $(wildcard include/config/timer/pwm.h) \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
+    $(wildcard include/config/extreme.h) \
   arch/arm/plat-s5p64xx/include/plat/regs-clock.h \
   include/linux/io.h \
     $(wildcard include/config/has/ioport.h) \

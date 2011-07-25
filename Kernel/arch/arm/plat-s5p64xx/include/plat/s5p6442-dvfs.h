@@ -24,8 +24,6 @@ extern int *FakeShmoo_UV_mV_Ptr; // Stored voltage table from cpufreq sysfs
 //#define USE_DVFS_AL1_LEVEL
 //#undef USE_DVFS_AL1_LEVEL
 //#define CLK_DIV_CHANGE_SEQ
-//#define MUXD0D1_A2M
-//#define MUXD0D1_A2M
 
 extern struct cpufreq_frequency_table freq_table_overclock[];
 extern u32 s5p_cpu_clk_tab_overclock[][10];
@@ -57,4 +55,7 @@ extern char cpufreq_governor_name[CPUFREQ_NAME_LEN];
 extern void cpufreq_get_cpufreq_name(unsigned int cpu);
 extern void dvfs_set_max_freq_lock(void);
 extern void dvfs_set_max_freq_unlock(void);
+#ifdef CONFIG_EXTREME
+#define MUXD0D1_A2M
+#endif
 #endif /* __PLAT_S3C64XX_DVFS_H */

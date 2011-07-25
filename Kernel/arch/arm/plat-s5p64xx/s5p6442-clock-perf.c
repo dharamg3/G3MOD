@@ -1334,7 +1334,7 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	u32 mux_stat1;
 
 	printk(KERN_DEBUG "%s: registering clocks\n", __func__);
-
+	s5p6442_clock800();
 	clkdiv0 = __raw_readl(S5P_CLK_DIV0);
 
 #ifdef MUXD0D1_A2M

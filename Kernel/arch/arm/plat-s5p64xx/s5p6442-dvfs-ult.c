@@ -28,7 +28,7 @@
 #include <plat/map.h>
 
 unsigned int S5P6442_MAXFREQLEVEL = 0;
-unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 6;
+unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 0;
 static unsigned int s5p6442_cpufreq_level = 0;
 unsigned int s5p6442_cpufreq_index = 0;
 static spinlock_t dvfs_lock;
@@ -60,12 +60,12 @@ static unsigned char transition_state_666_166MHz[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {1200000, 1450, 1200, 0}, //1275
-        {1000000, 1350, 1200, 1},
-        {800000, 1250, 1200, 2},
-        {600000, 1200, 1200, 3},
-        {400000, 1100, 1200, 4},
-        {200000, 1100, 1100, 5},
+        {1200000, 1450, 1450, 0}, //1275
+        {1000000, 1350, 1350, 1},
+        {800000, 1300, 1300, 2},
+        {600000, 1250, 1250, 3},
+        {400000, 1200, 1200, 4},
+        {200000, 1200, 1200, 5},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -184,6 +184,10 @@ int set_voltage(unsigned int freq_index, bool force)
 	
 	arm_voltage = frequency_match[S5P6442_FREQ_TAB][index][1];
 	int_voltage = frequency_match[S5P6442_FREQ_TAB][index][2];
+
+if( FakeShmoo_UV_mV_Ptr != NULL ) {
+		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
+	}
 
 #if 1 // future work
 	arm_delay = ((abs(vcc_arm - arm_voltage) / 50) * 5) + 10;
@@ -449,7 +453,8 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 
 	if(policy->cpu != 0)
 		return -EINVAL;
-	policy->min = policy->cur = policy->max = s5p6442_getspeed(0);
+	policy->min = s5p6442_freq_table[S5P6442_FREQ_TAB][5].frequency;
+	policy->cur = policy->max = s5p6442_getspeed(0);
 //	printk("---> [s5p6442_cpu_init] : getspeed(0) : %d\n", s5p6442_getspeed(0));
 
 	S5P6442_FREQ_TAB = 0;

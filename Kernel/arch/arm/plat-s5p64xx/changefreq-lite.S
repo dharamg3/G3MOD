@@ -33,7 +33,7 @@ ENTRY(s5p6442_preclock)
         /* Set Lock Time */
         ldr     r1, =0xe10                      @ Locktime : 0xe10 = 3600
         str     r1, [r8, #0x000]                @ APLL_LOCK
-        str     r1, [r8, #0x008]                @ MPLL_LOCK
+        //str     r1, [r8, #0x008]                @ MPLL_LOCK
         //str     r1, [r8, #0x010]                @ EPLL_LOCK
         //str     r1, [r8, #0x020]                @ VPLL_LOCK
 

@@ -353,6 +353,7 @@ deps_drivers/cpufreq/cpufreq-perf.o := \
   include/linux/sysdev.h \
   include/linux/node.h \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
+    $(wildcard include/config/extreme.h) \
 
 drivers/cpufreq/cpufreq-perf.o: $(deps_drivers/cpufreq/cpufreq-perf.o)
 

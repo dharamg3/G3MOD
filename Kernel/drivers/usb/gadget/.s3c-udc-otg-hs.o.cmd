@@ -624,6 +624,7 @@ deps_drivers/usb/gadget/s3c-udc-otg-hs.o := \
   include/linux/earlysuspend.h \
     $(wildcard include/config/has/earlysuspend.h) \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
+    $(wildcard include/config/extreme.h) \
   include/linux/cpufreq.h \
     $(wildcard include/config/cpu/freq/gov/performance.h) \
     $(wildcard include/config/cpu/freq/default/gov/performance.h) \

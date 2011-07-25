@@ -645,6 +645,7 @@ deps_drivers/media/s5p6442/fimc_drv/fimc_dev.o := \
   include/linux/videodev.h \
   include/media/videobuf-core.h \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
+    $(wildcard include/config/extreme.h) \
   include/linux/cpufreq.h \
     $(wildcard include/config/cpu/freq/gov/performance.h) \
     $(wildcard include/config/cpu/freq/default/gov/performance.h) \

@@ -60,6 +60,10 @@
 
 unsigned long s3c_pm_flags;
 
+#ifdef MUXD0D1_A2M
+static u32 old_clk_src0;
+#endif
+
 #define DEBUG_WAKEUP_STATUS	1
 
 #if DEBUG_WAKEUP_STATUS
@@ -1145,6 +1149,10 @@ static int s5p6442_pm_enter(suspend_state_t state)
 	DBG("post sleep, preparing to return\n");
 
 	//s5p6442_pm_check_restore();
+
+#ifdef MUXD0D1_A2M
+	__raw_writel(old_clk_src0, S5P_CLK_SRC0);
+#endif
 
 	/* ok, let's return from sleep */
 	DBG("S5P6442 PM Resume (post-restore)\n");

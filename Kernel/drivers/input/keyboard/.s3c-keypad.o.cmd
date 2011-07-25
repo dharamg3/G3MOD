@@ -486,6 +486,7 @@ deps_drivers/input/keyboard/s3c-keypad.o := \
   /root/Desktop/Dharam/Kernel/arch/arm/include/asm/hardware/vic.h \
   arch/arm/mach-s5p6442/include/mach/cpuidle.h \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
+    $(wildcard include/config/extreme.h) \
   include/linux/cpufreq.h \
     $(wildcard include/config/cpu/freq/gov/performance.h) \
     $(wildcard include/config/cpu/freq/default/gov/performance.h) \

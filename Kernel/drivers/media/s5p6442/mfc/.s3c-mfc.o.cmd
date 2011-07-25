@@ -620,6 +620,7 @@ deps_drivers/media/s5p6442/mfc/s3c-mfc.o := \
     $(wildcard include/config/enc/seq/rc/para.h) \
     $(wildcard include/config/enc/pic/qs.h) \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
+    $(wildcard include/config/extreme.h) \
   include/linux/cpufreq.h \
     $(wildcard include/config/cpu/freq/gov/performance.h) \
     $(wildcard include/config/cpu/freq/default/gov/performance.h) \

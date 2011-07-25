@@ -492,6 +492,7 @@ deps_kernel/power/earlysuspend.o := \
   include/linux/sysdev.h \
   arch/arm/mach-s5p6442/include/mach/cpuidle.h \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
+    $(wildcard include/config/extreme.h) \
   kernel/power/power.h \
     $(wildcard include/config/arch/hibernation/header.h) \
     $(wildcard include/config/suspend.h) \
