@@ -456,6 +456,7 @@ deps_kernel/kthread.o := \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/cgroup/freezer.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/mm.h \
     $(wildcard include/config/swap.h) \
     $(wildcard include/config/ia64.h) \

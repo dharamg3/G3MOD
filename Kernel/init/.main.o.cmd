@@ -601,6 +601,7 @@ deps_init/main.o := \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/cgroup/freezer.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/efi.h \
     $(wildcard include/config/efi/pcdp.h) \
     $(wildcard include/config/efi.h) \

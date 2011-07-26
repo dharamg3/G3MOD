@@ -560,6 +560,7 @@ deps_kernel/power/suspend.o := \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/cgroup/freezer.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/suspend_ioctls.h \
   include/linux/utsname.h \
     $(wildcard include/config/uts/ns.h) \

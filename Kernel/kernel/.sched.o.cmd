@@ -606,6 +606,7 @@ deps_kernel/sched.o := \
     $(wildcard include/config/cgroup/debug.h) \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/kthread.h \
   include/linux/proc_fs.h \
     $(wildcard include/config/proc/devicetree.h) \

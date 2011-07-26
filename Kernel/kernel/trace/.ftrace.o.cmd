@@ -506,6 +506,7 @@ deps_kernel/trace/ftrace.o := \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/cgroup/freezer.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/mm.h \
     $(wildcard include/config/debug/pagealloc.h) \
   include/linux/debug_locks.h \

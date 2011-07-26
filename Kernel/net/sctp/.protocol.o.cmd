@@ -648,6 +648,7 @@ deps_net/sctp/protocol.o := \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/cgroup/freezer.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/node.h \
   include/linux/sysdev.h \
   include/net/protocol.h \

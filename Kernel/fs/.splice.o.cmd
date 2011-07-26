@@ -502,6 +502,7 @@ deps_fs/splice.o := \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/cgroup/freezer.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/mm_inline.h \
   include/linux/swap.h \
   include/linux/node.h \

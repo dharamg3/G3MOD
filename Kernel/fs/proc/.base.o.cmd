@@ -526,6 +526,7 @@ deps_fs/proc/base.o := \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/cgroup/freezer.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/cpuset.h \
   include/linux/audit.h \
     $(wildcard include/config/change.h) \

@@ -575,6 +575,7 @@ deps_kernel/exit.o := \
     $(wildcard include/config/cgroup/cpuacct.h) \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/syscalls.h \
     $(wildcard include/config/event/profile.h) \
     $(wildcard include/config/ftrace/syscalls.h) \

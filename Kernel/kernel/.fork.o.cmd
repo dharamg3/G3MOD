@@ -539,6 +539,7 @@ deps_kernel/fork.o := \
     $(wildcard include/config/cgroup/device.h) \
     $(wildcard include/config/cgroup/freezer.h) \
     $(wildcard include/config/net/cls/cgroup.h) \
+    $(wildcard include/config/cgroup/bfqio.h) \
   include/linux/security.h \
     $(wildcard include/config/security/path.h) \
     $(wildcard include/config/security/network.h) \

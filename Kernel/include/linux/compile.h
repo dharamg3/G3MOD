@@ -1,7 +1,7 @@
-/* This file is auto generated, version v1.3.3_EXTREME */
+/* This file is auto generated, version 241 */
 #define UTS_MACHINE "arm"
-#define UTS_VERSION "#v1.3.3_EXTREME Mon Jul 25 07:44:13 PDT 2011"
-#define LINUX_COMPILE_TIME "07:44:13"
+#define UTS_VERSION "#241 Mon Jul 25 22:12:59 PDT 2011"
+#define LINUX_COMPILE_TIME "22:12:59"
 #define LINUX_COMPILE_BY "root"
 #define LINUX_COMPILE_HOST "Dharam"
 #define LINUX_COMPILE_DOMAIN
