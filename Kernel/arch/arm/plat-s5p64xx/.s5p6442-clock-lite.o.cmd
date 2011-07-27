@@ -345,7 +345,6 @@ deps_arch/arm/plat-s5p64xx/s5p6442-clock-lite.o := \
   arch/arm/mach-s5p6442/include/mach/map.h \
   arch/arm/plat-s5p/include/plat/map-base.h \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
-    $(wildcard include/config/extreme.h) \
   include/linux/cpufreq.h \
     $(wildcard include/config/cpu/freq.h) \
     $(wildcard include/config/cpu/freq/gov/performance.h) \

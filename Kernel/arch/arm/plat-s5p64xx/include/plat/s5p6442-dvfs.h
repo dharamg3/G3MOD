@@ -55,7 +55,4 @@ extern char cpufreq_governor_name[CPUFREQ_NAME_LEN];
 extern void cpufreq_get_cpufreq_name(unsigned int cpu);
 extern void dvfs_set_max_freq_lock(void);
 extern void dvfs_set_max_freq_unlock(void);
-#ifdef CONFIG_EXTREME
-#define MUXD0D1_A2M
-#endif
 #endif /* __PLAT_S3C64XX_DVFS_H */

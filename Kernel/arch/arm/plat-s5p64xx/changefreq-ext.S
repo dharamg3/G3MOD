@@ -20,6 +20,7 @@
 #define R1_BP	(0x800)	
 
 	.text
+
 ENTRY(s5p6442_clock800)
 
 	stmfd	sp!, {r0-r8, r14}
@@ -45,6 +46,7 @@ ENTRY(s5p6442_clock800)
 	ldmfd   	sp!, {r0-r8, r14}
 	bx		lr
 
+
 ENTRY(s5p6442_preclock)
 
 	stmfd	sp!, {r0-r8, r14}
@@ -53,13 +55,13 @@ ENTRY(s5p6442_preclock)
 	bl		System_EnableBP
 
         ldr     r8, =S3C_VA_SYS		         @ 0xE0100000
-
+ 
         /* Set Lock Time */
         ldr     r1, =0xe10                      @ Locktime : 0xe10 = 3600
         str     r1, [r8, #0x000]                @ APLL_LOCK
-//        str     r1, [r8, #0x008]                @ MPLL_LOCK
-//        str     r1, [r8, #0x010]                @ EPLL_LOCK
-//        str     r1, [r8, #0x020]                @ VPLL_LOCK
+        //str     r1, [r8, #0x008]                @ MPLL_LOCK
+        //str     r1, [r8, #0x010]                @ EPLL_LOCK
+        //str     r1, [r8, #0x020]                @ VPLL_LOCK
 
 	ldmfd   	sp!, {r0-r8, r14}
 	bx		lr
@@ -82,8 +84,8 @@ ENTRY(s5p6442_changeDivider)
 	stmfd	sp!, {r0-r5, r14}
 
 	mov		r5, r0
-	bl		System_DisableIRQ
-	bl		System_EnableBP
+//	bl		System_DisableIRQ
+//	bl		System_EnableBP
 
 	mov		r2, #0
 	mov		r3, #0
@@ -102,8 +104,8 @@ loop1000:
 	cmp 		r3, #2
 	bne 		loopcd
 
-	bl		System_DisableBP
-	bl		System_EnableIRQ
+//	bl		System_DisableBP
+//	bl		System_EnableIRQ
 
 	ldmfd   	sp!, {r0-r5, r14}
 	bx		lr

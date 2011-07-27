@@ -677,7 +677,6 @@ deps_arch/arm/plat-s5p64xx/pm.o := \
     $(wildcard include/config/wakelock/stat.h) \
   arch/arm/mach-s5p6442/include/mach/cpuidle.h \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
-    $(wildcard include/config/extreme.h) \
   include/linux/cpufreq.h \
     $(wildcard include/config/cpu/freq.h) \
     $(wildcard include/config/cpu/freq/gov/performance.h) \

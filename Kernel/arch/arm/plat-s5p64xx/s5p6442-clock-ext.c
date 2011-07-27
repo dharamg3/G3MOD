@@ -183,7 +183,7 @@ int fout_set_rate(struct clk *clk, unsigned long rate)
 {
 	unsigned int epll_con;
 	unsigned int epll_con1;
-	
+
 	epll_con = __raw_readl(S5P_EPLL_CON);
 
 	epll_con &= ~S5P_EPLLVAL(0x1, 0x1ff, 0x3f, 0x7); /* Clear V, M, P & S */
@@ -1332,7 +1332,6 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	u32 clkSrc0, clkSrc1, clkSrc2;
 	u32 mux_stat0;
 	u32 mux_stat1;
-
 	s5p6442_clock800();
 	printk(KERN_DEBUG "%s: registering clocks\n", __func__);
 
@@ -1351,7 +1350,7 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	clkSrc0 = __raw_readl(S5P_CLK_SRC0);
 #ifdef MUXD0D1_A2M
 	clkSrc0 |= 1 << S5P_CLKSRC0_MUXD0_SHIFT;   //MUXD0
-      //  clkSrc0 |= 1 << S5P_CLKSRC0_MUXD1_SHIFT;   //MUXD1
+        clkSrc0 |= 1 << S5P_CLKSRC0_MUXD1_SHIFT;   //MUXD1
 	__raw_writel(clkSrc0, S5P_CLK_SRC0); 
 #endif
 	clkSrc1 = __raw_readl(S5P_CLK_SRC1);
@@ -1394,7 +1393,7 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 			break;
 		default:
 			break;
-			
+
 		}
 
 		break;
@@ -1418,15 +1417,13 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 			pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
 			break;
 		case 0x2:	/* A2M source */
-		//	a2m = apll / GET_DIV(clkdiv0, S5P_CLKDIV0_A2M);
-		//	hclkd1 = a2m / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
-		//	pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
-			hclkd1 = mpll / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
+			a2m = apll / GET_DIV(clkdiv0, S5P_CLKDIV0_A2M);
+			hclkd1 = a2m / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
 			pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
 			break;
 		default:
 			break;
-			
+
 		}
 
 		break;
@@ -1459,7 +1456,7 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	clk_pd1.rate = pclkd1;
 
 	clk_srclk.rate = xtal; //24MHz
-	
+
 	/* For backward compatibility */
 	clk_h.rate = hclkd1;
 	clk_p.rate = pclkd1;
@@ -1481,7 +1478,7 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	clk_set_parent(&clk_uart1.clk, &clk_mout_mpll.clk);
 	clk_set_parent(&clk_uart2.clk, &clk_mout_mpll.clk);
 	 clk_set_parent(&clk_lcd.clk, &clk_mout_mpll.clk);
-	
+
 // 091014 Univ6442 Sound (beta3) : clk_set_parent(&clk_i2s.clk, &clk_i2s_cd0); 
 	clk_set_parent(&clk_i2smain.clk, &clk_fout_epll);	
 	clk_set_parent(&clk_i2s.clk, &clk_i2smain);
@@ -1495,8 +1492,6 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
         clk_set_rate(&clk_mmc0.clk, 50*MHZ);
         clk_set_rate(&clk_mmc1.clk, 50*MHZ);
         clk_set_rate(&clk_mmc2.clk, 50*MHZ);
-
-	clk_set_rate(&clk_g2d.clk, 400*MHZ);
 }
 
 static struct clk *clks[] __initdata = {

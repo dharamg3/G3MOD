@@ -60,10 +60,6 @@
 
 unsigned long s3c_pm_flags;
 
-#ifdef MUXD0D1_A2M
-static u32 old_clk_src0;
-#endif
-
 #define DEBUG_WAKEUP_STATUS	1
 
 #if DEBUG_WAKEUP_STATUS
@@ -288,7 +284,7 @@ static struct sleep_save gpio_save[] = {
 	SAVE_ITEM(S5P64XX_GPJ4DRV),
 	SAVE_ITEM(S5P64XX_GPJ4CONPDN),
 	SAVE_ITEM(S5P64XX_GPJ4PUDPDN),
-	
+
 	SAVE_ITEM(S5P64XX_MP01CON),		
 	SAVE_ITEM(S5P64XX_MP01DAT),		
 	SAVE_ITEM(S5P64XX_MP01PUD),		
@@ -391,7 +387,7 @@ static struct sleep_save gpio_save[] = {
 	SAVE_ITEM(S5P64XX_GPH0DAT),
 	SAVE_ITEM(S5P64XX_GPH0PUD),
 	SAVE_ITEM(S5P64XX_GPH0DRV),
-	
+
 	SAVE_ITEM(S5P64XX_GPH1CON),
 	SAVE_ITEM(S5P64XX_GPH1DAT),
 	SAVE_ITEM(S5P64XX_GPH1PUD),
@@ -410,7 +406,7 @@ static struct sleep_save gpio_save[] = {
 /* GPIO Interrupt related stuff */
 	SAVE_ITEM(S5P64XX_GROUP13_INT_CON),//touch
 	SAVE_ITEM(S5P64XX_GROUP18_INT_CON),//fm radio
-	
+
 	SAVE_ITEM(S5P64XX_GROUP13_INT_MASK),	
 	SAVE_ITEM(S5P64XX_GROUP18_INT_MASK),
 	/* Special register */
@@ -1150,10 +1146,6 @@ static int s5p6442_pm_enter(suspend_state_t state)
 
 	//s5p6442_pm_check_restore();
 
-#ifdef MUXD0D1_A2M
-	__raw_writel(old_clk_src0, S5P_CLK_SRC0);
-#endif
-
 	/* ok, let's return from sleep */
 	DBG("S5P6442 PM Resume (post-restore)\n");
 	return 0;
@@ -1187,6 +1179,6 @@ int __init s5p6442_pm_init(void)
 	/* set default value for EINT_WAKEUP_MASK */
 	s3c_irqwake_eintmask = 0x00000000;
 	s3c_irqwake_eintmask |= (1 << 21); /* BT_HOST_WAKE */
-	
+
 	return 0;
 }

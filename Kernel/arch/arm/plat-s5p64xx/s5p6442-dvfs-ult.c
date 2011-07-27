@@ -60,10 +60,10 @@ static unsigned char transition_state_666_166MHz[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {1200000, 1450, 1450, 0}, //1275
-        {1000000, 1350, 1350, 1},
-        {800000, 1300, 1300, 2},
-        {600000, 1250, 1250, 3},
+        {1200000, 1450, 1200, 0}, //1275
+        {1000000, 1350, 1200, 1},
+        {800000, 1300, 1200, 2},
+        {600000, 1250, 1200, 3},
         {400000, 1200, 1200, 4},
         {200000, 1200, 1200, 5},
 }; 

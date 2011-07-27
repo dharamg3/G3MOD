@@ -476,7 +476,6 @@ deps_kernel/power/suspend.o := \
   include/linux/pm_wakeup.h \
     $(wildcard include/config/pm.h) \
   arch/arm/plat-s5p64xx/include/plat/s5p6442-dvfs.h \
-    $(wildcard include/config/extreme.h) \
   kernel/power/power.h \
     $(wildcard include/config/arch/hibernation/header.h) \
     $(wildcard include/config/suspend.h) \

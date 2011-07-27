@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Mon Jul 25 22:12:44 2011
+ * Tue Jul 26 23:41:28 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
@@ -163,7 +163,6 @@
 #define CONFIG_SCSI 1
 #define CONFIG_IP_SCTP 1
 #define CONFIG_TCP_CONG_CUBIC 1
-#define CONFIG_PERFORMANCE 1
 #define CONFIG_CGROUP_CPUACCT 1
 #define CONFIG_CRYPTO_LZO 1
 #define CONFIG_ALIGNMENT_TRAP 1
@@ -319,7 +318,6 @@
 #define CONFIG_MEDIA_TUNER_TDA9887 1
 #define CONFIG_INET_TUNNEL 1
 #define CONFIG_CPU_FREQ_GOV_ONDEMAND 1
-#define CONFIG_ULTIMATE 1
 #define CONFIG_CPU_IDLE 1
 #define CONFIG_FB_CFB_FILLRECT 1
 #define CONFIG_SYN_COOKIES 1
