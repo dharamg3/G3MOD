@@ -31,7 +31,7 @@ ENTRY(s5p6442_clock800)
         ldr     r1, =0xe10                      @ Locktime : 0xe10 = 3600
         str     r1, [r8, #0x000]                @ APLL_LOCK
 
-	ldr	r1, =((1 << 31) | (800 << 16) | (6 << 8) | 1)
+	ldr	r1, =((1 << 31) | (400 << 16) | (3 << 8) | 1)
 	str	r1, [r8, #0x100]
 
         // Set Source Clock 

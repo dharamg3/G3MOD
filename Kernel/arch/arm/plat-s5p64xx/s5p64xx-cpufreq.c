@@ -31,8 +31,8 @@
 
 #define USE_FREQ_TABLE
 #define USE_DVS
-#define VERY_HI_RATE	532*1000*1000
-#define APLL_GEN_CLK	532*1000	//khz
+#define VERY_HI_RATE	1600*1000*1000
+#define APLL_GEN_CLK	1200*1000	//khz
 #define KHZ_T		1000
 
 #define MPU_CLK		"clk_cpu"

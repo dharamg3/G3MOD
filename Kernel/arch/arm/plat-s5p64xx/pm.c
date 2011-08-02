@@ -60,7 +60,7 @@
 
 unsigned long s3c_pm_flags;
 
-#define DEBUG_WAKEUP_STATUS	1
+//#define DEBUG_WAKEUP_STATUS	1
 
 #if DEBUG_WAKEUP_STATUS
 #define DEBUG_WAKEUP(fmt,args...) printk(fmt, ##args)

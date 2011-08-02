@@ -925,7 +925,7 @@ void s3cfb_display_logo(struct fb_info *fbinfo)
 	memcpy(fbinfo->screen_base, logo_virt_buf, LOGO_MEM_SIZE);	
 	iounmap(logo_virt_buf);
 	*/
-	struct rgb565
+	/*struct rgb565
 	{
 		u16 red:5;
 		u16 green:6;
@@ -969,6 +969,7 @@ void s3cfb_display_logo(struct fb_info *fbinfo)
 	}
 
 	iounmap(logo_virt_buf);
+*/
 }
 
 
@@ -978,7 +979,7 @@ void s3cfb_display_logo(struct fb_info *fbinfo)
 
 static int progress = 0;
 
-static int progress_flag = OFF;
+static int progress_flag = ON;
 
 static struct timer_list progress_timer;
 
@@ -989,7 +990,7 @@ static int (*releasefb)(struct fb_info *) = NULL;
 
 static void progress_timer_handler(unsigned long data)
 {
-#if 0
+#if 1
 	struct fb_info *fbinfo;
 	unsigned short *bar_src, *bar_dst;	
 	int	i, j, p;
@@ -1024,7 +1025,7 @@ static void progress_timer_handler(unsigned long data)
 
 void s3cfb_restart_progress()
 {
-#if 0
+#if 1
 	struct fb_info *fbinfo;
 	unsigned short *bg_src, *bg_dst;	
 	unsigned short *bar_src, *bar_dst;	
@@ -1070,7 +1071,7 @@ static unsigned int old_vidosd1c;
 
 void s3cfb_start_progress(struct s3cfb_global* ctrl, int (*func_allocfb)(struct fb_info *), int (*func_releasefb)(struct fb_info *))
 {
-#if 0
+#if 1
 	struct fb_info *fbinfo = ctrl->fb[PROGRESS_WIN_NUM];
 	unsigned short *bg_src, *bg_dst;	
 	unsigned int data;
@@ -1128,7 +1129,7 @@ void s3cfb_start_progress(struct s3cfb_global* ctrl, int (*func_allocfb)(struct 
 
 void s3cfb_stop_progress(void)
 {
-#if 0
+#if 1
 	if (progress_flag == OFF)
 		return;
 

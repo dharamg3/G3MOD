@@ -27,10 +27,10 @@
 #include <linux/io.h>
 #include <plat/map.h>
 
-unsigned int S5P6442_MAXFREQLEVEL = 0;
-unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 0;
+unsigned int S5P6442_MAXFREQLEVEL = 5;
+unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 5;
 static unsigned int s5p6442_cpufreq_level = 0;
-unsigned int s5p6442_cpufreq_index = 0;
+unsigned int s5p6442_cpufreq_index = 5;
 static spinlock_t dvfs_lock;
  
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
@@ -184,6 +184,7 @@ int set_voltage(unsigned int freq_index, bool force)
 
 if( FakeShmoo_UV_mV_Ptr != NULL ) {
 		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
+		int_voltage -= FakeShmoo_UV_mV_Ptr[index];
 	}
 
 #if 1 // future work
@@ -202,7 +203,7 @@ if( FakeShmoo_UV_mV_Ptr != NULL ) {
 	if(int_voltage != vcc_int) {
 		set_pmic(VCC_INT, int_voltage);
 	}
-
+	printk("---> voltage : index = %d, armvoltage = %d\n", s5p6442_cpufreq_index,arm_voltage);
 
 	udelay(delay);
 

@@ -27,17 +27,17 @@
 #include <linux/io.h>
 #include <plat/map.h>
 
-unsigned int S5P6442_MAXFREQLEVEL = 0;
+unsigned int S5P6442_MAXFREQLEVEL = 7;
 unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 7;
 static unsigned int s5p6442_cpufreq_level = 0;
-unsigned int s5p6442_cpufreq_index = 0;
+unsigned int s5p6442_cpufreq_index = 7;
 static spinlock_t dvfs_lock;
  
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
         {0, 1400*KHZ_T},
-        {1, 1200*KHZ_T},
+        {1, 1300*KHZ_T},
         {2, 1000*KHZ_T},
         {3, 800*KHZ_T},
         {4, 600*KHZ_T},
@@ -57,18 +57,16 @@ static unsigned char transition_state_666_166MHz[][2] = {
 };
 
 
-
-
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
         {1400000, 1525, 1200, 0},  // 1500
-        {1200000, 1450, 1200, 1}, //1275
+        {1300000, 1500, 1200, 1}, //1275
         {1000000, 1350, 1200, 2},
         {800000, 1250, 1200, 3},
         {600000, 1200, 1200, 4},
         {400000, 1100, 1200, 5},
-        {200000, 1100, 1100, 6},
+        {200000, 1100, 1200, 6},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -188,6 +186,11 @@ int set_voltage(unsigned int freq_index, bool force)
 	arm_voltage = frequency_match[S5P6442_FREQ_TAB][index][1];
 	int_voltage = frequency_match[S5P6442_FREQ_TAB][index][2];
 
+if( FakeShmoo_UV_mV_Ptr != NULL ) {
+		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
+		int_voltage -= FakeShmoo_UV_mV_Ptr[index];
+	}
+
 #if 1 // future work
 	arm_delay = ((abs(vcc_arm - arm_voltage) / 50) * 5) + 10;
 	int_delay = ((abs(vcc_int - int_voltage) / 50) * 5) + 10;
@@ -204,7 +207,7 @@ int set_voltage(unsigned int freq_index, bool force)
 	if(int_voltage != vcc_int) {
 		set_pmic(VCC_INT, int_voltage);
 	}
-
+	printk("---> voltage : index = %d, armvoltage = %d\n", s5p6442_cpufreq_index,arm_voltage);
 
 	udelay(delay);
 

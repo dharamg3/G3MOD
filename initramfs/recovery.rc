@@ -273,7 +273,7 @@ on boot
 service console /system/bin/sh
     console
 
-service recovery /system/bin/recovery
+service recovery /sbin/recovery
     console
     oneshot
 

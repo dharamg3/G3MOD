@@ -606,7 +606,7 @@ deps_drivers/video/samsung/s3cfb.o := \
     $(wildcard include/config/gpiolib.h) \
     $(wildcard include/config/gpio/sysfs.h) \
     $(wildcard include/config/have/gpio/lib.h) \
-  drivers/video/samsung/android_logo_rgb16.h \
+  drivers/video/samsung/g3mod.h \
   drivers/video/samsung/s3cfb.h \
   arch/arm/plat-s5p/include/plat/fb.h \
     $(wildcard include/config/fb/s3c.h) \
