@@ -332,6 +332,16 @@ struct clk clk_pd0 = {
 	.ctrlbit	= 0,
 	.set_rate	= clk_default_setrate,
 };
+
+struct clk clk_gpu = {
+	.name		= "gclkpu",
+	.id		= -1,
+	.rate		= 0,
+	.parent		= NULL,
+	.ctrlbit	= 0,
+	.set_rate	= clk_default_setrate,
+};
+
 #endif
 
 #if defined(CONFIG_CPU_S5P6442)

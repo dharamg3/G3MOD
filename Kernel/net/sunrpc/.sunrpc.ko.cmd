@@ -1,1 +1,0 @@
-cmd_net/sunrpc/sunrpc.ko := /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL -r  -T /root/Desktop/Dharam/Kernel/scripts/module-common.lds --build-id -o net/sunrpc/sunrpc.ko net/sunrpc/sunrpc.o net/sunrpc/sunrpc.mod.o

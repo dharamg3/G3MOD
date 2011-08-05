@@ -480,6 +480,10 @@ on property:persist.service.adb.enable=1
 on property:persist.service.adb.enable=0
     stop adbd
 
+service ramzswap /sbin/ramzswap.sh
+    user root
+    oneshot
+
 service servicemanager /system/bin/servicemanager
     user system
     critical

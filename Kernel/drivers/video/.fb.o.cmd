@@ -1,1 +1,0 @@
-cmd_drivers/video/fb.o := /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o drivers/video/fb.o drivers/video/fbmem.o drivers/video/fbmon.o drivers/video/fbcmap.o drivers/video/fbsysfs.o drivers/video/modedb.o drivers/video/fbcvt.o 

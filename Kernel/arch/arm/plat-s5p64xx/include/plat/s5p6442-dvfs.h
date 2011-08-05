@@ -24,6 +24,7 @@ extern int *FakeShmoo_UV_mV_Ptr; // Stored voltage table from cpufreq sysfs
 //#define USE_DVFS_AL1_LEVEL
 //#undef USE_DVFS_AL1_LEVEL
 //#define CLK_DIV_CHANGE_SEQ
+//#define MUXD0D1_A2M
 
 extern struct cpufreq_frequency_table freq_table_overclock[];
 extern u32 s5p_cpu_clk_tab_overclock[][10];

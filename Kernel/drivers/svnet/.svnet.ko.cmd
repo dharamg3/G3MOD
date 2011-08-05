@@ -1,1 +1,0 @@
-cmd_drivers/svnet/svnet.ko := /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL -r  -T /root/Desktop/Dharam/Kernel/scripts/module-common.lds --build-id -o drivers/svnet/svnet.ko drivers/svnet/svnet.o drivers/svnet/svnet.mod.o

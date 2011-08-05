@@ -334,6 +334,15 @@ config TREE_PREEMPT_RCU
 	  is also required.  It also scales down nicely to
 	  smaller systems.
 
+config TINY_RCU
+  bool "UP-only small-memory-footprint RCU"
+  depends on !SMP
+  help
+    This option selects the RCU implementation that is
+    designed for UP systems from which real-time response	
+    is not required.  This option greatly reduces the
+    memory footprint of RCU.
+
 endchoice
 
 config RCU_TRACE
@@ -598,6 +607,18 @@ config CGROUP_MEM_RES_CTLR_SWAP
 	  size is 4096bytes, 512k per 1Gbytes of swap.
 
 endif # CGROUPS
+
+config SCHED_AUTOGROUP
+  bool "Automatic process group scheduling"	
+  select CGROUPS	
+  select CGROUP_SCHED	
+  select FAIR_GROUP_SCHED	
+  help	
+   This option optimizes the scheduler for common desktop workloads by	
+   automatically creating and populating task groups. This separation	
+   of workloads isolates aggressive CPU burners (like build jobs) from	
+   desktop applications. Task group autogeneration is currently based	
+   upon task tty association.	
 
 config MM_OWNER
 	bool

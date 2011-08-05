@@ -44,8 +44,43 @@
 #endif
 
 #if defined(CONFIG_FB_S3C_LMS300)||defined(CONFIG_FB_S3C_S6D04D1)
-#include "g3mod.h"
+
+#ifdef CONFIG_LITE
+#ifndef CONFIG_PERFORMANCE
+#include "g3mod-lite.h"
 #endif
+#endif
+
+#ifdef CONFIG_LITE
+#ifdef CONFIG_PERFORMANCE
+#ifndef CONFIG_ULTIMATE
+#include "g3mod-perf.h"
+#endif
+#endif
+#endif
+
+#ifdef CONFIG_LITE
+#ifdef CONFIG_PERFORMANCE
+#ifdef CONFIG_ULTIMATE
+#ifndef CONFIG_EXTREME
+#include "g3mod-ult.h"
+#endif
+#endif
+#endif
+#endif
+
+#ifdef CONFIG_LITE
+#ifdef CONFIG_PERFORMANCE
+#ifdef CONFIG_ULTIMATE
+#ifdef CONFIG_EXTREME
+#include "g3mod-ext.h"
+#endif
+#endif
+#endif
+#endif
+
+#endif
+
 
 #include "s3cfb.h"
 

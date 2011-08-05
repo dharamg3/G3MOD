@@ -1,1 +1,0 @@
-cmd_drivers/media/video/built-in.o :=  /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o drivers/media/video/built-in.o drivers/media/video/videodev.o drivers/media/video/v4l2-int-device.o drivers/media/video/v4l2-common.o drivers/media/video/v4l1-compat.o drivers/media/video/s5k4ca.o 

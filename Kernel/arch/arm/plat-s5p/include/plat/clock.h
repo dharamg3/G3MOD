@@ -90,6 +90,7 @@ extern struct clk clk_hd0;
 extern struct clk clk_pd0;
 extern struct clk clk_hd1;
 extern struct clk clk_pd1;
+extern struct clk clk_gpu;
 #endif
 
 /* S3C64XX specific clocks */

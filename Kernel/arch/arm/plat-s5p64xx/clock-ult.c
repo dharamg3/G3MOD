@@ -39,7 +39,7 @@
 #define INIT_XTAL			12 * MHZ
 
 /* ARMCLK, D0CLK, P0CLK, D1CLK, P1CLK, APLL_RATIO, D0CLK_RATIO, P0CLK_RATIO, D1CLK_RATIO, P1CLK_RATIO */
-static  u32 s5p_cpu_clk_tab_666_166MHz[][11] = {
+static  u32 s5p_cpu_clk_tab_666_166MHz[][10] = {
         {1200*MHZ,166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
         {1000*MHZ,166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
         {800*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
@@ -126,6 +126,7 @@ int s5p6442_clk_set_rate(unsigned int target_freq,
 	static int flag = 0;
         static unsigned int hd0_clk;
         static unsigned int hd1_clk;
+	static unsigned int gpu_clk;
         static unsigned int arm_clk, clk_tmp;
 	static  u32 (*cpu_clk_tab)[10];
 	static int cur_idx;
@@ -133,6 +134,7 @@ int s5p6442_clk_set_rate(unsigned int target_freq,
 	if (!flag){
 		hd0_clk = clk_hd0.rate;
 		hd1_clk = clk_hd1.rate;
+		gpu_clk = clk_gpu.rate;
 		arm_clk = clk_f.rate;
 		cur_idx = 3;
 		flag = 1;
@@ -223,8 +225,12 @@ int s5p6442_clk_set_rate(unsigned int target_freq,
 	clk_hd1.rate = (hd1_clk / (cpu_clk_tab[index][8] + 1));
 	clk_pd0.rate = clk_hd0.rate/ (cpu_clk_tab[index][7] + 1);
 	clk_pd1.rate = clk_hd1.rate/ (cpu_clk_tab[index][9] + 1);
-
-	printk("----> s5p6442 : HD0_CLK = %x\n", chk_hd1.rate);
+	clk_gpu.rate = gpu_clk;
+	printk("----> s5p6442 :HD0 Clk = %d \n", clk_hd0.rate);
+	printk("----> s5p6442 :PD0 Clk = %d \n", clk_pd0.rate);
+	printk("----> s5p6442 :HD1 Clk = %d \n", clk_hd1.rate);
+	printk("----> s5p6442 :PD1 Clk = %d \n", clk_pd1.rate);
+	printk("----> s5p6442 :F Clk = %d \n", clk_f.rate);
 
 	/* For backward compatibility */
 	clk_h.rate = clk_hd1.rate;

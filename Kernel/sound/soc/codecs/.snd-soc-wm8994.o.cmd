@@ -1,1 +1,0 @@
-cmd_sound/soc/codecs/snd-soc-wm8994.o := /root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-eabi-ld -EL    -r -o sound/soc/codecs/snd-soc-wm8994.o sound/soc/codecs/wm8994.o sound/soc/codecs/wm8994_apollo.o sound/soc/codecs/wm8994_gain.o sound/soc/codecs/wm8994_voodoo.o 
