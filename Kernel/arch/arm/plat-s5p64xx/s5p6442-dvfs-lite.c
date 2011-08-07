@@ -184,6 +184,7 @@ int set_voltage(unsigned int freq_index, bool force)
 
 if( FakeShmoo_UV_mV_Ptr != NULL ) {
 		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
+		int_voltage -= FakeShmoo_UV_mV_Ptr[index];
 	}
 
 #if 1 // future work

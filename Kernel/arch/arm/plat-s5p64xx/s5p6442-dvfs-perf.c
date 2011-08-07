@@ -56,11 +56,11 @@ static unsigned char transition_state_666_166MHz[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {1000000,1400, 1200, 0},
-        {800000, 1300, 1200, 1},
+        {1000000,1400, 1400, 0},
+        {800000, 1300, 1300, 1},
         {600000, 1200, 1200, 2},
-        {400000, 1200, 1200, 3},
-        {200000, 1150, 1200, 4},
+        {400000, 1100, 1100, 3},
+        {200000, 1050, 1050, 4},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -182,6 +182,7 @@ int set_voltage(unsigned int freq_index, bool force)
 
 if( FakeShmoo_UV_mV_Ptr != NULL ) {
 		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
+		int_voltage -= FakeShmoo_UV_mV_Ptr[index];
 	}
 
 #if 1 // future work

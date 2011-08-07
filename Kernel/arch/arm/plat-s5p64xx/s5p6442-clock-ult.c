@@ -1319,7 +1319,6 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	unsigned long fclk;
 	unsigned long a2m;
 	unsigned long hclkd0;
-	unsigned long gclkpu;
 	unsigned long hclkd1;
 	unsigned long pclkd0;
 	unsigned long pclkd1;
@@ -1439,12 +1438,6 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 		/* Synchronous mode */
 
 	} 
-	
-	
-	printk(KERN_INFO "S5P64XX: MPLL=%ld.%ldMHz, EPLL=%ld.%ldMHz," \
-				" APLL=%ld.%ldMHz, VPLL=%ld.%ldMHz\n",
-			       print_mhz(mpll), print_mhz(epll),
-			       print_mhz(apll), print_mhz(vpll));
 
 	printk(KERN_INFO "S5P64XX: HCLKD0=%ld.%ldMHz, HCLKD1=%ld.%ldMHz," \
 				" PCLKD0=%ld.%ldMHz, PCLKD1=%ld.%ldMHz\n",
@@ -1461,7 +1454,6 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	clk_pd0.rate = pclkd0;
 	clk_hd1.rate = hclkd1;
 	clk_pd1.rate = pclkd1;
-	clk_gpu.rate = gclkpu;
 
 	clk_srclk.rate = xtal; //24MHz
 	

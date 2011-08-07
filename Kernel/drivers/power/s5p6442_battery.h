@@ -20,12 +20,12 @@
 #define BATT_CAL			(2115 + VOLTAGE_CAL)	/* 3.65V */
 
 #define BATT_MAXIMUM		605		/* 4.119V */
-#define BATT_FULL			550
-#define BATT_PRE_FULL		400		/* 4.021V */
-#define BATT_SAFE_RECHARGE	550		/* 4.021V */
+#define BATT_FULL			605
+#define BATT_PRE_FULL		380		/* 4.021V */
+#define BATT_SAFE_RECHARGE	605		/* 4.021V */
 #define BATT_ALMOST_FULL	300		/* 3.881V */
-#define BATT_HIGH			160		/* 3.777V */
-#define BATT_MED			92		/* 3.730V */
+#define BATT_HIGH			150		/* 3.777V */
+#define BATT_MED			80		/* 3.730V */
 #define BATT_LOW			(1)		/* 3.680V */
 #define BATT_CRITICAL		(-74)	/* 3.624V */ 
 #define BATT_MINIMUM		(-114)	/* 3.601V */
@@ -191,13 +191,13 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 #define COMPENSATE_CAMERA		50
 #define COMPENSATE_MP3			25
 #define COMPENSATE_VIDEO		40
-#define COMPENSATE_VOICE_CALL_2G	15  // removed
-#define COMPENSATE_VOICE_CALL_3G	20  // removed
-#define COMPENSATE_DATA_CALL		50
+#define COMPENSATE_VOICE_CALL_2G	0  // removed
+#define COMPENSATE_VOICE_CALL_3G	0  // removed
+#define COMPENSATE_DATA_CALL		0
 #define COMPENSATE_LCD			10
 #define COMPENSATE_TA			0
 #define COMPENSATE_CAM_FALSH		0
-#define COMPENSATE_BOOTING		150
+#define COMPENSATE_BOOTING		25
 #endif /* __BATTERY_COMPENSATION__ */
 
 #ifdef __FUEL_GAUGE_IC__
