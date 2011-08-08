@@ -160,7 +160,7 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 /* #define __TEMP_ADC_VALUE__ */  // for temporary adc value
 /* #define __CHECK_BATTERY_V_F__ */  // for checking VF ADC is valid
 /* #define __BATTERY_V_F__ */  // for reading VF ADC
-#define __BATTERY_COMPENSATION__  // for battery compensation
+//#define __BATTERY_COMPENSATION__  // for battery compensation
 #define __TEST_DEVICE_DRIVER__  // for just test
 #define __TEST_MODE_INTERFACE__  // for supporting test mode
 /* #define __CHECK_CHG_CURRENT__ */  // for checking charging current ADC
@@ -187,17 +187,17 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 #endif /* __CHECK_CHG_CURRENT__ */
 
 #ifdef __BATTERY_COMPENSATION__
-#define COMPENSATE_VIBRATOR		25
-#define COMPENSATE_CAMERA		50
-#define COMPENSATE_MP3			25
-#define COMPENSATE_VIDEO		40
+#define COMPENSATE_VIBRATOR		0
+#define COMPENSATE_CAMERA		0
+#define COMPENSATE_MP3			0
+#define COMPENSATE_VIDEO		0
 #define COMPENSATE_VOICE_CALL_2G	0  // removed
 #define COMPENSATE_VOICE_CALL_3G	0  // removed
 #define COMPENSATE_DATA_CALL		0
-#define COMPENSATE_LCD			10
+#define COMPENSATE_LCD			0
 #define COMPENSATE_TA			0
 #define COMPENSATE_CAM_FALSH		0
-#define COMPENSATE_BOOTING		25
+#define COMPENSATE_BOOTING		0
 #endif /* __BATTERY_COMPENSATION__ */
 
 #ifdef __FUEL_GAUGE_IC__
