@@ -58,9 +58,9 @@ unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
         {1000000,1400, 1400, 0},
         {800000, 1300, 1300, 1},
-        {600000, 1200, 1200, 2},
-        {400000, 1100, 1100, 3},
-        {200000, 1050, 1050, 4},
+        {600000, 1250, 1250, 2},
+        {400000, 1200, 1200, 3},
+        {200000, 1200, 1200, 4},
 }; 
 
 extern int is_pmic_initialized(void);

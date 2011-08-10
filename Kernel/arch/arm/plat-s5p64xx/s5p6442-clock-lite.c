@@ -1192,7 +1192,7 @@ static struct clksrc_clk clk_g2d = {
                 .get_rate       = s5p64xx_getrate_clksrc,
                 .set_rate       = s5p64xx_setrate_clksrc,
                 .round_rate     = s5p64xx_roundrate_clksrc,
-        },
+        },	
         .shift          = S5P_CLKSRC2_G2D_SEL_SHIFT,
         .mask           = S5P_CLKSRC2_G2D_MASK,
         .sources        = &clkset_g2d,

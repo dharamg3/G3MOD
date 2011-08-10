@@ -700,18 +700,14 @@ static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 
 static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, const char *buf, size_t count)
 {
-	int ret = sscanf( buf, "%i %i %i %i %i %i %i", &FakeShmoo_UV_mV_Ptr[0], &FakeShmoo_UV_mV_Ptr[1],
-								&FakeShmoo_UV_mV_Ptr[2], &FakeShmoo_UV_mV_Ptr[3],
-								&FakeShmoo_UV_mV_Ptr[4], &FakeShmoo_UV_mV_Ptr[5], &FakeShmoo_UV_mV_Ptr[6] );
-
-    printk("---> voltage store : 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d\n", FakeShmoo_UV_mV_Ptr[0], FakeShmoo_UV_mV_Ptr[1], FakeShmoo_UV_mV_Ptr[2], FakeShmoo_UV_mV_Ptr[3], FakeShmoo_UV_mV_Ptr[4], FakeShmoo_UV_mV_Ptr[5], FakeShmoo_UV_mV_Ptr[6] );
+	int ret = sscanf( buf, "%i %i %i %i %i %i %i", &FakeShmoo_UV_mV_Ptr[0], &FakeShmoo_UV_mV_Ptr[1], &FakeShmoo_UV_mV_Ptr[2], &FakeShmoo_UV_mV_Ptr[3], &FakeShmoo_UV_mV_Ptr[4], &FakeShmoo_UV_mV_Ptr[5], &FakeShmoo_UV_mV_Ptr[6]);
+	printk("---> voltage store : 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d\n", FakeShmoo_UV_mV_Ptr[0], FakeShmoo_UV_mV_Ptr[1], FakeShmoo_UV_mV_Ptr[2], FakeShmoo_UV_mV_Ptr[3], FakeShmoo_UV_mV_Ptr[4], FakeShmoo_UV_mV_Ptr[5], FakeShmoo_UV_mV_Ptr[6]);
 	printk("---> voltage : index = %d\n", s5p6442_cpufreq_index);
 	printk("---> set voltage!\n");
 	ret = set_voltage(s5p6442_cpufreq_index, true);
-    printk("---> set voltage : ret=%d\n", ret);
+	printk("---> set voltage : ret=%d\n", ret);
 	if (ret != 0)
 		return -EINVAL;
-
 	return count;
 }
 

@@ -27,16 +27,16 @@
 #include <linux/io.h>
 #include <plat/map.h>
 
-unsigned int S5P6442_MAXFREQLEVEL = 0;
-unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 0;
+unsigned int S5P6442_MAXFREQLEVEL = 6;
+unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 6;
 static unsigned int s5p6442_cpufreq_level = 0;
-unsigned int s5p6442_cpufreq_index = 0;
+unsigned int s5p6442_cpufreq_index = 6;
 static spinlock_t dvfs_lock;
  
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
-        {0, 1200*KHZ_T},
+	{0, 1200*KHZ_T},
         {1, 1000*KHZ_T},
         {2, 800*KHZ_T},
         {3, 600*KHZ_T},
@@ -50,22 +50,20 @@ static unsigned char transition_state_666_166MHz[][2] = {
         {2, 1},
         {3, 2},
         {4, 3},
-        {5, 4},
-        {5, 3},
+	{5, 4},
+        {3, 1},
 };
-
-
 
 
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {1200000, 1450, 1450, 0}, //1275
-        {1000000, 1350, 1350, 1},
+	{1200000,1500, 1500, 0},        
+	{1000000,1400, 1400, 1},
         {800000, 1300, 1300, 2},
-        {600000, 1200, 1200, 3},
-        {400000, 1100, 1100, 4},
-        {200000, 1050, 1050, 5},
+        {600000, 1250, 1250, 3},
+        {400000, 1200, 1200, 4},
+        {200000, 1200, 1200, 5},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -206,7 +204,7 @@ if( FakeShmoo_UV_mV_Ptr != NULL ) {
 	if(int_voltage != vcc_int) {
 		set_pmic(VCC_INT, int_voltage);
 	}
-
+	printk("---> voltage : index = %d, armvoltage = %d\n", s5p6442_cpufreq_index,arm_voltage);
 
 	udelay(delay);
 

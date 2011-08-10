@@ -36,8 +36,8 @@ static spinlock_t dvfs_lock;
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
-        {0, 1400*KHZ_T},
-        {1, 1300*KHZ_T},
+	{0, 1400*KHZ_T},	
+	{1, 1300*KHZ_T},
         {2, 1000*KHZ_T},
         {3, 800*KHZ_T},
         {4, 600*KHZ_T},
@@ -51,22 +51,22 @@ static unsigned char transition_state_666_166MHz[][2] = {
         {2, 1},
         {3, 2},
         {4, 3},
-        {5, 4},
-        {6, 5},
-        {5, 3},
+	{5, 4},
+	{6, 5},
+        {3, 1},
 };
 
 
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {1400000, 1525, 1200, 0},  // 1500
-        {1300000, 1500, 1200, 1}, //1275
-        {1000000, 1350, 1200, 2},
-        {800000, 1250, 1200, 3},
-        {600000, 1200, 1200, 4},
-        {400000, 1100, 1200, 5},
-        {200000, 1100, 1200, 6},
+	{1400000,1525, 1525, 0},	
+	{1300000,1500, 1500, 1},        
+	{1000000,1400, 1400, 2},
+        {800000, 1300, 1300, 3},
+        {600000, 1250, 1250, 4},
+        {400000, 1200, 1200, 5},
+        {200000, 1200, 1200, 6},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -76,7 +76,7 @@ unsigned int (*frequency_match[1])[4] = {
 
 static unsigned char (*transition_state[1])[2] = {
 	transition_state_666_166MHz,
-
+	
 };
 
 static struct cpufreq_frequency_table *s5p6442_freq_table[] = {
@@ -173,21 +173,22 @@ int set_voltage(unsigned int freq_index, bool force)
 	unsigned int arm_voltage, int_voltage;
 	unsigned int vcc_arm, vcc_int;
 	unsigned int arm_delay, int_delay, delay;
-
+	
 	if (!force)
 		if(index == freq_index)
 			return 0;
-
+		
 	index = freq_index;
-
+	
 	vcc_arm = get_voltage(VCC_ARM);
 	vcc_int = get_voltage(VCC_INT);
-
+	
 	arm_voltage = frequency_match[S5P6442_FREQ_TAB][index][1];
 	int_voltage = frequency_match[S5P6442_FREQ_TAB][index][2];
 
 if( FakeShmoo_UV_mV_Ptr != NULL ) {
 		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
+		int_voltage -= FakeShmoo_UV_mV_Ptr[index];
 	}
 
 #if 1 // future work
@@ -233,7 +234,7 @@ unsigned int s5p6442_target_frq(unsigned int pred_freq,
 	}
 
 	index = s5p6442_cpufreq_index;
-
+	
 	if(freq_tab[index].frequency == pred_freq) {	
 		if(flag == 1)
 			index = transition_state[S5P6442_FREQ_TAB][index][1];
@@ -249,7 +250,7 @@ unsigned int s5p6442_target_frq(unsigned int pred_freq,
 s5p6442_target_frq_end:
 	index = CLIP_LEVEL(index, s5p6442_cpufreq_level);
 	s5p6442_cpufreq_index = index;
-
+	
 	freq = freq_tab[index].frequency;
 	spin_unlock(&dvfs_lock);
 	return freq;
@@ -258,7 +259,7 @@ s5p6442_target_frq_end:
 int s5p6442_target_freq_index(unsigned int freq)
 {
 	int index = 0;
-
+	
 	struct cpufreq_frequency_table *freq_tab = s5p6442_freq_table[S5P6442_FREQ_TAB];
 
 	if(freq >= freq_tab[index].frequency) {
@@ -291,7 +292,7 @@ s5p6442_target_freq_index_end:
 	index = CLIP_LEVEL(index, s5p6442_cpufreq_level);
 	spin_unlock(&dvfs_lock);
 	s5p6442_cpufreq_index = index;
-
+	
 	return index; 
 } 
 
@@ -347,14 +348,14 @@ static int s5p6442_target(struct cpufreq_policy *policy,
 	if(freqs.old == s5p6442_freq_table[S5P6442_FREQ_TAB][0].frequency) {
 		prevIndex = 0;
 	}
-
+	
 	index = s5p6442_target_freq_index(target_freq);
 //	printk("---> [s5p6442_target] : index : %d - previndex : %d\n", index, prevIndex);
 	if(index == INDX_ERROR) {
 		printk(KERN_ERR "s5p6442_target: INDX_ERROR \n");
 		return -EINVAL;
 	}
-
+	
 	if(prevIndex == index)
 		return ret;
 
@@ -422,7 +423,7 @@ void dvfs_set_max_freq_lock(void)
 	s5p6442_target(NULL, freq_tab[0].frequency, 1);
 	dvfs_change_quick = 1;   //better to have this flag because we are not using locks. 
 	return; 
-
+	
 }
 
 void dvfs_set_max_freq_unlock(void)
@@ -454,7 +455,8 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 
 	if(policy->cpu != 0)
 		return -EINVAL;
-	policy->min = policy->cur = policy->max = s5p6442_getspeed(0);
+	policy->min = s5p6442_freq_table[S5P6442_FREQ_TAB][6].frequency;
+	policy->cur = policy->max = s5p6442_getspeed(0);
 //	printk("---> [s5p6442_cpu_init] : getspeed(0) : %d\n", s5p6442_getspeed(0));
 
 	S5P6442_FREQ_TAB = 0;
