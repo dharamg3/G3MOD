@@ -779,17 +779,13 @@ void s3cfb_set_backlight_power(int value)
 			lcd_power_ctrl(ON);
 			}
 		s6d04d1_backlight_on();
-#ifdef __BATTERY_COMPENSATION__
 		s3c_bat_set_compensation_for_drv(1, OFFSET_LCD_ON);
-#endif
 		}
 	else
 		{
 		s6d04d1_backlight_off();
 		lcd_power_ctrl(OFF);
-#ifdef __BATTERY_COMPENSATION__
 		s3c_bat_set_compensation_for_drv(0, OFFSET_LCD_ON);
-#endif
 		}
 
 	backlight_power = value;

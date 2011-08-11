@@ -18,18 +18,29 @@
  */
 #define VOLTAGE_CAL		(0)	// temp calibration value
 #define BATT_CAL			(2115 + VOLTAGE_CAL)	/* 3.65V */
-
+#if 0  // Not used.
+#define BATT_MAXIMUM		735		/* 4.20V */
+#define BATT_FULL			605		/* 4.10V */
+#define BATT_SAFE_RECHARGE	605		/* 4.10V */
+#define BATT_ALMOST_FULL	485		/* 4.01V */
+#define BATT_HIGH			255		/* 3.84V */
+#define BATT_MED			135		/* 3.75V */
+#define BATT_LOW			80		/* 3.71V */
+#define BATT_CRITICAL		0		/* 3.65V */ 
+#define BATT_MINIMUM		(-80)	/* 3.59V */
+#define BATT_OFF			(-335)	/* 3.40V */
+#endif
 #define BATT_MAXIMUM		605		/* 4.119V */
-#define BATT_FULL			605
-#define BATT_PRE_FULL		380		/* 4.021V */
-#define BATT_SAFE_RECHARGE	605		/* 4.021V */
-#define BATT_ALMOST_FULL	300		/* 3.881V */
-#define BATT_HIGH			150		/* 3.777V */
-#define BATT_MED			80		/* 3.730V */
+#define BATT_FULL			460		/* 4.021V */
+#define BATT_SAFE_RECHARGE	460		/* 4.021V */
+#define BATT_ALMOST_FULL	285		/* 3.881V */
+#define BATT_HIGH			132		/* 3.777V */
+#define BATT_MED			92		/* 3.730V */
 #define BATT_LOW			(1)		/* 3.680V */
 #define BATT_CRITICAL		(-74)	/* 3.624V */ 
 #define BATT_MINIMUM		(-114)	/* 3.601V */
 #define BATT_OFF			(-356)	/* 3.385V */
+
 
 /*
  * Apollo Rev06 board Temperature Table
@@ -160,7 +171,7 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 /* #define __TEMP_ADC_VALUE__ */  // for temporary adc value
 /* #define __CHECK_BATTERY_V_F__ */  // for checking VF ADC is valid
 /* #define __BATTERY_V_F__ */  // for reading VF ADC
-//#define __BATTERY_COMPENSATION__  // for battery compensation
+#define __BATTERY_COMPENSATION__  // for battery compensation
 #define __TEST_DEVICE_DRIVER__  // for just test
 #define __TEST_MODE_INTERFACE__  // for supporting test mode
 /* #define __CHECK_CHG_CURRENT__ */  // for checking charging current ADC
@@ -175,7 +186,7 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 /*****************************************************************************/
 
 #define TOTAL_CHARGING_TIME	(6*60*60*1000)	/* 6 hours */
-#define TOTAL_RECHARGING_TIME	(3*60*60*1000)	/* 3 hours */
+#define TOTAL_RECHARGING_TIME	(3*60*60*1000)	/* 1.5 hours */
 
 #ifdef __CHECK_BATTERY_V_F__
 #define BATT_VF_MAX		5
@@ -187,17 +198,17 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 #endif /* __CHECK_CHG_CURRENT__ */
 
 #ifdef __BATTERY_COMPENSATION__
-#define COMPENSATE_VIBRATOR		0
-#define COMPENSATE_CAMERA		0
-#define COMPENSATE_MP3			0
-#define COMPENSATE_VIDEO		0
+#define COMPENSATE_VIBRATOR		25
+#define COMPENSATE_CAMERA		50
+#define COMPENSATE_MP3			25
+#define COMPENSATE_VIDEO			30
 #define COMPENSATE_VOICE_CALL_2G	0  // removed
 #define COMPENSATE_VOICE_CALL_3G	0  // removed
-#define COMPENSATE_DATA_CALL		0
-#define COMPENSATE_LCD			0
-#define COMPENSATE_TA			0
+#define COMPENSATE_DATA_CALL		150
+#define COMPENSATE_LCD			40
+#define COMPENSATE_TA				0
 #define COMPENSATE_CAM_FALSH		0
-#define COMPENSATE_BOOTING		0
+#define COMPENSATE_BOOTING		50
 #endif /* __BATTERY_COMPENSATION__ */
 
 #ifdef __FUEL_GAUGE_IC__
@@ -206,3 +217,4 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 #define FULL_CHARGE_COND_VOLTAGE	4000
 #define RECHARGE_COND_VOLTAGE		4150
 #endif /* __FUEL_GAUGES_IC__ */
+
