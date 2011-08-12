@@ -744,6 +744,60 @@ void show_nandroid_menu()
     }
 }
 
+void backup_rom()
+{
+    static char* headers[] = {  "Select Your Current ROM",
+                                "",
+                                NULL
+    };
+
+     static char* list[] = { "ROM 1",
+                             "ROM 2",
+			     "ROM 3",
+			     "ROM 4",
+                            NULL
+    };
+
+    for (;;)
+    {
+        int chosen_item = get_menu_selection(headers, list, 0);
+        if (chosen_item == GO_BACK)
+            break;
+        switch (chosen_item)
+        {
+            case 0:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/g3mod/rom1");
+            nandroid_backup_system(backup_path);
+    	    break;
+       	}
+	    case 1:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/g3mod/rom2");
+            nandroid_backup_system(backup_path);
+            break;
+    	}	
+            case 2:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/g3mod/rom3");
+            nandroid_backup_system(backup_path);
+            break;
+    	}
+	   case 3:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/g3mod/rom4");
+            nandroid_backup_system(backup_path);
+            break;
+    	}
+	}
+}
+}
+
+
 void wipe_battery_stats()
 {
     ensure_root_path_mounted("DATA:");
@@ -917,6 +971,69 @@ void show_advanced_menu()
                     ui_print("An error occured while partitioning your Internal SD Card. Please see /tmp/recovery.log for more details.\n");
                 break;
             }
+        }
+    }
+}
+void show_multi_boot_menu()
+{
+    static char* headers[] = {  "MultiBoot Menu",
+                                "",
+                                NULL
+    };
+
+    static char* list[] = { "Switch ROM",
+                            "Backup Current ROM",
+                            NULL
+    };
+
+    for (;;)
+    {
+        int chosen_item = get_menu_selection(headers, list, 0);
+        if (chosen_item == GO_BACK)
+            break;
+        switch (chosen_item)
+        {
+            case 0:
+              {
+		if (ensure_root_path_mounted("SDCARD:") != 0) {
+		LOGE ("Can't mount /sdcard\n");
+		return;
+		}
+   		 static char* advancedheaders1[] = {  "Choose Which ROM to Activate",
+                                			NULL
+   						 };
+
+  		char* file = choose_file_menu("/sdcard/g3mod/", NULL, advancedheaders1);
+   		 if (file == NULL)
+     		   return;
+
+    		static char* headers[] = {  "Activating ROM",
+                           		     "",
+                            		    NULL
+  					  };
+
+    		static char* confirm_restore  = "Confirm activate?";
+       	        if (confirm_selection(confirm_restore, "Yes - Activate ROM"))
+		{		
+		nandroid_restore_system(file,1);
+		if (0 != ensure_root_path_mounted("DATA:"))
+                    break;
+                ensure_root_path_mounted("SDEXT:");
+                ensure_root_path_mounted("CACHE:");
+                    __system("rm -r /data/dalvik-cache");
+                    __system("rm -r /cache/dalvik-cache");
+                    __system("rm -r /sd-ext/dalvik-cache");
+                ensure_root_path_unmounted("DATA:");
+                ui_print("Dalvik Cache wiped.\n");
+		}
+                break;
+	}
+            case 1:
+            {
+                backup_rom();
+                break;
+            }
+            
         }
     }
 }

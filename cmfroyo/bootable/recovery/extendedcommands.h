@@ -23,6 +23,9 @@ void
 show_nandroid_menu();
 
 void
+backup_rom();
+
+void
 show_partition_menu();
 
 void
@@ -36,6 +39,9 @@ __system(const char *command);
 
 void
 show_advanced_menu();
+
+void
+show_multi_boot_menu();
 
 int
 format_unknown_device(const char* root);

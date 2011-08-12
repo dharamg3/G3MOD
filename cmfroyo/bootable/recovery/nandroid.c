@@ -205,6 +205,38 @@ int nandroid_backup(const char* backup_path)
     ui_print("\nBackup complete!\n");
     return 0;
 }
+int nandroid_backup_system(const char* backup_path)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    int ret;
+    struct statfs s;
+    if (0 != (ret = statfs("/sdcard", &s)))
+        return print_and_error("Unable to stat /sdcard\n");
+    uint64_t bavail = s.f_bavail;
+    uint64_t bsize = s.f_bsize;
+    uint64_t sdcard_free = bavail * bsize;
+    uint64_t sdcard_free_mb = sdcard_free / (uint64_t)(1024 * 1024);
+    ui_print("SD Card space free: %lluMB\n", sdcard_free_mb);
+    if (sdcard_free_mb < 150)
+        ui_print("There may not be enough free space to complete backup... continuing...\n");
+    
+    char tmp[PATH_MAX];
+    sprintf(tmp, "mkdir -p %s", backup_path);
+    __system(tmp);
+
+    if (0 != (ret = nandroid_backup_partition(backup_path, "SYSTEM:")))
+        return ret;
+
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nBackup complete!\n");
+    return 0;
+}
 
 typedef int (*format_function)(char* root);
 
@@ -338,7 +370,28 @@ int nandroid_restore(const char* backup_path, int restore_boot, int restore_syst
     ui_print("\nRestore complete!\n");
     return 0;
 }
+int nandroid_restore_system(const char* backup_path, int restore_system)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_show_indeterminate_progress();
+    yaffs_files_total = 0;
 
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    char tmp[PATH_MAX];
+    
+    int ret;
+    
+    if (restore_system && 0 != (ret = nandroid_restore_partition(backup_path, "SYSTEM:")))
+        return ret;
+
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nActivation complete!\n");
+    return 0;
+}
 void nandroid_generate_timestamp_path(char* backup_path)
 {
     time_t t = time(NULL);
