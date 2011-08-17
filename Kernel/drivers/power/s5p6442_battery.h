@@ -201,12 +201,12 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 #define COMPENSATE_VIBRATOR		25
 #define COMPENSATE_CAMERA		50
 #define COMPENSATE_MP3			25
-#define COMPENSATE_VIDEO			30
+#define COMPENSATE_VIDEO		30
 #define COMPENSATE_VOICE_CALL_2G	0  // removed
 #define COMPENSATE_VOICE_CALL_3G	0  // removed
 #define COMPENSATE_DATA_CALL		150
 #define COMPENSATE_LCD			40
-#define COMPENSATE_TA				0
+#define COMPENSATE_TA			0
 #define COMPENSATE_CAM_FALSH		0
 #define COMPENSATE_BOOTING		50
 #endif /* __BATTERY_COMPENSATION__ */

@@ -57,6 +57,7 @@ static const char *INTENT_FILE = "CACHE:recovery/intent";
 static const char *LOG_FILE = "CACHE:recovery/log";
 static const char *SDCARD_PACKAGE_FILE = "SDCARD:update.zip";
 static const char *TEMPORARY_LOG_FILE = "/tmp/recovery.log";
+static int poweroff = 0;
 
 /*
  * The recovery tool communicates with the main system through /cache files.
@@ -531,6 +532,9 @@ prompt_and_wait() {
 	    case ITEM_MULTI_BOOT:
                 show_multi_boot_menu();
                 break;
+	    case ITEM_POWEROFF:
+               __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_POWER_OFF, NULL);
+		break;
         }
     }
 }

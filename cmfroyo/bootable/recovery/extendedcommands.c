@@ -751,10 +751,12 @@ void backup_rom()
                                 NULL
     };
 
-     static char* list[] = { "ROM 1",
-                             "ROM 2",
-			     "ROM 3",
-			     "ROM 4",
+     static char* list[] = { "G3MOD",
+                             "Kyrillos",
+			     "Grigora",
+			     "Stylooo AOSP Style",
+			     "rom1",
+			     "rom2",
                             NULL
     };
 
@@ -768,28 +770,42 @@ void backup_rom()
             case 0:
 	    {
             char backup_path[PATH_MAX];
-            sprintf(backup_path, "/sdcard/g3mod/rom1");
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/G3MOD_ROM");
             nandroid_backup_system(backup_path);
     	    break;
        	}
 	    case 1:
 	    {
             char backup_path[PATH_MAX];
-            sprintf(backup_path, "/sdcard/g3mod/rom2");
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/Kyrillos_ROM");
             nandroid_backup_system(backup_path);
             break;
     	}	
             case 2:
 	    {
             char backup_path[PATH_MAX];
-            sprintf(backup_path, "/sdcard/g3mod/rom3");
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/Grigora_ROM");
             nandroid_backup_system(backup_path);
             break;
     	}
 	   case 3:
 	    {
             char backup_path[PATH_MAX];
-            sprintf(backup_path, "/sdcard/g3mod/rom4");
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/AOSP_ROM");
+            nandroid_backup_system(backup_path);
+            break;
+    	}
+	 case 4:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/rom1_ROM");
+            nandroid_backup_system(backup_path);
+            break;
+    	}
+	 case 5:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/rom2_ROM");
             nandroid_backup_system(backup_path);
             break;
     	}
@@ -999,11 +1015,16 @@ void show_multi_boot_menu()
 		LOGE ("Can't mount /sdcard\n");
 		return;
 		}
+		__system("mkdir /sdcard/Android/data/g3mod/G3MOD_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/Kyrillos_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/Grigora_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/AOSP_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/rom1_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/rom2_ROM");
    		 static char* advancedheaders1[] = {  "Choose Which ROM to Activate",
                                 			NULL
    						 };
-
-  		char* file = choose_file_menu("/sdcard/g3mod/", NULL, advancedheaders1);
+  		char* file = choose_file_menu("/sdcard/Android/data/g3mod/", NULL, advancedheaders1);
    		 if (file == NULL)
      		   return;
 
@@ -1030,6 +1051,12 @@ void show_multi_boot_menu()
 	}
             case 1:
             {
+		__system("mkdir /sdcard/Android/data/g3mod/G3MOD_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/Kyrillos_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/Grigora_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/AOSP_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/rom1_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/rom2_ROM");
                 backup_rom();
                 break;
             }

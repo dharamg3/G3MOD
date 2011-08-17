@@ -31,6 +31,7 @@ char* MENU_ITEMS[] = { "reboot system now",
                        "mounts and storage",
                        "advanced",
 		       "multi boot",
+		       "power off",
                        NULL };
 
 int device_recovery_start() {
