@@ -124,10 +124,13 @@ on fs
     # Mount /system rw first to give the filesystem a chance to save a checkpoint
     # mount yaffs2 mtd@system /system
     # mount yaffs2 mtd@system /system ro remount
+      mount ext4 /dev/block/stl6 /system rw 
       mount rfs /dev/block/stl6 /system rw check=no
     # mount yaffs2 mtd@userdata /data nosuid nodev
+      mount ext4 /dev/block/stl7 /data nosuid nodev
       mount rfs /dev/block/stl7 /data nosuid nodev check=no
     # mount yaffs2 mtd@cache /cache nosuid nodev
+      mount ext4 /dev/block/stl8 /cache nosuid nodev
       mount rfs /dev/block/stl8 /cache nosuid nodev check=no
 
 on post-fs
@@ -369,7 +372,9 @@ on boot
     chmod 0660 /sys/power/state
     chmod 0660 /sys/power/wake_lock
     chmod 0660 /sys/power/wake_unlock
-    chmod 0660 /sys/power/dvfslock_ctrl    		
+    chmod 0660 /sys/power/dvfslock_ctrl    
+    chmod 0666 /sys/class/rfkill/rfkill0/state
+    chmod 0666 /sys/class/rfkill/rfkill1/state		
     chown system system /sys/class/timed_output/vibrator/enable
     chown system system /sys/class/leds/keyboard-backlight/brightness
     chown system system /sys/class/leds/lcd-backlight/brightness
@@ -488,10 +493,10 @@ service bootanim /system/bin/bootanimation
 
 # akmd service
 # FIXME start it always for now
-service akmd2 /system/bin/akmd2
+service akmd2 /system/bin/akmd2 
     user compass
-    group compass misc input
-    disabled
+    group system input
+#    disabled
 
 service dbus /system/bin/dbus-daemon --system --nofork
     socket dbus stream 660 bluetooth bluetooth
@@ -504,6 +509,13 @@ service bluetoothd /system/bin/bluetoothd -n
     # init.rc does not yet support applying capabilities, so run as root and
     # let bluetoothd drop uid to bluetooth with the right linux capabilities
     group bluetooth net_bt_admin misc
+    disabled
+
+
+service hciattach /system/bin/hciattach -n -s 115200 /dev/s3c2410_serial0 bcm2035 115200 flow
+    #user bluetooth
+    user root
+    group bluetooth net_bt_admin
     disabled
 
 service hfag /system/bin/sdptool add --channel=10 HFAG

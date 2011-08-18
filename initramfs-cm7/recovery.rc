@@ -1,0 +1,145 @@
+on early-init
+    start ueventd
+
+on init
+
+sysclktz 0
+
+loglevel 9
+
+# setup the global environment
+    export PATH /sbin 
+#:/vendor/bin:/system/sbin:/system/bin:/system/xbin
+#    export LD_LIBRARY_PATH /vendor/lib:/system/lib
+    export ANDROID_ROOT /system
+    export ANDROID_DATA /data
+    export EXTERNAL_STORAGE /sdcard
+
+    symlink /misc /etc
+
+    mkdir /sdcard
+    mkdir /preload
+    mkdir /system
+    mkdir /data
+    mkdir /cache
+    mkdir /efs
+    mkdir /tmp
+
+    mkdir /mnt 0775 root root
+
+    #mount /tmp /tmp tmpfs   
+
+# create mountpoints
+    mkdir /sdcard 0000 system system
+ 
+# for emergencyboot
+    symlink /sdcard /mnt/sdcard
+
+# Create cgroup mount point for cpu accounting
+    mkdir /acct
+    mount cgroup none /acct cpuacct
+    mkdir /acct/uid
+    mkdir /system
+    mkdir /data 0771 system system
+    mkdir /cache 0770 system cache
+    mkdir /config 0500 root root
+    mkdir /efs
+
+on early-fs
+
+    insmod /lib/modules/fsr.ko
+    insmod /lib/modules/fsr_stl.ko
+    insmod /lib/modules/rfs_glue.ko
+    insmod /lib/modules/rfs_fat.ko    
+
+# install dpram, multipdp module
+#    insmod /lib/modules/dpram.ko
+#    insmod /lib/modules/multipdp.ko
+    insmod /lib/modules/onedram.ko
+    insmod /lib/modules/svnet.ko
+    insmod /lib/modules/modemctl.ko
+    insmod /lib/modules/storage.ko
+ 
+    insmod /lib/modules/param.ko
+        
+#    insmod /lib/modules/vibrator.ko
+
+# for fmradio
+#    insmod /lib/modules/Si4709_driver.ko
+
+
+    #temp
+    chown root root /sbin/fat.format
+    chmod 750 /sbin/fat.format
+
+on fs
+    mount tmpfs tmpfs /tmp
+# SYSTEM
+    mkdir /system
+    # Mount /system rw first to give the filesystem a chance to save a checkpoint
+    # mount yaffs2 mtd@system /system 
+    mount ext4 /dev/block/stl6 /system wait nodev noatime nodiratime noauto_da_alloc
+
+# DATA
+    # We chown/chmod /data again so because mount is run as root + defaults
+    # mount yaffs2 mtd@userdata /data nosuid nodev
+    exec apply_disk_policy
+    mkdir /data 0771 system system
+    #mount ext4 /dev/block/stl7 /data  wait nosuid nodev noatime nodiratime noauto_da_alloc
+    #mount rfs /dev/block/stl7 /data nosuid nodev check=no
+    chown system system /data
+    chmod 0771 /data
+
+# CACHE
+    mkdir /cache 0771 system cache
+    mount ext4 /dev/block/stl8 /cache nosuid nodev noatime nodiratime errors=continue nobh data=writeback barrier=0 noauto_da_alloc
+    mount rfs /dev/block/stl8 /cache nosuid nodev noatime nodiratime check=no
+    chown system cache /cache
+    chmod 0771 /cache
+
+    # This may have been created by the recovery system with odd permissions
+    chown system cache /cache/recovery
+    chmod 0770 /cache/recovery
+# EFS
+    mkdir /efs 0771 system system
+    #mount rfs /dev/block/stl4 /efs nosuid nodev check=no
+    chown radio radio /efs
+    chmod 0771 /efs
+
+    mkdir /cache/recovery
+
+# SEC_DMCRYPT for MC_CRYPT_ROOT before apply_disk_policy or apply_sec_devenc_init
+    #chown system system /efs
+    #chown radio radio /efs
+    chown radio system /efs
+    chmod 0771 /efs
+
+    exec apply_disk_policy
+
+on post-fs
+    #mount rootfs rootfs / ro remount
+
+    write /proc/sys/kernel/panic_on_oops 1
+    write /proc/sys/kernel/hung_task_timeout_secs 0
+    write /proc/cpu/alignment 4
+    write /proc/sys/kernel/sched_latency_ns 10000000
+    write /proc/sys/kernel/sched_wakeup_granularity_ns 2000000
+    write /proc/sys/kernel/sched_compat_yield 1
+    write /proc/sys/kernel/sched_child_runs_first 0
+
+on boot
+
+    ifup lo
+    hostname localhost
+    domainname localdomain
+
+    class_start default
+
+## Daemon processes to be run by init.
+##
+service ueventd /sbin/ueventd
+    critical
+
+service recovery /sbin/recovery
+    oneshot
+
