@@ -203,16 +203,31 @@ g3_mount_stl8
     chmod 0660 /dev/video0
 
 
-# to enable wifi
-    mkdir /data/wifi 0777 wifi wifi
-#    mkdir /data/misc/wifi 0771 wifi system
-    mkdir /data/misc/wifi 0771 wifi wifi
-    chmod 0777 /data/misc/wifi/
-    mkdir /data/misc/dhcp 0777 dhcp dhcp
-#    mkdir /data/misc/wifi/sockets 0777 wifi system
-    mkdir /data/misc/wifi/sockets 0777 wifi wifi
-    chmod 0664 /system/etc/wifi/wpa_supplicant.conf
-# end of wifi
+# WiFi
+#wpa_supplicant.conf ends up here
+mkdir /data/misc/wifi 0777 wifi wifi
+chown wifi wifi /data/misc/wifi
+chmod 0777 /data/misc/wifi
+
+#dhcp needs to be here
+mkdir /data/misc/dhcp 0777 dhcp dhcp
+chown dhcp dhcp /data/misc/dhcp
+chmod 0777 /data/misc/dhcp
+
+#sockets end up here hardcoded in wpa_ctrl.c
+mkdir /data/misc/wifi/sockets 0777 wifi wifi
+chown wifi wifi /data/misc/wifi/sockets
+chmod 07777 /data/misc/wifi/sockets
+
+#wpa_supplicant dir is hardcoded in wifi.c in legacy_hardware
+mkdir /data/system 0775 system system
+mkdir /data/system/wpa_supplicant 0777 wifi wifi
+chown wifi wifi /data/system/wpa_supplicant
+chmod 0777 /data/system/wpa_supplicant
+
+#protect the original conf?
+chmod 0664 /system/etc/wifi/wpa_supplicant.conf
+# End WiFi
 
     mkdir /data/local 0771 shell shell
     mkdir /data/local/tmp 0771 shell shell
@@ -277,6 +292,9 @@ g3_mount_stl8
     mkdir /efs/.files/.dm33 0777
     mkdir /efs/.files/.mp301 0777
 
+  # allow net_raw to have access to /dev/socket directory
+    chown root net_raw /dev/socket
+    chmod 0775 /dev/socket
     
 # for Sensor HAL
 
@@ -400,14 +418,19 @@ on boot
     chmod 0660 /sys/power/state
     chmod 0660 /sys/power/wake_lock
     chmod 0660 /sys/power/wake_unlock
+    chmod 0666 /sys/class/rfkill/rfkill0/state
     chown system system /sys/class/timed_output/vibrator/enable
     chown system system /sys/class/leds/keyboard-backlight/brightness
     chown system system /sys/class/leds/lcd-backlight/brightness
     chown system system /sys/class/leds/button-backlight/brightness
     chown system system /sys/class/leds/jogball-backlight/brightness
+    chown system system /sys/class/leds/vtkey-backlight/brightness
+    chown system system /sys/class/leds/caps/brightness
+    chown system system /sys/class/leds/func/brightness
     chown system system /sys/class/leds/red/brightness
     chown system system /sys/class/leds/green/brightness
     chown system system /sys/class/leds/blue/brightness
+    chown system system /sys/class/leds/amber/brightness
     chown system system /sys/class/leds/red/device/grpfreq
     chown system system /sys/class/leds/red/device/grppwm
     chown system system /sys/class/leds/red/device/blink
@@ -417,6 +440,10 @@ on boot
     chown system system /sys/class/leds/red/device/grpfreq
     chown system system /sys/class/leds/red/device/grppwm
     chown system system /sys/class/leds/red/device/blink
+    chown system system /sys/class/leds/green/blink
+    chown system system /sys/class/leds/green/off_timer
+    chown system system /sys/class/leds/amber/blink
+    chown system system /sys/class/leds/amber/off_timer
     chown system system /sys/class/timed_output/vibrator/enable
     chown system system /sys/module/sco/parameters/disable_esco
     chown system system /sys/kernel/ipv4/tcp_wmem_min

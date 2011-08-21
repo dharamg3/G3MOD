@@ -37,18 +37,6 @@ static struct wake_lock vbus_wake_lock;
 static struct wake_lock wake_lock_for_dev;
 static struct wake_lock wake_lock_for_off;
 
-#ifdef __TEST_DEVICE_DRIVER__
-#include <linux/i2c/pmic.h>
-#endif /* __TEST_DEVICE_DRIVER__ */
-
-#ifdef __FUEL_GAUGE_IC__
-#include <linux/i2c.h>
-#include "fuel_gauge.c"
-#endif /* __FUEL_GAUGE_IC__ */
-
-//#define DEBUG_BATTERY_VOLTAGE
-
-
 /* Prototypes */
 extern int s3c_adc_get_adc_data(int channel);
 extern int get_usb_power_state(void);
@@ -64,28 +52,8 @@ static ssize_t s3c_bat_store(struct device *dev,
 			     const char *buf, size_t count);
 static void s3c_set_chg_en(int enable);
 
-#ifdef __TEST_DEVICE_DRIVER__
-extern int amp_enable(int);
-extern int audio_power(int);
-
-static ssize_t s3c_test_show_property(struct device *dev,
-                                      struct device_attribute *attr,
-                                      char *buf);
-static ssize_t s3c_test_store(struct device *dev,
-			     struct device_attribute *attr,
-			     const char *buf, size_t count);
-static int bat_temper_state = 0;
-#endif /* __TEST_DEVICE_DRIVER__ */
-
-#ifdef __TEST_MODE_INTERFACE__
-static struct power_supply *s3c_power_supplies_test = NULL;
-static void polling_timer_func(unsigned long unused);
-static void s3c_bat_status_update(struct power_supply *bat_ps);
-#endif /* __TEST_MODE_INTERFACE__ */
-
 #ifdef __CHECK_TSP_TEMP_NOTIFICATION__
-//extern void qt602240_detect_low_temp(int level);
-//extern void qt602240_release_low_temp(void);
+
 static int detect_tsp_low_temp = 0;
 static int start_noti_to_tsp = 0;
 void set_start_check_temp_adc_for_tsp() {start_noti_to_tsp=1;}
@@ -109,10 +77,6 @@ void set_start_check_temp_adc_for_tsp() {start_noti_to_tsp=1;}
 #define OFFSET_CAM_FLASH		(0x1 << 9)
 #define OFFSET_BOOTING			(0x1 << 10)
 #endif /* __BATTERY_COMPENSATION__ */
-
-#ifdef __TEST_MODE_INTERFACE__
-#define POLLING_INTERVAL_TEST	1000
-#endif /* __TEST_MODE_INTERFACE__ */
 
 #define INVALID_VOL_ADC		200
 
@@ -187,15 +151,6 @@ struct battery_info {
 	u32 batt_is_full;       /* 0 : Not full 1: Full */
 	u32 batt_is_recharging; /* 0 : Not recharging 1: Recharging */
 	s32 batt_vol_adc_aver;	/* batt vol adc average */
-#ifdef __TEST_MODE_INTERFACE__
-	u32 batt_test_mode;	/* test mode */
-	s32 batt_vol_aver;	/* batt vol average */
-	s32 batt_temp_aver;	/* batt temp average */
-	s32 batt_temp_adc_aver;	/* batt temp adc average */
-#ifdef __BATTERY_V_F__
-	s32 batt_v_f_adc;	/* batt V_F adc */
-#endif /* __BATTERY_V_F__ */
-#endif /* __TEST_MODE_INTERFACE__ */
 };
 
 /* lock to protect the battery info */
@@ -273,21 +228,6 @@ static unsigned long s3c_read_temp(struct power_supply *bat_ps)
 
 	dev_dbg(dev, "%s: adc = %d\n", __func__, adc);
 
-#ifdef __TEST_DEVICE_DRIVER__
-	switch (bat_temper_state) {
-	case 0:
-		break;
-	case 1:
-		adc = TEMP_HIGH_BLOCK;
-		break;
-	case 2:
-		adc = TEMP_LOW_BLOCK;
-		break;
-	default:
-		break;
-	}
-#endif /* __TEST_DEVICE_DRIVER__ */
-
 	s3c_bat_info.bat_info.batt_temp_adc = adc;
 
 	return adc;
@@ -335,115 +275,6 @@ static void s3c_bat_set_compesation(int mode,
 }
 #endif /* __BATTERY_COMPENSATION__ */
 
-
-#ifdef __CHECK_CHG_CURRENT__
-static void check_chg_current(struct power_supply *bat_ps)
-{
-	static int cnt = 0;
-	int chg_current = 0;
-
-	chg_current = s3c_bat_get_adc_data(S3C_ADC_CHG_CURRENT);
-	s3c_bat_info.bat_info.batt_current = chg_current;
-    printk("---> check_chg_current : %d\n",chg_current );
-	if (chg_current <= CURRENT_OF_FULL_CHG) {
-		cnt++;
-		if (cnt >= 10) {
-			dev_info(dev, "%s: battery full\n", __func__);
-			s3c_set_chg_en(0);
-			s3c_bat_info.bat_info.batt_is_full = 1;
-			force_update = 1;
-			full_charge_flag = 1;
-			cnt = 0;
-		}
-	} else {
-		cnt = 0;
-	}
-	dev_dbg(dev, "%s: chg_current=%d\n", __func__, chg_current);
-}
-#endif /* __CHECK_CHG_CURRENT__ */
-
-
-#ifdef __FUEL_GAUGE_IC__
-#ifdef __CHECK_RECHARGING__
-static void check_recharging_bat(int fg_vcell)
-{
-	static int cnt = 0;
-
-	if (s3c_bat_info.bat_info.batt_is_full &&
-		!s3c_bat_info.bat_info.charging_enabled &&
-		(fg_vcell <= RECHARGE_COND_VOLTAGE ||
-			fg_vcell <= FULL_CHARGE_COND_VOLTAGE)) {
-		if (++cnt >= 10) {
-			dev_info(dev, "%s: recharging(vcell:%d)\n", __func__,
-					fg_vcell);
-			s3c_bat_info.bat_info.batt_is_recharging = 1;
-			s3c_set_chg_en(1);
-			cnt = 0;
-		}
-	} else {
-		cnt = 0;
-	}
-}
-#endif /* __CHECK_RECHARGING__ */
-
-static int s3c_get_bat_level(struct power_supply *bat_ps)
-{
-	int fg_soc = -1;
-	int fg_vcell = -1;
-
-	if ((fg_soc = fg_read_soc()) < 0) {
-		dev_err(dev, "%s: Can't read soc!!!\n", __func__);
-		fg_soc = s3c_bat_info.bat_info.level;
-	}
-
-	if ((fg_vcell = fg_read_vcell()) < 0) {
-		dev_err(dev, "%s: Can't read vcell!!!\n", __func__);
-		fg_vcell = s3c_bat_info.bat_info.batt_vol;
-	} else
-		s3c_bat_info.bat_info.batt_vol = fg_vcell;
-
-//    printk("----> battery : s3c_get_bat_level : fg_soc : %d fg_vcell : %d\n", fg_soc, fg_vcell);
-
-	if (is_over_abs_time()) {
-		fg_soc = 100;
-		dev_info(dev, "%s: charging time is over\n", __func__);
-		s3c_set_chg_en(0);
-		s3c_bat_info.bat_info.batt_is_full = 1;
-		goto __end__;
-	}
-
-	if (fg_soc > 80) {
-		fg_soc += (fg_soc - 80) * 2;
-		if (fg_soc > 100)
-			fg_soc = 100;
-	}
-#ifdef __CHECK_CHG_CURRENT__
-	if (fg_vcell >= FULL_CHARGE_COND_VOLTAGE) {
-		if (s3c_bat_info.bat_info.charging_enabled) {
-			check_chg_current(bat_ps);
-			if (s3c_bat_info.bat_info.batt_is_full)
-				fg_soc = 100;
-		}
-	}
-#endif /* __CHECK_CHG_CURRENT__ */
-
-#ifdef __CHECK_RECHARGING__
-	check_recharging_bat(fg_vcell);
-#endif /* __CHECK_RECHARGING__ */
-
-__end__:
-	dev_dbg(dev, "%s: fg_vcell = %d, fg_soc = %d, is_full = %d\n",
-			__func__, fg_vcell, fg_soc,
-			s3c_bat_info.bat_info.batt_is_full);
-	return fg_soc;
-}
-
-static int s3c_get_bat_vol(struct power_supply *bat_ps)
-{
-	return s3c_bat_info.bat_info.batt_vol;
-}
-
-#else /* __FUEL_GAUGE_IC__ */
 static unsigned long calculate_average_adc(adc_channel_type channel, int adc)
 {
 	unsigned int cnt = 0;
@@ -468,14 +299,7 @@ static unsigned long calculate_average_adc(adc_channel_type channel, int adc)
 		total_adc += adc;
 		average_adc = total_adc / cnt;
 	} else {
-#if 0
-		if (channel == S3C_ADC_VOLTAGE &&
-				!s3c_bat_info.bat_info.charging_enabled &&
-				adc > adc_sample[channel].average_adc) {
-			dev_dbg(dev, "%s: adc over avg : %d\n", __func__, adc);
-			return adc_sample[channel].average_adc;
-		}
-#endif
+
 		if(resume_from_sleep)  // Wakeup from sleep
 		{
 			index = adc_sample[channel].index;
@@ -535,10 +359,6 @@ static unsigned long s3c_read_bat(struct power_supply *bat_ps)
 		return -1;
 	}
 
-#ifdef DEBUG_BATTERY_VOLTAGE
-	if(p_count % 5 == 0)
-		printk("%s - adc = %d, chg_current = %d\n", __func__, adc, chg_adc);
-#endif
 	dev_dbg(dev, "%s: adc = %d\n", __func__, adc);
 
 #ifndef __BATTERY_COMPENSATION__
@@ -615,8 +435,12 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 	}
 #endif /* __BATTERY_COMPENSATION__ */
 
-//	printk("----> battery :s3c_get_bat_level : bat_vol = %d batt_full : %d batt_max : %d\n", bat_vol, batt_full, batt_max);
-
+	printk("----> battery :s3c_get_bat_level : bat_vol = %d batt_full : %d batt_max : %d batt_off : %d\n", bat_vol, batt_full, batt_max, batt_off);
+	if (bat_vol > batt_off)
+	{
+	bat_level = ((bat_vol - batt_off)/10);
+	}
+	/*
 	if (bat_vol > batt_full)
 	{
 		int temp = (batt_max - batt_full);
@@ -628,13 +452,6 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 		        bat_level = 90 + (((bat_vol - batt_full) *10) / temp);
 		}
 
-#ifdef __CHECK_CHG_CURRENT__
-		if (s3c_bat_info.bat_info.charging_enabled) {
-			check_chg_current(bat_ps);
-			if (!s3c_bat_info.bat_info.batt_is_full)
-				bat_level = 90;
-		}
-#endif /* __CHECK_CHG_CURRENT__ */
 		dev_dbg(dev, "%s: (full)level = %d\n", __func__, bat_level );
 	}
 	else if (batt_full >= bat_vol && bat_vol > batt_almost)
@@ -686,7 +503,7 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 		dev_info(dev, "%s: (off)level = %d, vol = %d", __func__,
 				bat_level, bat_vol);
 	}
-
+	*/
 	// If current status is full or recharging, then it should be 100% regardless of current real battery level.
 	if (s3c_bat_info.bat_info.batt_is_full || s3c_bat_info.bat_info.batt_is_recharging)
 		bat_level = 100;
@@ -716,11 +533,8 @@ __end__:
 	dev_dbg(dev, "%s: bat_vol = %d, level = %d, is_full = %d\n",
 			__func__, bat_vol, bat_level,
 			s3c_bat_info.bat_info.batt_is_full);
-#ifdef __TEMP_ADC_VALUE__
-	return 80;
-#else
+
 	return bat_level;
-#endif /* __TEMP_ADC_VALUE__ */
 }
 
 static int s3c_get_bat_vol(struct power_supply *bat_ps)
@@ -746,35 +560,11 @@ static int s3c_get_bat_vol(struct power_supply *bat_ps)
 	if(batt_vol >= 4200)
 		batt_vol = 4200;
 
-#ifdef DEBUG_BATTERY_VOLTAGE
-	if(p_count++ % 5 == 0)
-		printk("%s : adc = %d, batt_mon_vol = %d, batt_vol = %d\n", __func__, batt_adc, batt_mon_vol, batt_vol);
-
-	if(p_count > 5)
-		p_count = 1;
-#endif
-
-#ifdef __TEST_MODE_INTERFACE__
-	s3c_bat_info.bat_info.batt_vol_aver = batt_vol;
-#endif /* __TEST_MODE_INTERFACE__ */
 
 	dev_dbg(dev, "%s: adc = %d, bat_vol = %d\n", __func__, batt_adc, batt_vol);
 
 	return batt_vol;
 }
-
-#endif /* __FUEL_GAUGE_IC__ */
-
-
-#if (defined __TEST_MODE_INTERFACE__ && defined __BATTERY_V_F__)
-static void s3c_get_v_f_adc(void)
-{
-	s3c_bat_info.bat_info.batt_v_f_adc
-		= s3c_bat_get_adc_data(S3C_ADC_V_F);
-	dev_info(dev, "%s: vf=%d\n", __func__,
-			s3c_bat_info.bat_info.batt_v_f_adc);
-}
-#endif /* __TEST_MODE_INTERFACE__ && __BATTERY_V_F__ */
 
 
 static u32 s3c_get_bat_health(void)
@@ -864,10 +654,6 @@ static void s3c_set_chg_en(int enable)
 
 
 static void s3c_temp_control(int mode) {
-#ifdef __TEST_MODE_INTERFACE__
-	int adc = s3c_bat_info.bat_info.batt_temp_adc_aver;
-	dev_info(dev, "%s: temp_adc=%d\n", __func__, adc);
-#endif /* __TEST_MODE_INTERFACE__ */
 
 	switch (mode) {
 	case POWER_SUPPLY_HEALTH_GOOD:
@@ -908,10 +694,6 @@ static int s3c_get_bat_temp(struct power_supply *bat_ps)
 #if 0 //def __BATTERY_COMPENSATION__
 	unsigned int ex_case = 0;
 #endif /* __BATTERY_COMPENSATION__ */
-
-#ifdef __TEST_MODE_INTERFACE__
-	s3c_bat_info.bat_info.batt_temp_adc_aver = temp_adc;
-#endif /* __TEST_MODE_INTERFACE__ */
 
 #if 0 //def __BATTERY_COMPENSATION__
 	ex_case = OFFSET_MP3_PLAY | OFFSET_VOICE_CALL_2G | OFFSET_VOICE_CALL_3G
@@ -1004,9 +786,6 @@ __map_temperature__:
 
 	dev_dbg(dev, "%s: temp = %d, adc = %d\n", __func__, temp, temp_adc);
 
-#ifdef __TEST_MODE_INTERFACE__
-       	s3c_bat_info.bat_info.batt_temp_aver = temp;
-#endif /* __TEST_MODE_INTERFACE__ */
 	return temp;
 }
 
@@ -1117,20 +896,6 @@ static struct device_attribute s3c_battery_attrs[] = {
         SEC_BATTERY_ATTR(batt_temp_adc),
         SEC_BATTERY_ATTR(batt_temp_adc_cal),
 	SEC_BATTERY_ATTR(batt_vol_adc_aver),
-#ifdef __TEST_MODE_INTERFACE__
-	/* test mode */
-	SEC_BATTERY_ATTR(batt_test_mode),
-	/* average */
-	SEC_BATTERY_ATTR(batt_vol_aver),
-	SEC_BATTERY_ATTR(batt_temp_aver),
-	SEC_BATTERY_ATTR(batt_temp_adc_aver),
-#ifdef __BATTERY_V_F__
-	SEC_BATTERY_ATTR(batt_v_f_adc),
-#endif /* __BATTERY_V_F__ */
-#endif /* __TEST_MODE_INTERFACE__ */
-#ifdef __CHECK_CHG_CURRENT__
-	SEC_BATTERY_ATTR(batt_chg_current),
-#endif /* __CHECK_CHG_CURRENT__ */
 	SEC_BATTERY_ATTR(charging_source),
 #ifdef __BATTERY_COMPENSATION__
 	SEC_BATTERY_ATTR(vibrator),
@@ -1144,10 +909,6 @@ static struct device_attribute s3c_battery_attrs[] = {
 	SEC_BATTERY_ATTR(batt_compensation),
 	SEC_BATTERY_ATTR(is_booting),
 #endif /* __BATTERY_COMPENSATION__ */
-#ifdef __FUEL_GAUGE_IC__
-	SEC_BATTERY_ATTR(fg_soc),
-	SEC_BATTERY_ATTR(reset_soc),
-#endif /* __FUEL_GAUGE_IC__ */
 };
 
 enum {
@@ -1158,18 +919,6 @@ enum {
         BATT_TEMP_ADC,
         BATT_TEMP_ADC_CAL,
 	BATT_VOL_ADC_AVER,
-#ifdef __TEST_MODE_INTERFACE__
-	BATT_TEST_MODE,
-	BATT_VOL_AVER,
-	BATT_TEMP_AVER,
-	BATT_TEMP_ADC_AVER,
-#ifdef __BATTERY_V_F__
-	BATT_V_F_ADC,
-#endif /* __BATTERY_V_F__ */
-#endif /* __TEST_MODE_INTERFACE__ */
-#ifdef __CHECK_CHG_CURRENT__
-	BATT_CHG_CURRENT,
-#endif /* __CHECK_CHG_CURRENT__ */
 	BATT_CHARGING_SOURCE,
 #ifdef __BATTERY_COMPENSATION__
 	BATT_VIBRATOR,
@@ -1183,10 +932,6 @@ enum {
 	BATT_COMPENSATION,
 	BATT_BOOTING,
 #endif /* __BATTERY_COMPENSATION__ */
-#ifdef __FUEL_GAUGE_IC__
-	BATT_FG_SOC,
-	BATT_RESET_SOC,
-#endif /* __FUEL_GAUGE_IC__ */
 };
 
 
@@ -1222,12 +967,9 @@ static ssize_t s3c_bat_show_property(struct device *dev,
                                s3c_bat_info.bat_info.batt_vol);
                 break;
         case BATT_VOL_ADC:
-#ifndef __FUEL_GAUGE_IC__
 		s3c_bat_info.bat_info.batt_vol_adc =
 			s3c_bat_get_adc_data(S3C_ADC_VOLTAGE);
-#else
-		s3c_bat_info.bat_info.batt_vol_adc = 0;
-#endif /* __FUEL_GAUGE_IC__ */
+
                 i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
                                s3c_bat_info.bat_info.batt_vol_adc);
                 break;
@@ -1255,38 +997,6 @@ static ssize_t s3c_bat_show_property(struct device *dev,
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 			s3c_bat_info.bat_info.batt_vol_adc_aver);
 		break;
-#ifdef __TEST_MODE_INTERFACE__
-	case BATT_TEST_MODE:
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
-		s3c_bat_info.bat_info.batt_test_mode);
-		break;
-	case BATT_VOL_AVER:
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
-			s3c_bat_info.bat_info.batt_vol_aver);
-		break;
-	case BATT_TEMP_AVER:
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
-			s3c_bat_info.bat_info.batt_temp_aver);
-		break;
-	case BATT_TEMP_ADC_AVER:
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
-			s3c_bat_info.bat_info.batt_temp_adc_aver);
-		break;
-#ifdef __BATTERY_V_F__
-	case BATT_V_F_ADC:
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
-			s3c_bat_info.bat_info.batt_v_f_adc);
-		break;
-#endif /* __BATTERY_V_F__ */
-#endif /* __TEST_MODE_INTERFACE__ */
-#ifdef __CHECK_CHG_CURRENT__
-	case BATT_CHG_CURRENT:
-		s3c_bat_info.bat_info.batt_current =
-			s3c_bat_get_adc_data(S3C_ADC_CHG_CURRENT);
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
-				s3c_bat_info.bat_info.batt_current);
-		break;
-#endif /* __CHECK_CHG_CURRENT__ */
 	case BATT_CHARGING_SOURCE:
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 			s3c_bat_info.bat_info.charging_source);
@@ -1301,12 +1011,7 @@ static ssize_t s3c_bat_show_property(struct device *dev,
 			batt_compensation);
 		break;
 #endif /* __BATTERY_COMPENSATION__ */
-#ifdef __FUEL_GAUGE_IC__
-	case BATT_FG_SOC:
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
-			fg_read_soc());
-		break;
-#endif /* __FUEL_GAUGE_IC__ */
+
         default:
                 i = -EINVAL;
         }
@@ -1367,32 +1072,6 @@ static ssize_t s3c_bat_store(struct device *dev,
 		}
 		dev_info(dev, "%s: batt_temp_adc_cal = %d\n", __func__, x);
                 break;
-#ifdef __TEST_MODE_INTERFACE__
-	case BATT_TEST_MODE:
-		if (sscanf(buf, "%d\n", &x) == 1) {
-			s3c_bat_info.bat_info.batt_test_mode = x;
-			ret = count;
-		}
-		if (s3c_bat_info.bat_info.batt_test_mode) {
-			s3c_bat_info.polling_interval = POLLING_INTERVAL_TEST;
-			if (s3c_bat_info.polling) {
-				del_timer_sync(&polling_timer);
-				mod_timer(&polling_timer, jiffies +
-					msecs_to_jiffies(s3c_bat_info.polling_interval));
-			}
-			s3c_bat_status_update(&s3c_power_supplies_test[CHARGER_BATTERY]);
-		} else {
-			s3c_bat_info.polling_interval = POLLING_INTERVAL;
-			if (s3c_bat_info.polling) {
-				del_timer_sync(&polling_timer);
-				mod_timer(&polling_timer,jiffies +
-					msecs_to_jiffies(s3c_bat_info.polling_interval));
-			}
-			s3c_bat_status_update(&s3c_power_supplies_test[CHARGER_BATTERY]);
-		}
-//		dev_info(dev, "%s: batt_test_mode = %d\n", __func__, x);
-		break;
-#endif /* __TEST_MODE_INTERFACE__ */
 #ifdef __BATTERY_COMPENSATION__
 	case BATT_VIBRATOR:
 		if (sscanf(buf, "%d\n", &x) == 1) {
@@ -1465,16 +1144,7 @@ static ssize_t s3c_bat_store(struct device *dev,
 //		dev_info(dev, "%s: data call = %d\n", __func__, x);
                 break;
 #endif /* __BATTERY_COMPENSATION__ */
-#ifdef __FUEL_GAUGE_IC__
-	case BATT_RESET_SOC:
-		if (sscanf(buf, "%d\n", &x) == 1) {
-			if (x == 1)
-				fg_reset_soc();
-			ret = count;
-		}
-		dev_info(dev, "%s: Reset SOC:%d\n", __func__, x);
-		break;
-#endif /* __FUEL_GAUGE_IC__ */
+
         default:
                 ret = -EINVAL;
         }
@@ -1507,204 +1177,7 @@ EXPORT_SYMBOL(s3c_bat_set_compensation_for_drv);
 #endif /* __BATTERY_COMPENSATION__ */
 
 
-#ifdef __TEST_DEVICE_DRIVER__
-#define SEC_TEST_ATTR(_name)								\
-{											\
-        .attr = { .name = #_name, .mode = S_IRUGO | S_IWUGO, .owner = THIS_MODULE },	\
-        .show = s3c_test_show_property,							\
-        .store = s3c_test_store,							\
-}
 
-static struct device_attribute s3c_test_attrs[] = {
-        SEC_TEST_ATTR(pm),
-        SEC_TEST_ATTR(usb),
-        SEC_TEST_ATTR(bt_wl),
-        SEC_TEST_ATTR(tflash),
-        SEC_TEST_ATTR(audio),
-        SEC_TEST_ATTR(lcd),
-        SEC_TEST_ATTR(suspend_lock),
-        SEC_TEST_ATTR(control_tmp),
-};
-
-enum {
-        TEST_PM = 0,
-	USB_OFF,
-	BT_WL_OFF,
-	TFLASH_OFF,
-	AUDIO_OFF,
-	LCD_CHECK,
-	SUSPEND_LOCK,
-	CTRL_TMP,
-};
-
-
-static int s3c_test_create_attrs(struct device * dev)
-{
-        int i, rc;
-
-        for (i = 0; i < ARRAY_SIZE(s3c_test_attrs); i++) {
-                rc = device_create_file(dev, &s3c_test_attrs[i]);
-                if (rc)
-                        goto s3c_attrs_failed;
-        }
-        goto succeed;
-
-s3c_attrs_failed:
-        while (i--)
-                device_remove_file(dev, &s3c_test_attrs[i]);
-succeed:
-        return rc;
-}
-
-
-static void s3c_lcd_check(void)
-{
-	unsigned char reg_buff = 0;
-	if (Get_MAX8998_PM_REG(ELDO6, &reg_buff)) {
-		pr_info("%s: VLCD 1.8V (%d)\n", __func__, reg_buff);
-	}
-	if ((Get_MAX8998_PM_REG(ELDO7, &reg_buff))) {
-		pr_info("%s: VLCD 2.8V (%d)\n", __func__, reg_buff);
-	}
-}
-
-
-static void s3c_usb_off(void)
-{
-	unsigned char reg_buff = 0;
-	if (Get_MAX8998_PM_REG(ELDO3, &reg_buff)) {
-		pr_info("%s: OTGI 1.2V off(%d)\n", __func__, reg_buff);
-		if (reg_buff)
-			Set_MAX8998_PM_REG(ELDO3, 0);
-	}
-	if ((Get_MAX8998_PM_REG(ELDO8, &reg_buff))) {
-		pr_info("%s: OTG 3.3V off(%d)\n", __func__, reg_buff);
-		if (reg_buff)
-			Set_MAX8998_PM_REG(ELDO8, 0);
-	}
-}
-
-
-static void s3c_bt_wl_off(void)
-{
-	unsigned char reg_buff = 0;
-	if (Get_MAX8998_PM_REG(ELDO4, &reg_buff)) {
-		pr_info("%s: BT_WL 2.6V off(%d)\n", __func__, reg_buff);
-		if (reg_buff)
-			Set_MAX8998_PM_REG(ELDO4, 0);
-	}
-}
-
-
-static void s3c_tflash_off(void)
-{
-	unsigned char reg_buff = 0;
-	if (Get_MAX8998_PM_REG(ELDO5, &reg_buff)) {
-		pr_info("%s: TF 3.0V off(%d)\n", __func__, reg_buff);
-		if (reg_buff)
-			Set_MAX8998_PM_REG(ELDO5, 0);
-	}
-}
-
-
-static void s3c_audio_off(void)
-{
-	pr_info("%s: Turn off audio power, amp\n", __func__);
-#if 0
-	amp_enable(0);
-	audio_power(0);
-#endif
-}
-
-
-static void s3c_test_pm(void)
-{
-	/* PMIC */
-	s3c_usb_off();
-	s3c_bt_wl_off();
-	s3c_tflash_off();
-	s3c_lcd_check();
-
-	/* AUDIO */
-	s3c_audio_off();
-
-	/* GPIO */
-}
-
-
-static ssize_t s3c_test_show_property(struct device *dev,
-                                      struct device_attribute *attr,
-                                      char *buf)
-{
-        int i = 0;
-        const ptrdiff_t off = attr - s3c_test_attrs;
-
-        switch (off) {
-        case TEST_PM:
-                i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", 0);
-		s3c_test_pm();
-                break;
-        case USB_OFF:
-                i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", 1);
-		s3c_usb_off();
-                break;
-        case BT_WL_OFF:
-                i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", 2);
-		s3c_bt_wl_off();
-                break;
-        case TFLASH_OFF:
-                i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", 3);
-		s3c_tflash_off();
-                break;
-        case AUDIO_OFF:
-                i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", 4);
-		s3c_audio_off();
-                break;
-        case LCD_CHECK:
-                i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", 5);
-		s3c_lcd_check();
-                break;
-        default:
-                i = -EINVAL;
-        }
-
-        return i;
-}
-
-
-static ssize_t s3c_test_store(struct device *dev,
-			     struct device_attribute *attr,
-			     const char *buf, size_t count)
-{
-	int mode = 0;
-	int ret = 0;
-	const ptrdiff_t off = attr - s3c_test_attrs;
-
-        switch (off) {
-        case SUSPEND_LOCK:
-		if (sscanf(buf, "%d\n", &mode) == 1) {
-			dev_dbg(dev, "%s: suspend_lock(%d)\n", __func__, mode);
-			if (mode)
-				wake_lock(&wake_lock_for_dev);
-			else
-				wake_lock_timeout(&wake_lock_for_dev, HZ / 2);
-			ret = count;
-		}
-                break;
-	case CTRL_TMP:
-		if (sscanf(buf, "%d\n", &mode) == 1) {
-			dev_info(dev, "%s: control tmp(%d)\n", __func__, mode);
-			bat_temper_state = mode;
-			ret = count;
-		}
-		break;
-        default:
-                ret = -EINVAL;
-        }
-
-	return ret;
-}
-#endif /* __TEST_DEVICE_DRIVER__ */
 
 
 static enum power_supply_property s3c_battery_properties[] = {
@@ -1843,11 +1316,6 @@ static void s3c_bat_status_update(struct power_supply *bat_ps)
 	}
 	s3c_bat_info.bat_info.batt_vol = s3c_get_bat_vol(bat_ps);
 
-#if (defined __TEST_MODE_INTERFACE__ && defined __BATTERY_V_F__)
-	if (s3c_bat_info.bat_info.batt_test_mode == 1)
-		s3c_get_v_f_adc();
-#endif /* __TEST_MODE_INTERFACE__ && __BATTERY_V_F__ */
-
 	if (old_level != s3c_bat_info.bat_info.level
 			|| old_temp != s3c_bat_info.bat_info.batt_temp
 			|| old_is_full != s3c_bat_info.bat_info.batt_is_full
@@ -1864,30 +1332,6 @@ static void s3c_bat_status_update(struct power_supply *bat_ps)
 	mutex_unlock(&work_lock);
 	dev_dbg(dev, "%s --\n", __func__);
 }
-
-
-#ifdef __CHECK_BATTERY_V_F__
-static unsigned int s3c_bat_check_v_f(void)
-{
-	unsigned int rc = 0;
-	int adc = 0;
-
-	adc = s3c_bat_get_adc_data(S3C_ADC_V_F);
-
-	dev_info(dev, "%s: V_F ADC = %d\n", __func__, adc);
-
-	if (adc <= BATT_VF_MAX && adc >= BATT_VF_MIN) {
-		/* s3c_set_bat_health(POWER_SUPPLY_HEALTH_GOOD); */
-		rc = 1;
-	} else {
-		dev_info(dev, "%s: Unauthorized battery!\n", __func__);
-		s3c_set_bat_health(POWER_SUPPLY_HEALTH_UNSPEC_FAILURE);
-		rc = 0;
-	}
-	return rc;
-}
-#endif /* __CHECK_BATTERY_V_F__ */
-
 
 static void s3c_cable_check_status(void)
 {
@@ -2167,16 +1611,7 @@ static int __devinit s3c_bat_probe(struct platform_device *pdev)
 	s3c_bat_info.device_state = 0;
 
 	s3c_bat_info.bat_info.batt_vol_adc_aver = 0;
-#ifdef __TEST_MODE_INTERFACE__
-	s3c_bat_info.bat_info.batt_vol_aver = 0;
-	s3c_bat_info.bat_info.batt_temp_aver = 0;
-	s3c_bat_info.bat_info.batt_temp_adc_aver = 0;
-	s3c_bat_info.bat_info.batt_test_mode = 0;
- 	s3c_power_supplies_test = s3c_power_supplies;
-#ifdef __BATTERY_V_F__
-	s3c_bat_info.bat_info.batt_v_f_adc = 0;
-#endif /* __BATTERY_V_F__ */
-#endif /* __TEST_MODE_INTERFACE__ */
+
 	s3c_bat_info.bat_info.batt_id = 0;
 	s3c_bat_info.bat_info.batt_vol = 0;
 	s3c_bat_info.bat_info.batt_vol_adc = 0;
@@ -2229,10 +1664,6 @@ static int __devinit s3c_bat_probe(struct platform_device *pdev)
 	/* create sec detail attributes */
 	s3c_bat_create_attrs(s3c_power_supplies[CHARGER_BATTERY].dev);
 
-#ifdef __TEST_DEVICE_DRIVER__
-	s3c_test_create_attrs(s3c_power_supplies[CHARGER_AC].dev);
-#endif /* __TEST_DEVICE_DRIVER__ */
-
 	/* Request IRQ */
 #ifndef __USING_MAX8998_CHARGER__
 	set_irq_type(IRQ_TA_CONNECTED_N, IRQ_TYPE_EDGE_BOTH);
@@ -2271,10 +1702,6 @@ static int __devinit s3c_bat_probe(struct platform_device *pdev)
 	s3c_bat_set_compesation(1, OFFSET_LCD_ON, COMPENSATE_LCD);
 
 	s3c_bat_status_update(&s3c_power_supplies[CHARGER_BATTERY]);
-
-#ifdef __CHECK_BATTERY_V_F__
-		s3c_bat_check_v_f();
-#endif /* __CHECK_BATTERY_V_F__ */
 
 	s3c_cable_check_status();
 
@@ -2343,15 +1770,10 @@ static int __init s3c_bat_init(void)
 	s3c_bat_init_hw();
 
 	wake_lock_init(&vbus_wake_lock, WAKE_LOCK_SUSPEND, "vbus_present");
-#ifdef __TEST_DEVICE_DRIVER__
-	wake_lock_init(&wake_lock_for_dev, WAKE_LOCK_SUSPEND, "wake_lock_dev");
-#endif /* __TEST_DEVICE_DRIVER__ */
+
 	wake_lock_init(&wake_lock_for_off, WAKE_LOCK_SUSPEND, "wake_lock_off");
 
-#ifdef __FUEL_GAUGE_IC__
-	if (!i2c_add_driver(&fg_i2c_driver))
-		pr_err("%s: Can't add fg i2c drv\n", __func__);
-#endif /* __FUEL_GAUGE_IC__ */
+
 	return platform_driver_register(&s3c_bat_driver);
 }
 
@@ -2359,9 +1781,7 @@ static int __init s3c_bat_init(void)
 static void __exit s3c_bat_exit(void)
 {
 	pr_info("%s\n", __func__);
-#ifdef __FUEL_GAUGE_IC__
-	i2c_del_driver(&fg_i2c_driver);
-#endif /* __FUEL_GAUGE_IC__ */
+
 	platform_driver_unregister(&s3c_bat_driver);
 }
 
