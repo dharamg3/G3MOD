@@ -19,16 +19,8 @@
 #define VOLTAGE_CAL		(0)	// temp calibration value
 #define BATT_CAL			(2115 + VOLTAGE_CAL)	/* 3.65V */
 
-#define BATT_MAXIMUM		644		/* 4.119V */
-#define BATT_FULL			460		/* 4.021V */
-#define BATT_SAFE_RECHARGE	460		/* 4.021V */
-#define BATT_ALMOST_FULL	285		/* 3.881V */
-#define BATT_HIGH			132		/* 3.777V */
-#define BATT_MED			92		/* 3.730V */
-#define BATT_LOW			(1)		/* 3.680V */
-#define BATT_CRITICAL		(-74)	/* 3.624V */ 
-#define BATT_MINIMUM		(-114)	/* 3.601V */
-#define BATT_OFF			(-356)	/* 3.385V */
+#define BATT_MAXIMUM		605		/* 4.2V */
+#define BATT_OFF			(-114)	/* 3.6V */
 
 
 /*
@@ -159,9 +151,9 @@ const unsigned int gpio_chg_en_af	= GPIO_TA_EN_STATE;
 #define COMPENSATE_CAMERA		50
 #define COMPENSATE_MP3			25
 #define COMPENSATE_VIDEO		30
-#define COMPENSATE_VOICE_CALL_2G	0  // removed
-#define COMPENSATE_VOICE_CALL_3G	0  // removed
-#define COMPENSATE_DATA_CALL		25
+#define COMPENSATE_VOICE_CALL_2G	40  
+#define COMPENSATE_VOICE_CALL_3G	40 
+#define COMPENSATE_DATA_CALL		5
 #define COMPENSATE_LCD			40
 #define COMPENSATE_TA			0
 #define COMPENSATE_CAM_FALSH		0

@@ -98,14 +98,6 @@ static int battery_cal_updated = 0;
 static int low_batt_power_off = 0;
 
 static int batt_max;
-static int batt_full;
-static int batt_safe_rech;
-static int batt_almost;
-static int batt_high;
-static int batt_medium;
-static int batt_low;
-static int batt_critical;
-static int batt_min;
 static int batt_off;
 
 #ifdef __BATTERY_COMPENSATION__
@@ -426,20 +418,23 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 		goto __end__;
 	}
 
-#if 0 //def __BATTERY_COMPENSATION__
-	if (s3c_bat_info.bat_info.charging_enabled) {
-		if (bat_vol > batt_almost - COMPENSATE_TA) {
-			s3c_bat_set_compesation(0, OFFSET_TA_ATTACHED,
-					COMPENSATE_TA);
-		}
-	}
-#endif /* __BATTERY_COMPENSATION__ */
-
-	printk("----> battery :s3c_get_bat_level : bat_vol = %d batt_full : %d batt_max : %d batt_off : %d\n", bat_vol, batt_full, batt_max, batt_off);
-	if (bat_vol > batt_off)
+	
+	if (bat_vol > batt_max)
 	{
-	bat_level = ((bat_vol - batt_off)/10);
+	bat_level = 100;
 	}
+
+	if (bat_vol < batt_max && bat_vol > batt_off)
+	{
+	bat_level = ((bat_vol - batt_off)/((batt_max - batt_off)/100));
+	if (bat_level > 100)
+	bat_level = 100;
+	}
+	if (batt_off >= bat_vol)
+	{
+	bat_level = 0;
+	}
+	printk("----> Battery : bat_vol = %d batt_level : %d batt_max : %d batt_off : %d\n", bat_vol, bat_level, batt_max, batt_off );
 	/*
 	if (bat_vol > batt_full)
 	{
@@ -1033,14 +1028,6 @@ static void s3c_bat_set_vol_cal(int batt_cal)
 	}
 
 	batt_max = batt_cal + BATT_MAXIMUM;
-	batt_full = batt_cal + BATT_FULL;
-	batt_safe_rech = batt_cal + BATT_SAFE_RECHARGE;
-	batt_almost = batt_cal + BATT_ALMOST_FULL;
-	batt_high = batt_cal + BATT_HIGH;
-	batt_medium = batt_cal + BATT_MED;
-	batt_low = batt_cal + BATT_LOW;
-	batt_critical = batt_cal + BATT_CRITICAL;
-	batt_min = batt_cal + BATT_MINIMUM;
 	batt_off = batt_cal + BATT_OFF;
 
 	// Set cal update flag.
@@ -1140,8 +1127,7 @@ static ssize_t s3c_bat_store(struct device *dev,
 /* To remove TDMA noise, set the EAR_SEL gpio set high when data call */
 //		data_call = x;
 //		wm8994_data_call_hp_switch();
-
-//		dev_info(dev, "%s: data call = %d\n", __func__, x);
+		dev_info(dev, "%s: data call = %d\n", __func__, x);
                 break;
 #endif /* __BATTERY_COMPENSATION__ */
 
@@ -1628,14 +1614,6 @@ static int __devinit s3c_bat_probe(struct platform_device *pdev)
 	memset(adc_sample, 0x00, sizeof adc_sample);
 
 	batt_max = BATT_CAL + BATT_MAXIMUM;
-	batt_full = BATT_CAL + BATT_FULL;
-	batt_safe_rech = BATT_CAL + BATT_SAFE_RECHARGE;
-	batt_almost = BATT_CAL + BATT_ALMOST_FULL;
-	batt_high = BATT_CAL + BATT_HIGH;
-	batt_medium = BATT_CAL + BATT_MED;
-	batt_low = BATT_CAL + BATT_LOW;
-	batt_critical = BATT_CAL + BATT_CRITICAL;
-	batt_min = BATT_CAL + BATT_MINIMUM;
 	batt_off = BATT_CAL + BATT_OFF;
 
 #ifdef __BATTERY_COMPENSATION__

@@ -1,0 +1,9 @@
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+proc            /proc           proc    nodev,noexec,nosuid 0       0
+# / was on /dev/sda1 during installation
+/dev/block/stl6 /g3mod_data         rfs    check=no 	 0 0
+/dev/block/stl7 /g3mod_data         rfs    nosuid,nodev,check=no 0 0
+/dev/block/stl8 /g3mod_data	      rfs    nosuid,nodev,check=no 0 0
+/dev/block/stl4 /efs                  rfs    nosuid,nodev,check=no 0 0
+/dev/block/mmcblk0p2 /g3mod_data	ext4	nosuid,nodev 1 1
+
