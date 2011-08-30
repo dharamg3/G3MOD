@@ -308,14 +308,6 @@ finish_recovery(const char *send_intent) {
     sync();  // For good measure.
 }
 
-static int
-erase_root(const char *root) {
-    ui_set_background(BACKGROUND_ICON_INSTALLING);
-    ui_show_indeterminate_progress();
-    ui_print("Formatting %s...\n", root);
-    return format_root_device(root);
-}
-
 static char**
 prepend_title(char** headers) {
     char* title[] = { EXPAND(RECOVERY_VERSION),
@@ -388,26 +380,68 @@ get_menu_selection(char** headers, char** items, int menu_only) {
         } else if (!menu_only) {
             chosen_item = action;
         }
-
-        if (abs(selected - old_selected) > 1) {
-            wrap_count++;
-            if (wrap_count == 3) {
-                wrap_count = 0;
-                if (ui_get_showing_back_button()) {
-                    ui_print("Back menu button disabled.\n");
-                    ui_set_showing_back_button(0);
-                }
-                else {
-                    ui_print("Back menu button enabled.\n");
-                    ui_set_showing_back_button(1);
-                }
-            }
-        }
     }
 
     ui_end_menu();
     ui_clear_key_queue();
     return chosen_item;
+}
+
+static void
+prompt_and_wait() {
+    char** headers = prepend_title(MENU_HEADERS);
+    
+    for (;;) {
+        finish_recovery(NULL);
+        ui_reset_progress();
+
+        allow_display_toggle = 1;
+        int chosen_item = get_menu_selection(headers, MENU_ITEMS, 0);
+        allow_display_toggle = 0;
+
+        // device-specific code may take some action here.  It may
+        // return one of the core actions handled in the switch
+        // statement below.
+        chosen_item = device_perform_action(chosen_item);
+
+        switch (chosen_item) {
+            case ITEM_POWER:
+		powermenu();
+		break;
+	
+            case ITEM_UPDATE:
+                updatemenu();
+                break;
+
+            case ITEM_MULTIBOOT:
+                show_multi_boot_menu();
+                break;
+
+            case ITEM_WIPE:
+               show_wipe_menu();
+                break;
+
+            case ITEM_NANDROID:
+                show_nandroid_menu();
+                break;
+
+            case ITEM_MOUNTS:
+                show_partition_menu();
+                break;
+
+            case ITEM_ADVANCED:
+                show_advanced_menu();
+                break;
+        }
+    }
+}
+
+static int
+erase_root(const char *root) {
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_show_indeterminate_progress();
+    ui_print("Formatting %s...\n", root);
+    return format_root_device(root);
 }
 
 static void
@@ -444,99 +478,22 @@ wipe_data(int confirm) {
 
     ui_print("\n-- Wiping data...\n");
     device_wipe_data();
-    erase_root("DATA:");
+    erase_root1("DATA:");
 #ifdef BOARD_HAS_DATADATA
-    erase_root("DATADATA:");
+    erase_root1("DATADATA:");
 #endif
-    erase_root("CACHE:");
-    erase_root("SDEXT:");
-    erase_root("SDCARD:/.android_secure");
+    erase_root1("CACHE:");
+    erase_root1("SDEXT:");
+    erase_root1("SDCARD:/.android_secure");
     ui_print("Data wipe complete.\n");
 }
 
-static void
-prompt_and_wait() {
-    char** headers = prepend_title(MENU_HEADERS);
-    
-    for (;;) {
-        finish_recovery(NULL);
-        ui_reset_progress();
-
-        allow_display_toggle = 1;
-        int chosen_item = get_menu_selection(headers, MENU_ITEMS, 0);
-        allow_display_toggle = 0;
-
-        // device-specific code may take some action here.  It may
-        // return one of the core actions handled in the switch
-        // statement below.
-        chosen_item = device_perform_action(chosen_item);
-
-        switch (chosen_item) {
-            case ITEM_REBOOT:
-                return;
-
-            case ITEM_WIPE_DATA:
-                wipe_data(ui_text_visible());
-                if (!ui_text_visible()) return;
-                break;
-
-            case ITEM_WIPE_CACHE:
-                if (confirm_selection("Confirm wipe?", "Yes - Wipe Cache"))
-                {
-                    ui_print("\n-- Wiping cache...\n");
-                    erase_root("CACHE:");
-                    ui_print("Cache wipe complete.\n");
-                    if (!ui_text_visible()) return;
-                }
-                break;
-
-            case ITEM_APPLY_SDCARD:
-                if (confirm_selection("Confirm install?", "Yes - Install /sdcard/update.zip"))
-                {
-                    ui_print("\n-- Install from sdcard...\n");
-#ifndef BOARD_HAS_NO_MISC_PARTITION
-                    set_sdcard_update_bootloader_message();
-#endif
-                    int status = install_package(SDCARD_PACKAGE_FILE);
-                    if (status != INSTALL_SUCCESS) {
-                        ui_set_background(BACKGROUND_ICON_ERROR);
-                        ui_print("Installation aborted.\n");
-                    } else if (!ui_text_visible()) {
-                        return;  // reboot if logs aren't visible
-                    } else {
-#ifndef BOARD_HAS_NO_MISC_PARTITION
-                        if (firmware_update_pending()) {
-                            ui_print("\nReboot via menu to complete\n"
-                                     "installation.\n");
-                        } else {
-                            ui_print("\nInstall from sdcard complete.\n");
-                        }
-#else
-                        ui_print("\nInstall from sdcard complete.\n");
-#endif
-                    }
-                }
-                break;
-            case ITEM_INSTALL_ZIP:
-                show_install_update_menu();
-                break;
-            case ITEM_NANDROID:
-                show_nandroid_menu();
-                break;
-            case ITEM_PARTITION:
-                show_partition_menu();
-                break;
-            case ITEM_ADVANCED:
-                show_advanced_menu();
-                break;
-	    case ITEM_MULTI_BOOT:
-                show_multi_boot_menu();
-                break;
-	    case ITEM_POWEROFF:
-               __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_POWER_OFF, NULL);
-		break;
-        }
-    }
+static int
+erase_root1(const char *root) {
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_show_indeterminate_progress();
+    ui_print("Formatting %s...\n", root);
+    return format_root_device(root);
 }
 
 static void
@@ -641,7 +598,7 @@ main(int argc, char **argv) {
         script_assert_enabled = 0;
         is_user_initiated_recovery = 1;
         ui_set_show_text(1);
-        
+      
         if (extendedcommand_file_exists()) {
             LOGI("Running extendedcommand...\n");
             int ret;
@@ -656,7 +613,7 @@ main(int argc, char **argv) {
             LOGI("Skipping execution of extendedcommand, file not found...\n");
         }
     }
-
+ 
     if (status != INSTALL_SUCCESS && !is_user_initiated_recovery) ui_set_background(BACKGROUND_ICON_ERROR);
     if (status != INSTALL_SUCCESS || ui_text_visible()) prompt_and_wait();
 

@@ -202,16 +202,24 @@ g3_mount_stl8
     chown system camera /dev/video0
     chmod 0660 /dev/video0
 
+# WiFi
+#wpa_supplicant.conf ends up here
+mkdir /data/wifi 0777 wifi wifi
+mkdir /data/misc/wifi 0771 wifi wifi
+chmod 0777 /data/misc/wifi/
 
-# to enable wifi
-    mkdir /data/wifi 0777 wifi wifi
-#    mkdir /data/misc/wifi 0771 wifi system
-    mkdir /data/misc/wifi 0771 wifi wifi
-    chmod 0777 /data/misc/wifi/
-    mkdir /data/misc/dhcp 0777 dhcp dhcp
-#    mkdir /data/misc/wifi/sockets 0777 wifi system
-    mkdir /data/misc/wifi/sockets 0777 wifi wifi
-    chmod 0664 /system/etc/wifi/wpa_supplicant.conf
+#dhcp needs to be here
+mkdir /data/misc/dhcp 0777 dhcp dhcp
+chown dhcp dhcp /data/misc/dhcp
+chmod 0777 /data/misc/dhcp
+
+#sockets end up here hardcoded in wpa_ctrl.c
+mkdir /data/misc/wifi/sockets 0777 wifi wifi
+chown wifi wifi /data/misc/wifi/sockets
+chmod 07777 /data/misc/wifi/sockets
+
+#protect the original conf?
+chmod 0664 /system/etc/wifi/wpa_supplicant.conf
 # end of wifi
 
     mkdir /data/local 0771 shell shell

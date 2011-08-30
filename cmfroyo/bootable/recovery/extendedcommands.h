@@ -19,8 +19,20 @@ do_nandroid_restore();
 void
 show_nandroid_restore_menu();
 
+static int
+erase_root1(const char *root);
+
+static void
+wipe_data1(int confirm);
+
 void
 show_nandroid_menu();
+
+void
+updatemenu();
+
+void
+show_wipe_menu();
 
 void
 backup_rom();

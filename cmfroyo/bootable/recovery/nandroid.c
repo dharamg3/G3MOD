@@ -205,6 +205,45 @@ int nandroid_backup(const char* backup_path)
     ui_print("\nBackup complete!\n");
     return 0;
 }
+
+int nandroid_backup_boot(const char* backup_path)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    int ret;
+    struct statfs s;
+    if (0 != (ret = statfs("/sdcard", &s)))
+        return print_and_error("Unable to stat /sdcard\n");
+    uint64_t bavail = s.f_bavail;
+    uint64_t bsize = s.f_bsize;
+    uint64_t sdcard_free = bavail * bsize;
+    uint64_t sdcard_free_mb = sdcard_free / (uint64_t)(1024 * 1024);
+    ui_print("SD Card space free: %lluMB\n", sdcard_free_mb);
+    if (sdcard_free_mb < 150)
+        ui_print("There may not be enough free space to complete backup... continuing...\n");
+    
+    char tmp[PATH_MAX];
+    sprintf(tmp, "mkdir -p %s", backup_path);
+    __system(tmp);
+
+#ifndef BOARD_RECOVERY_IGNORE_BOOTABLES
+    ui_print("Backing up boot...\n");
+    sprintf(tmp, "%s/%s", backup_path, "boot.img");
+    ret = backup_raw_partition("boot", tmp);
+    if (0 != ret)
+        return print_and_error("Error while dumping boot image!\n");
+#endif
+    
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nBackup complete!\n");
+    return 0;
+}
+
 int nandroid_backup_system(const char* backup_path)
 {
     ui_set_background(BACKGROUND_ICON_INSTALLING);
@@ -231,6 +270,115 @@ int nandroid_backup_system(const char* backup_path)
     if (0 != (ret = nandroid_backup_partition(backup_path, "SYSTEM:")))
         return ret;
 
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nBackup complete!\n");
+    return 0;
+}
+
+int nandroid_backup_data(const char* backup_path)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    int ret;
+    struct statfs s;
+    if (0 != (ret = statfs("/sdcard", &s)))
+        return print_and_error("Unable to stat /sdcard\n");
+    uint64_t bavail = s.f_bavail;
+    uint64_t bsize = s.f_bsize;
+    uint64_t sdcard_free = bavail * bsize;
+    uint64_t sdcard_free_mb = sdcard_free / (uint64_t)(1024 * 1024);
+    ui_print("SD Card space free: %lluMB\n", sdcard_free_mb);
+    if (sdcard_free_mb < 150)
+        ui_print("There may not be enough free space to complete backup... continuing...\n");
+    
+    char tmp[PATH_MAX];
+    sprintf(tmp, "mkdir -p %s", backup_path);
+    __system(tmp);
+
+    if (0 != (ret = nandroid_backup_partition(backup_path, "DATA:")))
+        return ret;
+
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nBackup complete!\n");
+    return 0;
+}
+
+int nandroid_backup_cache(const char* backup_path)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    int ret;
+    struct statfs s;
+    if (0 != (ret = statfs("/sdcard", &s)))
+        return print_and_error("Unable to stat /sdcard\n");
+    uint64_t bavail = s.f_bavail;
+    uint64_t bsize = s.f_bsize;
+    uint64_t sdcard_free = bavail * bsize;
+    uint64_t sdcard_free_mb = sdcard_free / (uint64_t)(1024 * 1024);
+    ui_print("SD Card space free: %lluMB\n", sdcard_free_mb);
+    if (sdcard_free_mb < 150)
+        ui_print("There may not be enough free space to complete backup... continuing...\n");
+    
+    char tmp[PATH_MAX];
+    sprintf(tmp, "mkdir -p %s", backup_path);
+    __system(tmp);
+
+
+    if (0 != (ret = nandroid_backup_partition_extended(backup_path, "CACHE:", 0)))
+        return ret;
+    
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nBackup complete!\n");
+    return 0;
+}
+
+int nandroid_backup_sd(const char* backup_path)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    int ret;
+    struct statfs s;
+    if (0 != (ret = statfs("/sdcard", &s)))
+        return print_and_error("Unable to stat /sdcard\n");
+    uint64_t bavail = s.f_bavail;
+    uint64_t bsize = s.f_bsize;
+    uint64_t sdcard_free = bavail * bsize;
+    uint64_t sdcard_free_mb = sdcard_free / (uint64_t)(1024 * 1024);
+    ui_print("SD Card space free: %lluMB\n", sdcard_free_mb);
+    if (sdcard_free_mb < 150)
+        ui_print("There may not be enough free space to complete backup... continuing...\n");
+    
+    char tmp[PATH_MAX];
+    sprintf(tmp, "mkdir -p %s", backup_path);
+    __system(tmp);
+	struct stat st;
+    if (0 != stat(BOARD_SDEXT_DEVICE, &st))
+    {
+        ui_print("No sd-ext found. Skipping backup of sd-ext.\n");
+    }
+    else
+    {
+        if (0 != ensure_root_path_mounted("SDEXT:"))
+            ui_print("Could not mount sd-ext. sd-ext backup may not be supported on this device. Skipping backup of sd-ext.\n");
+        else if (0 != (ret = nandroid_backup_partition(backup_path, "SDEXT:")))
+            return ret;
+    }
+    
     sync();
     ui_set_background(BACKGROUND_ICON_NONE);
     ui_reset_progress();
@@ -392,6 +540,7 @@ int nandroid_restore_system(const char* backup_path, int restore_system)
     ui_print("\nActivation complete!\n");
     return 0;
 }
+
 void nandroid_generate_timestamp_path(char* backup_path)
 {
     time_t t = time(NULL);

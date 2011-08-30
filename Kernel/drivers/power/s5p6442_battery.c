@@ -419,17 +419,216 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 	}
 
 	
-	if (bat_vol > batt_max)
+	if (bat_vol >= batt_max)
 	{
 	bat_level = 100;
 	}
-
+	else
 	if (bat_vol < batt_max && bat_vol > batt_off)
 	{
-	bat_level = ((bat_vol - batt_off)/((batt_max - batt_off)/100));
-	if (bat_level > 100)
-	bat_level = 100;
+		int temp = (batt_max - batt_off) / 100;
+		if (bat_vol > (batt_off + (temp * 99)))
+			bat_level = 99;
+		else if (bat_vol > (batt_off + (temp * 98)))
+			bat_level = 98;
+		else if (bat_vol > (batt_off + (temp * 97)))
+			bat_level = 97;
+		else if (bat_vol > (batt_off + (temp * 96)))
+			bat_level = 96;
+		else if (bat_vol > (batt_off + (temp * 95)))
+			bat_level = 95;
+		else if (bat_vol > (batt_off + (temp * 94)))
+			bat_level = 94;
+		else if (bat_vol > (batt_off + (temp * 93)))
+			bat_level = 93;
+		else if (bat_vol > (batt_off + (temp * 92)))
+			bat_level = 92;
+		else if (bat_vol > (batt_off + (temp * 91)))
+			bat_level = 91;
+		else if (bat_vol > (batt_off + (temp * 90)))
+			bat_level = 90;
+		else if (bat_vol > (batt_off + (temp * 89)))
+			bat_level = 89;
+		else if (bat_vol > (batt_off + (temp * 88)))
+			bat_level = 88;
+		else if (bat_vol > (batt_off + (temp * 87)))
+			bat_level = 87;
+		else if (bat_vol > (batt_off + (temp * 86)))
+			bat_level = 86;
+		else if (bat_vol > (batt_off + (temp * 85)))
+			bat_level = 85;
+		else if (bat_vol > (batt_off + (temp * 84)))
+			bat_level = 84;
+		else if (bat_vol > (batt_off + (temp * 83)))
+			bat_level = 83;
+		else if (bat_vol > (batt_off + (temp * 82)))
+			bat_level = 82;
+		else if (bat_vol > (batt_off + (temp * 81)))
+			bat_level = 81;
+		else if (bat_vol > (batt_off + (temp * 80)))
+			bat_level = 80;
+		else if (bat_vol > (batt_off + (temp * 79)))
+			bat_level = 79;
+		else if (bat_vol > (batt_off + (temp * 78)))
+			bat_level = 78;
+		else if (bat_vol > (batt_off + (temp * 77)))
+			bat_level = 77;
+		else if (bat_vol > (batt_off + (temp * 76)))
+			bat_level = 76;
+		else if (bat_vol > (batt_off + (temp * 75)))
+			bat_level = 75;
+		else if (bat_vol > (batt_off + (temp * 74)))
+			bat_level = 74;
+		else if (bat_vol > (batt_off + (temp * 73)))
+			bat_level = 73;
+		else if (bat_vol > (batt_off + (temp * 72)))
+			bat_level = 72;
+		else if (bat_vol > (batt_off + (temp * 71)))
+			bat_level = 71;
+		else if (bat_vol > (batt_off + (temp * 70)))
+			bat_level = 70;
+		else if (bat_vol > (batt_off + (temp * 69)))
+			bat_level = 69;
+		else if (bat_vol > (batt_off + (temp * 68)))
+			bat_level = 68;
+		else if (bat_vol > (batt_off + (temp * 67)))
+			bat_level = 67;
+		else if (bat_vol > (batt_off + (temp * 66)))
+			bat_level = 66;
+		else if (bat_vol > (batt_off + (temp * 65)))
+			bat_level = 65;
+		else if (bat_vol > (batt_off + (temp * 64)))
+			bat_level = 64;
+		else if (bat_vol > (batt_off + (temp * 63)))
+			bat_level = 63;
+		else if (bat_vol > (batt_off + (temp * 62)))
+			bat_level = 62;
+		else if (bat_vol > (batt_off + (temp * 61)))
+			bat_level = 61;
+		else if (bat_vol > (batt_off + (temp * 60)))
+			bat_level = 60;
+		else if (bat_vol > (batt_off + (temp * 59)))
+			bat_level = 59;
+		else if (bat_vol > (batt_off + (temp * 58)))
+			bat_level = 58;
+		else if (bat_vol > (batt_off + (temp * 57)))
+			bat_level = 57;
+		else if (bat_vol > (batt_off + (temp * 56)))
+			bat_level = 56;
+		else if (bat_vol > (batt_off + (temp * 55)))
+			bat_level = 55;
+		else if (bat_vol > (batt_off + (temp * 54)))
+			bat_level = 54;
+		else if (bat_vol > (batt_off + (temp * 53)))
+			bat_level = 53;
+		else if (bat_vol > (batt_off + (temp * 52)))
+			bat_level = 52;
+		else if (bat_vol > (batt_off + (temp * 51)))
+			bat_level = 51;
+		else if (bat_vol > (batt_off + (temp * 50)))
+			bat_level = 50;
+		else if (bat_vol > (batt_off + (temp * 49)))
+			bat_level = 49;
+		else if (bat_vol > (batt_off + (temp * 48)))
+			bat_level = 48;
+		else if (bat_vol > (batt_off + (temp * 47)))
+			bat_level = 47;
+		else if (bat_vol > (batt_off + (temp * 46)))
+			bat_level = 46;
+		else if (bat_vol > (batt_off + (temp * 45)))
+			bat_level = 45;
+		else if (bat_vol > (batt_off + (temp * 44)))
+			bat_level = 44;
+		else if (bat_vol > (batt_off + (temp * 43)))
+			bat_level = 43;
+		else if (bat_vol > (batt_off + (temp * 42)))
+			bat_level = 42;
+		else if (bat_vol > (batt_off + (temp * 41)))
+			bat_level = 41;
+		else if (bat_vol > (batt_off + (temp * 40)))
+			bat_level = 40;
+		else if (bat_vol > (batt_off + (temp * 39)))
+			bat_level = 39;
+		else if (bat_vol > (batt_off + (temp * 38)))
+			bat_level = 38;
+		else if (bat_vol > (batt_off + (temp * 37)))
+			bat_level = 37;
+		else if (bat_vol > (batt_off + (temp * 36)))
+			bat_level = 36;
+		else if (bat_vol > (batt_off + (temp * 35)))
+			bat_level = 35;
+		else if (bat_vol > (batt_off + (temp * 34)))
+			bat_level = 34;
+		else if (bat_vol > (batt_off + (temp * 33)))
+			bat_level = 33;
+		else if (bat_vol > (batt_off + (temp * 32)))
+			bat_level = 32;
+		else if (bat_vol > (batt_off + (temp * 31)))
+			bat_level = 31;
+		else if (bat_vol > (batt_off + (temp * 30)))
+			bat_level = 30;
+		else if (bat_vol > (batt_off + (temp * 29)))
+			bat_level = 29;
+		else if (bat_vol > (batt_off + (temp * 28)))
+			bat_level = 28;
+		else if (bat_vol > (batt_off + (temp * 27)))
+			bat_level = 27;
+		else if (bat_vol > (batt_off + (temp * 26)))
+			bat_level = 26;
+		else if (bat_vol > (batt_off + (temp * 25)))
+			bat_level = 25;
+		else if (bat_vol > (batt_off + (temp * 24)))
+			bat_level = 24;
+		else if (bat_vol > (batt_off + (temp * 23)))
+			bat_level = 23;
+		else if (bat_vol > (batt_off + (temp * 22)))
+			bat_level = 22;
+		else if (bat_vol > (batt_off + (temp * 21)))
+			bat_level = 21;
+		else if (bat_vol > (batt_off + (temp * 20)))
+			bat_level = 20;
+		else if (bat_vol > (batt_off + (temp * 19)))
+			bat_level = 19;
+		else if (bat_vol > (batt_off + (temp * 18)))
+			bat_level = 18;
+		else if (bat_vol > (batt_off + (temp * 17)))
+			bat_level = 17;
+		else if (bat_vol > (batt_off + (temp * 16)))
+			bat_level = 16;
+		else if (bat_vol > (batt_off + (temp * 15)))
+			bat_level = 15;
+		else if (bat_vol > (batt_off + (temp * 14)))
+			bat_level = 14;
+		else if (bat_vol > (batt_off + (temp * 13)))
+			bat_level = 13;
+		else if (bat_vol > (batt_off + (temp * 12)))
+			bat_level = 12;
+		else if (bat_vol > (batt_off + (temp * 11)))
+			bat_level = 11;
+		else if (bat_vol > (batt_off + (temp * 10)))
+			bat_level = 10;
+		else if (bat_vol > (batt_off + (temp * 9)))
+			bat_level = 9;
+		else if (bat_vol > (batt_off + (temp * 8)))
+			bat_level = 8;
+		else if (bat_vol > (batt_off + (temp * 7)))
+			bat_level = 7;
+		else if (bat_vol > (batt_off + (temp * 6)))
+			bat_level = 6;
+		else if (bat_vol > (batt_off + (temp * 5)))
+			bat_level = 5;
+		else if (bat_vol > (batt_off + (temp * 4)))
+			bat_level = 4;
+		else if (bat_vol > (batt_off + (temp * 3)))
+			bat_level = 3;
+		else if (bat_vol > (batt_off + (temp * 2)))
+			bat_level = 2;
+		else if (bat_vol > (batt_off + (temp * 1)))
+			bat_level = 1;
+		else if (bat_vol > (batt_off + (temp * 0)))
+			bat_level = 0;
 	}
+	else
 	if (batt_off >= bat_vol)
 	{
 	bat_level = 0;
@@ -1119,15 +1318,15 @@ static ssize_t s3c_bat_store(struct device *dev,
 		dev_info(dev, "%s: voice call 3G = %d\n", __func__, x);
                 break;
 	case BATT_DATA_CALL:
-		if (sscanf(buf, "%d\n", &x) == 1) {
-			s3c_bat_set_compesation(x, OFFSET_DATA_CALL,
-					COMPENSATE_DATA_CALL);
-			ret = count;
-		}
+//		if (sscanf(buf, "%d\n", &x) == 1) {
+//			s3c_bat_set_compesation(x, OFFSET_DATA_CALL,
+//					COMPENSATE_DATA_CALL);
+//			ret = count;
+//		}
 /* To remove TDMA noise, set the EAR_SEL gpio set high when data call */
 //		data_call = x;
 //		wm8994_data_call_hp_switch();
-		dev_info(dev, "%s: data call = %d\n", __func__, x);
+//		dev_info(dev, "%s: data call = %d\n", __func__, x);
                 break;
 #endif /* __BATTERY_COMPENSATION__ */
 

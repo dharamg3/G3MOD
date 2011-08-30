@@ -701,6 +701,67 @@ void show_nandroid_advanced_restore_menu()
     }
 }
 
+void show_nandroid_advanced_backup_menu()
+{
+    if (ensure_root_path_mounted("SDCARD:") != 0) {
+        LOGE ("Can't mount /sdcard\n");
+        return;
+    }
+
+    static char* headers[] = {  "Nandroid Advanced Backup",
+                                "",
+                                NULL
+    };
+
+    static char* list[] = { "Backup boot",
+                            "Backup system",
+                            "Backup data",
+                            "Backup cache",
+                            "Backup sd-ext",
+                            NULL
+    };
+
+    char backup_path[PATH_MAX];
+                time_t t = time(NULL);
+                struct tm *tmp = localtime(&t);
+                if (tmp == NULL)
+                {
+                    struct timeval tp;
+                    gettimeofday(&tp, NULL);
+                    sprintf(backup_path, "/sdcard/clockworkmod/backup/%d", tp.tv_sec);
+                }
+                else
+                {
+                    strftime(backup_path, sizeof(backup_path), "/sdcard/clockworkmod/backup/%F.%H.%M.%S", tmp);
+                }
+    static char* confirm_restore  = "Confirm backup?";
+
+    int chosen_item = get_menu_selection(headers, list, 0);
+    switch (chosen_item)
+    {
+        case 0:
+            if (confirm_selection(confirm_restore, "Yes - Backup boot"))
+                nandroid_backup_boot(backup_path);
+            break;
+        case 1:
+            if (confirm_selection(confirm_restore, "Yes - Backup system"))
+                nandroid_backup_system(backup_path);
+            break;
+        case 2:
+            if (confirm_selection(confirm_restore, "Yes - Backup data"))
+                nandroid_backup_data(backup_path);
+            break;
+        case 3:
+            if (confirm_selection(confirm_restore, "Yes - Backup cache"))
+                nandroid_backup_cache(backup_path);
+            break;
+        case 4:
+            if (confirm_selection(confirm_restore, "Yes - Backup sd-ext"))
+                nandroid_backup_sd(backup_path);;
+            break;
+    }
+}
+
 void show_nandroid_menu()
 {
     static char* headers[] = {  "Nandroid",
@@ -708,16 +769,27 @@ void show_nandroid_menu()
                                 NULL
     };
 
-    static char* list[] = { "Backup",
+    static char* list[] = { "~~~> Go Back <~~~",
+			    "Backup",
                             "Restore",
+			    "Advanced Backup",
                             "Advanced Restore",
                             NULL
     };
+for (;;)
+    {
 
     int chosen_item = get_menu_selection(headers, list, 0);
+    if (chosen_item == GO_BACK)
+            break;
     switch (chosen_item)
     {
-        case 0:
+	case 0:
+	    {
+		return;
+		break;
+	    }
+        case 1:
             {
                 char backup_path[PATH_MAX];
                 time_t t = time(NULL);
@@ -733,15 +805,20 @@ void show_nandroid_menu()
                     strftime(backup_path, sizeof(backup_path), "/sdcard/clockworkmod/backup/%F.%H.%M.%S", tmp);
                 }
                 nandroid_backup(backup_path);
+		break;
             }
-            break;
-        case 1:
+           
+        case 2:
             show_nandroid_restore_menu();
             break;
-        case 2:
+        case 3:
+            show_nandroid_advanced_backup_menu();
+            break;
+	case 4:
             show_nandroid_advanced_restore_menu();
             break;
     }
+}
 }
 
 void backup_rom()
@@ -751,68 +828,113 @@ void backup_rom()
                                 NULL
     };
 
-     static char* list[] = { "G3MOD",
-                             "Kyrillos",
-			     "Grigora",
-			     "Stylooo AOSP Style",
-			     "rom1",
-			     "rom2",
+     static char* list[] = {"~~~> Go Back <~~~",
+			"CyanogenMod 6.2",			
+			"G3MOD",
+			"Kyrillos",
+			"Grigora",
+			"Stylooo AOSP Style",
+			"DutchMods",
+			"Kyorarom",
+			"Misc Rom1",
+			"Misc Rom2",
+			"Misc Rom3",
+			"Misc Rom4",
                             NULL
     };
 
     for (;;)
     {
         int chosen_item = get_menu_selection(headers, list, 0);
-        if (chosen_item == GO_BACK)
+	 if (chosen_item == GO_BACK)
             break;
         switch (chosen_item)
         {
-            case 0:
+	    case 0:
+	    {
+		return;
+		break;
+	    }
+            case 1:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/CyanogenMod_ROM");
+            nandroid_backup_system(backup_path);
+    	    break;
+       	    }
+	    case 2:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/G3MOD_ROM");
             nandroid_backup_system(backup_path);
     	    break;
-       	}
-	    case 1:
+       	    }
+	    case 3:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/Kyrillos_ROM");
             nandroid_backup_system(backup_path);
             break;
-    	}	
-            case 2:
+    	    }	
+            case 4:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/Grigora_ROM");
             nandroid_backup_system(backup_path);
             break;
-    	}
-	   case 3:
+    	    }
+	    case 5:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/AOSP_ROM");
             nandroid_backup_system(backup_path);
             break;
-    	}
-	 case 4:
+    	    }
+	    case 6:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/DutchMods_ROM");
+            nandroid_backup_system(backup_path);
+    	    break;
+       	    }
+	    case 7:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/Kyorarom_ROM");
+            nandroid_backup_system(backup_path);
+    	    break;
+       	    }
+	    case 8:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/rom1_ROM");
             nandroid_backup_system(backup_path);
             break;
-    	}
-	 case 5:
+    	    }
+	    case 9:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/rom2_ROM");
             nandroid_backup_system(backup_path);
             break;
-    	}
+    	    }
+	    case 10:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/rom3_ROM");
+            nandroid_backup_system(backup_path);
+            break;
+    	    }
+	    case 11:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/rom4_ROM");
+            nandroid_backup_system(backup_path);
+            break;
+    	    }
 	}
 }
 }
-
 
 void wipe_battery_stats()
 {
@@ -828,10 +950,8 @@ void show_advanced_menu()
                                 NULL
     };
 
-    static char* list[] = { "Reboot Recovery",
-                            "Wipe Dalvik Cache",
-                            "Wipe Battery Stats",
-                            "Report Error",
+    static char* list[] = { "~~~> Go Back <~~~",
+			    "Report Error",
                             "Key Test",
 #ifndef BOARD_HAS_SMALL_RECOVERY
                             "Partition SD Card",
@@ -850,34 +970,15 @@ void show_advanced_menu()
             break;
         switch (chosen_item)
         {
-            case 0:
-                __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART2, "recovery");
-                break;
+	    case 0:
+	    {
+		return;
+		break;
+	    }
             case 1:
-            {
-                if (0 != ensure_root_path_mounted("DATA:"))
-                    break;
-                ensure_root_path_mounted("SDEXT:");
-                ensure_root_path_mounted("CACHE:");
-                if (confirm_selection( "Confirm wipe?", "Yes - Wipe Dalvik Cache")) {
-                    __system("rm -r /data/dalvik-cache");
-                    __system("rm -r /cache/dalvik-cache");
-                    __system("rm -r /sd-ext/dalvik-cache");
-                }
-                ensure_root_path_unmounted("DATA:");
-                ui_print("Dalvik Cache wiped.\n");
-                break;
-            }
-            case 2:
-            {
-                if (confirm_selection( "Confirm wipe?", "Yes - Wipe Battery Stats"))
-                    wipe_battery_stats();
-                break;
-            }
-            case 3:
                 handle_failure(1);
                 break;
-            case 4:
+            case 2:
             {
                 ui_print("Outputting key codes.\n");
                 ui_print("Go back to end debugging.\n");
@@ -892,7 +993,7 @@ void show_advanced_menu()
                 while (action != GO_BACK);
                 break;
             }
-            case 5:
+            case 3:
             {
                 static char* ext_sizes[] = { "128M",
                                              "256M",
@@ -935,7 +1036,7 @@ void show_advanced_menu()
                     ui_print("An error occured while partitioning your SD Card. Please see /tmp/recovery.log for more details.\n");
                 break;
             }
-            case 6:
+            case 4:
             {
                 ensure_root_path_mounted("SYSTEM:");
                 ensure_root_path_mounted("DATA:");
@@ -944,7 +1045,7 @@ void show_advanced_menu()
                 ui_print("Done!\n");
                 break;
             }
-            case 7:
+            case 5:
             {
                 static char* ext_sizes[] = { "128M",
                                              "256M",
@@ -963,7 +1064,6 @@ void show_advanced_menu()
 
                 static char* ext_headers[] = { "Data Size", "", NULL };
                 static char* swap_headers[] = { "Swap Size", "", NULL };
-
                 int ext_size = get_menu_selection(ext_headers, ext_sizes, 0);
                 if (ext_size == GO_BACK)
                     continue;
@@ -990,6 +1090,250 @@ void show_advanced_menu()
         }
     }
 }
+
+void powermenu()
+{
+
+static char* headers[] = {  "Power Menu",
+                                "",
+                                NULL
+    };
+
+ static char* list[] = { "~~~> Go Back <~~~",
+                         "Power Off",
+                         "Reboot",
+                         "Reboot Recovery",
+                         "Download Mode",
+                            NULL
+};
+
+for (;;)
+    {
+        int chosen_item = get_menu_selection(headers, list, 0);
+	if (chosen_item == GO_BACK)
+            break;
+	switch (chosen_item)
+	{
+		case 0:
+		{
+		return;
+		break;
+		}
+		case 1:
+		{
+		 __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_POWER_OFF, NULL);
+		break;
+		}
+		case 2:
+		{
+		reboot(RB_AUTOBOOT);
+		break;
+		}
+		case 3:
+		{
+		__reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART2, "recovery");
+		break;
+		}
+		case 4:
+		{
+		__system("reboot download");
+		break;
+		}
+	}
+     }
+}
+static char**
+prepend_title1(char** headers) {
+    char* title[] = { EXPAND(RECOVERY_VERSION),
+                      "",
+                      NULL };
+
+    // count the number of lines in our title, plus the
+    // caller-provided headers.
+    int count = 0;
+    char** p;
+    for (p = title; *p; ++p, ++count);
+    for (p = headers; *p; ++p, ++count);
+
+    char** new_headers = malloc((count+1) * sizeof(char*));
+    char** h = new_headers;
+    for (p = title; *p; ++p, ++h) *h = *p;
+    for (p = headers; *p; ++p, ++h) *h = *p;
+    *h = NULL;
+
+    return new_headers;
+}
+static void
+wipe_data1(int confirm) {
+    if (confirm) {
+        static char** title_headers = NULL;
+
+        if (title_headers == NULL) {
+            char* headers[] = { "Confirm wipe of all user data?",
+                                "  THIS CAN NOT BE UNDONE.",
+                                "",
+                                NULL };
+            title_headers = prepend_title1(headers);
+        }
+
+        char* items[] = { " No",
+                          " No",
+                          " No",
+                          " No",
+                          " No",
+                          " No",
+                          " No",
+                          " Yes -- delete all user data",   // [7]
+                          " No",
+                          " No",
+                          " No",
+                          NULL };
+
+        int chosen_item = get_menu_selection(title_headers, items, 1);
+        if (chosen_item != 7) {
+            return;
+        }
+    }
+
+    ui_print("\n-- Wiping data...\n");
+    device_wipe_data();
+    erase_root1("DATA:");
+#ifdef BOARD_HAS_DATADATA
+    erase_root1("DATADATA:");
+#endif
+    erase_root1("CACHE:");
+    erase_root1("SDEXT:");
+    erase_root1("SDCARD:/.android_secure");
+    ui_print("Data wipe complete.\n");
+}
+
+static int
+erase_root1(const char *root) {
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_show_indeterminate_progress();
+    ui_print("Formatting %s...\n", root);
+    return format_root_device(root);
+}
+
+void show_wipe_menu()
+{
+
+static char* headers[] = {  "Wipe Menu",
+                                "",
+                                NULL
+    };
+
+ static char* list[] = { "~~~> Go Back <~~~",
+                         "Data / Factory Reset",
+                         "Cache",
+                         "Wipe Dalvik Cache",
+                         "Wipe Battery Stats",
+                            NULL
+};
+
+for (;;)
+    {
+        int chosen_item = get_menu_selection(headers, list, 0);
+	if (chosen_item == GO_BACK)
+            break;
+	switch (chosen_item)
+	{
+		case 0:
+		{
+		return;
+		break;
+		}
+		case 1:
+		{
+		wipe_data1(ui_text_visible());
+                if (!ui_text_visible()) return;
+		break;
+		}
+		case 2:
+		{
+		  if (confirm_selection("Confirm wipe?", "Yes - Wipe Cache"))
+                {
+                    ui_print("\n-- Wiping cache...\n");
+                    erase_root1("CACHE:");
+                    ui_print("Cache wipe complete.\n");
+                    if (!ui_text_visible()) return;
+                }
+		break;
+		}
+		case 3:
+		{
+		if (0 != ensure_root_path_mounted("DATA:"))
+                    break;
+                ensure_root_path_mounted("SDEXT:");
+                ensure_root_path_mounted("CACHE:");
+                if (confirm_selection( "Confirm wipe?", "Yes - Wipe Dalvik Cache")) {
+                    __system("rm -r /data/dalvik-cache");
+                    __system("rm -r /cache/dalvik-cache");
+                    __system("rm -r /sd-ext/dalvik-cache");
+                }
+                ensure_root_path_unmounted("DATA:");
+                ui_print("Dalvik Cache wiped.\n");
+                break;
+		}
+		case 4:
+		{
+		if (confirm_selection( "Confirm wipe?", "Yes - Wipe Battery Stats"))
+                    wipe_battery_stats();
+                break;
+		}
+	}
+     }
+}
+
+void updatemenu()
+{
+
+static char* headers[] = {  "Update Menu",
+                                "",
+                                NULL
+    };
+
+ static char* list[] = { "~~~> Go Back <~~~",
+			 "Update.zip from Sdcard",
+                         "Select .zip from Sdcard",
+                         "Toggle Signature Verification",
+                         "Toggle Script Asserts",
+                            NULL
+};
+
+for (;;)
+    {
+        int chosen_item = get_menu_selection(headers, list, 0);
+	if (chosen_item == GO_BACK)
+            break;
+	switch (chosen_item)
+	{
+		case 0:
+		{
+		return;
+		break;
+		}
+		case 1:
+		 {
+                if (confirm_selection("Confirm install?", "Yes - Install /sdcard/update.zip"))
+                    install_zip(SDCARD_PACKAGE_FILE);
+                break;
+            }
+		case 2:
+		{
+		show_choose_zip_menu();
+                break;
+		}
+		case 3:
+		 toggle_signature_check();
+                break;
+		case 4:
+		toggle_script_asserts();
+		break;
+	}
+     }
+}
+
 void show_multi_boot_menu()
 {
     static char* headers[] = {  "MultiBoot Menu",
@@ -997,30 +1341,43 @@ void show_multi_boot_menu()
                                 NULL
     };
 
-    static char* list[] = { "Switch ROM",
+    static char* list[] = { "~~~> Go Back <~~~",
+			    "Switch ROM",
                             "Backup Current ROM",
+			    "Switch Kernel",
                             NULL
     };
 
     for (;;)
     {
         int chosen_item = get_menu_selection(headers, list, 0);
-        if (chosen_item == GO_BACK)
+	if (chosen_item == GO_BACK)
             break;
         switch (chosen_item)
         {
-            case 0:
-              {
+		case 0:
+		{
+		return;
+		break;
+		}
+            
+		case 1:
+                {
 		if (ensure_root_path_mounted("SDCARD:") != 0) {
 		LOGE ("Can't mount /sdcard\n");
 		return;
 		}
+		__system("mkdir /sdcard/Android/data/g3mod/CyanogenMod_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/G3MOD_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/Kyrillos_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/Grigora_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/AOSP_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/DutchMods_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/Kyorarom_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/rom1_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/rom2_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/rom3_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/rom4_ROM");
    		 static char* advancedheaders1[] = {  "Choose Which ROM to Activate",
                                 			NULL
    						 };
@@ -1049,22 +1406,30 @@ void show_multi_boot_menu()
 		}
                 break;
 	}
-            case 1:
+            case 2:
             {
+		__system("mkdir /sdcard/Android/data/g3mod/CyanogenMod_ROM");		
 		__system("mkdir /sdcard/Android/data/g3mod/G3MOD_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/Kyrillos_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/Grigora_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/AOSP_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/DutchMods_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/Kyorarom_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/rom1_ROM");
 		__system("mkdir /sdcard/Android/data/g3mod/rom2_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/rom3_ROM");
+		__system("mkdir /sdcard/Android/data/g3mod/rom4_ROM");
                 backup_rom();
                 break;
             }
-            
+	case 3:
+                {
+		show_choose_zip_menu();
+                break;
+	}
         }
     }
 }
-
 void write_fstab_root(char *root_path, FILE *file)
 {
     RootInfo *info = get_root_info_for_path(root_path);
