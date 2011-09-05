@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Sat Aug 27 02:12:23 2011
+ * Tue Aug 30 22:12:31 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
@@ -632,7 +632,7 @@
 #define CONFIG_S5P6442_MFC 1
 #define CONFIG_VIDEO_V4L1 1
 #define CONFIG_MMC 1
-#define CONFIG_INITRAMFS_SOURCE "/root/Desktop/Dharam/initramfs.cpio"
+#define CONFIG_INITRAMFS_SOURCE "../initramfs.cpio"
 #define CONFIG_IKCONFIG_PROC 1
 #define CONFIG_VIDEO_V4L2 1
 #define CONFIG_S5P64XX_DEV_FIMC0 1
