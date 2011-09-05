@@ -1473,11 +1473,11 @@ int s3c_g3d_probe(struct platform_device *pdev)
 	}
 	
 	s3c_g3d_irq = res->start;
-	//ret = request_irq(res->start, s3c_g3d_isr, 0, pdev->name, pdev);
-	//if (ret != 0) {
-	//	printk(KERN_ERR PFX "failed to install irq (%d)\n", ret);
-	//	goto err_irq;
-	//}
+	ret = request_irq(res->start, s3c_g3d_isr, 0, pdev->name, pdev);
+	if (ret != 0) {
+		printk(KERN_ERR PFX "failed to install irq (%d)\n", ret);
+		goto err_irq;
+	}
 
 	init_waitqueue_head(&waitq);
 
