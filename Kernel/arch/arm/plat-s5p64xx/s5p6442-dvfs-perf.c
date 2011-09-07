@@ -27,21 +27,26 @@
 #include <linux/io.h>
 #include <plat/map.h>
 
-unsigned int S5P6442_MAXFREQLEVEL = 5;
-unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 5;
+unsigned int S5P6442_MAXFREQLEVEL = 10;
+unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 10;
 static unsigned int s5p6442_cpufreq_level = 0;
-unsigned int s5p6442_cpufreq_index = 5;
+unsigned int s5p6442_cpufreq_index = 10;
 static spinlock_t dvfs_lock;
  
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
         {0, 1000*KHZ_T},
-        {1, 800*KHZ_T},
-        {2, 600*KHZ_T},
-        {3, 400*KHZ_T},
-        {4, 200*KHZ_T},
-        {5, CPUFREQ_TABLE_END},
+        {1, 900*KHZ_T},
+        {2, 800*KHZ_T},
+        {3, 700*KHZ_T},
+        {4, 600*KHZ_T},
+        {5, 500*KHZ_T},
+        {6, 400*KHZ_T},
+        {7, 300*KHZ_T},
+        {8, 200*KHZ_T},
+        {9, 100*KHZ_T},
+        {10, CPUFREQ_TABLE_END},
 };
 
 static unsigned char transition_state_666_166MHz[][2] = {
@@ -49,18 +54,28 @@ static unsigned char transition_state_666_166MHz[][2] = {
         {2, 1},
         {3, 2},
         {4, 3},
+        {5, 4},
+        {6, 5},
+        {7, 6},
+        {8, 7},
+        {9, 8},
         {3, 1},
 };
 
 
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
-/* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
+/* frequency, Matched VDD ARM voltage , Matched VDD INT*/
         {1000000,1400, 1400, 0},
-        {800000, 1300, 1300, 1},
-        {600000, 1250, 1250, 2},
-        {400000, 1200, 1200, 3},
-        {200000, 1200, 1200, 4},
+        {900000, 1350, 1300, 1},
+        {800000, 1300, 1300, 2},
+        {700000, 1275, 1300, 3},
+        {600000, 1250, 1250, 4},
+        {500000, 1225, 1200, 5},
+        {400000, 1200, 1200, 6},
+        {300000, 1200, 1200, 7},
+        {200000, 1200, 1200, 8},
+        {100000, 1200, 1200, 9},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -449,13 +464,13 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 
 	if(policy->cpu != 0)
 		return -EINVAL;
-	policy->min = s5p6442_freq_table[S5P6442_FREQ_TAB][4].frequency;
+	policy->min = s5p6442_freq_table[S5P6442_FREQ_TAB][9].frequency;
 	policy->cur = policy->max = s5p6442_getspeed(0);
 //	printk("---> [s5p6442_cpu_init] : getspeed(0) : %d\n", s5p6442_getspeed(0));
 
 	S5P6442_FREQ_TAB = 0;
-	S5P6442_MAXFREQLEVEL_ONLYCPU = 5;
-	S5P6442_MAXFREQLEVEL = 5;
+	S5P6442_MAXFREQLEVEL_ONLYCPU = 10;
+	S5P6442_MAXFREQLEVEL = 10;
 
   //      printk("##s5p6442###%s::max_freq %d FREQ_TAB %d\n", __FUNCTION__, policy->max, S5P6442_FREQ_TAB);
 	s5p6442_cpufreq_level = S5P6442_MAXFREQLEVEL;
