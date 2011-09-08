@@ -678,7 +678,7 @@ static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy, char 
 	int i;
 	char *table = buf;
 
-	for( i=0; i<11; i++ )
+	for( i=0; i<12; i++ )
 	{
 		table += sprintf(table, "%d %d %d\n", frequency_match_666_166MHz[i][0], frequency_match_666_166MHz[i][1], frequency_match_666_166MHz[i][1] - FakeShmoo_UV_mV_Ptr[i] );
 	}
@@ -2152,7 +2152,7 @@ static int __init cpufreq_core_init(void)
 
 #ifdef USE_FAKE_SHMOO
 	// Allocate some memory for the voltage tab
-	FakeShmoo_UV_mV_Ptr = kzalloc(sizeof(int)*(8), GFP_KERNEL);
+	FakeShmoo_UV_mV_Ptr = kzalloc(sizeof(int)*(12), GFP_KERNEL);
 #endif // USE_FAKE_SHMOO
 
 	for_each_possible_cpu(cpu) {
