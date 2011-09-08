@@ -40,6 +40,9 @@ loglevel 3
         
     insmod /lib/modules/vibrator.ko
 
+# install tun.ko tunneling service
+    insmod /lib/modules/tun.ko
+
 # for fmradio
     insmod /lib/modules/Si4709_driver.ko
 
