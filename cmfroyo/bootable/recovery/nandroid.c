@@ -541,6 +541,52 @@ int nandroid_restore_system(const char* backup_path, int restore_system)
     return 0;
 }
 
+int nandroid_restore_data(const char* backup_path, int restore_data)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_show_indeterminate_progress();
+    yaffs_files_total = 0;
+
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    char tmp[PATH_MAX];
+
+    int ret;
+
+    if (restore_data && 0 != (ret = nandroid_restore_partition(backup_path, "DATA:")))
+        return ret;
+
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nRestore complete!\n");
+    return 0;
+}
+
+int nandroid_restore_sd(const char* backup_path, int restore_sdext)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_show_indeterminate_progress();
+    yaffs_files_total = 0;
+
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    char tmp[PATH_MAX];
+
+    int ret;
+
+    if (restore_sdext && 0 != (ret = nandroid_restore_partition(backup_path, "SDEXT:")))
+        return ret;
+
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nRestore complete!\n");
+    return 0;
+}
+
 void nandroid_generate_timestamp_path(char* backup_path)
 {
     time_t t = time(NULL);
