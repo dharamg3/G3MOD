@@ -272,6 +272,7 @@ struct timer_list       g3d_pm_timer;
 #define FGGB_PIPEMASK		0x48
 #define FGGB_HOSTINTERFACE	0xc000
 
+
 G3D_CONFIG_STRUCT g3d_config={
 #ifdef CONFIG_PLAT_S3C64XX
 	S3C_G3D_PA, 	// pool buffer addr
@@ -287,7 +288,7 @@ G3D_CONFIG_STRUCT g3d_config={
 	S3C_G3D_PA,     // pool buffer addr
 	0x90000,    // pool_buffer_size
 	1,  // hardware_has_single_pipeline
-	0,   // is_dma_available
+	1,   // is_dma_available
 #else
 #error "Hardware did not support 3D funtions."
 #endif
@@ -298,7 +299,7 @@ G3D_CONFIG_STRUCT g3d_config={
 #define G3D_IOCTL_MAGIC		'S'
 #define WAIT_FOR_FLUSH		_IO(G3D_IOCTL_MAGIC, 100)
 #define GET_CONFIG 		_IO(G3D_IOCTL_MAGIC, 101)
-//#define START_DMA_BLOCK 	_IO(G3D_IOCTL_MAGIC, 102)
+#define START_DMA_BLOCK 	_IO(G3D_IOCTL_MAGIC, 102)
 
 #define S3C_3D_MEM_ALLOC		_IOWR(G3D_IOCTL_MAGIC, 310, struct s3c_3d_mem_alloc)
 #define S3C_3D_MEM_FREE			_IOWR(G3D_IOCTL_MAGIC, 311, struct s3c_3d_mem_alloc)
@@ -869,6 +870,9 @@ void s3c_g3d_release_chunk(unsigned int phy_addr, int size)
 
 	printRemainChunk();	
 }
+static struct s3c2410_dma_client s3c6442_3d_dma_client = {
+	.name		= "s3c6442-3d-dma",
+};
 
 static int s3c_g3d_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -878,6 +882,10 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file, unsigned int cm
 	struct mm_struct *mm = current->mm;
 	struct s3c_3d_mem_alloc param;
 	struct s3c_3d_pm_status param_pm;
+	DMA_BLOCK_STRUCT dma_block;
+	s3c_3d_dma_info dma_info;
+
+
 
 	int timer;
 	
@@ -928,7 +936,7 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file, unsigned int cm
 		}
 		break;
 
-#if 0
+
 	case START_DMA_BLOCK:
 		if (copy_from_user(&dma_block,(void *)arg,sizeof(DMA_BLOCK_STRUCT))) {
 			printk("G3D: copy_to_user failed to get dma_block\n");
@@ -958,7 +966,7 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file, unsigned int cm
 
 		dma_3d_done = &complete;
 
-		if (s3c2410_dma_request(DMACH_3D_M2M, &s3c6410_3d_dma_client, NULL)) {
+		if (s3c2410_dma_request(DMACH_3D_M2M, &s3c6442_3d_dma_client, NULL)) {
 			printk(KERN_WARNING "Unable to get DMA channel(DMACH_3D_M2M).\n");
 			return -EFAULT;
 		}
@@ -976,10 +984,10 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file, unsigned int cm
 		wait_for_completion(&complete);
 	//	printk("dma operation is performed\n");
 
-		s3c2410_dma_free(DMACH_3D_M2M, &s3c6410_3d_dma_client);
+		s3c2410_dma_free(DMACH_3D_M2M, &s3c6442_3d_dma_client);
 
 		break;
-#endif
+
 
 
 
@@ -1690,5 +1698,3 @@ module_exit(s3c_g3d_exit);
 MODULE_AUTHOR("lee@samsung.com");
 MODULE_DESCRIPTION("S3C G3D Device Driver");
 MODULE_LICENSE("GPL");
-
-
