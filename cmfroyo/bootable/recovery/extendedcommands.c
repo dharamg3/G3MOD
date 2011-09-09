@@ -829,6 +829,7 @@ void backup_rom()
     };
 
      static char* list[] = {"~~~> Go Back <~~~",
+			"CyanogenMod 7",
 			"CyanogenMod 6.2",			
 			"G3MOD",
 			"Kyrillos",
@@ -836,6 +837,7 @@ void backup_rom()
 			"Stylooo AOSP Style",
 			"DutchMods",
 			"Kyorarom",
+			"Indroid",
 			"Misc Rom1",
 			"Misc Rom2",
 			"Misc Rom3",
@@ -855,77 +857,91 @@ void backup_rom()
 		return;
 		break;
 	    }
-            case 1:
+	    case 1:
 	    {
             char backup_path[PATH_MAX];
-            sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/CyanogenMod_ROM");
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/CyanogenMod7_ROM");
             nandroid_backup_system(backup_path);
     	    break;
        	    }
-	    case 2:
+            case 2:
 	    {
             char backup_path[PATH_MAX];
-            sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/G3MOD_ROM");
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/CyanogenMod6_ROM");
             nandroid_backup_system(backup_path);
     	    break;
        	    }
 	    case 3:
 	    {
             char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/G3MOD_ROM");
+            nandroid_backup_system(backup_path);
+    	    break;
+       	    }
+	    case 4:
+	    {
+            char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/Kyrillos_ROM");
             nandroid_backup_system(backup_path);
             break;
     	    }	
-            case 4:
+            case 5:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/Grigora_ROM");
             nandroid_backup_system(backup_path);
             break;
     	    }
-	    case 5:
+	    case 6:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/AOSP_ROM");
             nandroid_backup_system(backup_path);
             break;
     	    }
-	    case 6:
+	    case 7:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/DutchMods_ROM");
             nandroid_backup_system(backup_path);
     	    break;
        	    }
-	    case 7:
+	    case 8:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/Kyorarom_ROM");
             nandroid_backup_system(backup_path);
     	    break;
        	    }
-	    case 8:
+	    case 9:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/Indroid_ROM");
+            nandroid_backup_system(backup_path);
+    	    break;
+       	    }
+	    case 10:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/rom1_ROM");
             nandroid_backup_system(backup_path);
             break;
     	    }
-	    case 9:
+	    case 11:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/rom2_ROM");
             nandroid_backup_system(backup_path);
             break;
     	    }
-	    case 10:
+	    case 12:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/rom3_ROM");
             nandroid_backup_system(backup_path);
             break;
     	    }
-	    case 11:
+	    case 13:
 	    {
             char backup_path[PATH_MAX];
             sprintf(backup_path, "/sdcard/Android/data/g3mod/roms/rom4_ROM");
@@ -1427,6 +1443,7 @@ void create_rom_dirs() {
 	__system("mkdir /sdcard/Android/data/g3mod/roms/AOSP_ROM");
 	__system("mkdir /sdcard/Android/data/g3mod/roms/DutchMods_ROM");
 	__system("mkdir /sdcard/Android/data/g3mod/roms/Kyorarom_ROM");
+	__system("mkdir /sdcard/Android/data/g3mod/roms/Indroid_ROM");
 	__system("mkdir /sdcard/Android/data/g3mod/roms/rom1_ROM");
 	__system("mkdir /sdcard/Android/data/g3mod/roms/rom2_ROM");
 	__system("mkdir /sdcard/Android/data/g3mod/roms/rom3_ROM");
