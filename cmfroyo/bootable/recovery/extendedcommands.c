@@ -935,7 +935,62 @@ void backup_rom()
 	}
 }
 }
+void backup_data()
+{
+    static char* headers[] = {  "Select Your Current ROM",
+                                "",
+                                NULL
+    };
 
+     static char* list[] = {"~~~> Go Back <~~~",
+			"Samsung Based Froyo ROM",
+			"CyanogenMod 6.2",			
+			"CyanogenMod 7",
+                            NULL
+    };
+
+    for (;;)
+    {
+        int chosen_item = get_menu_selection(headers, list, 0);
+	 if (chosen_item == GO_BACK)
+            break;
+        switch (chosen_item)
+        {
+	    case 0:
+	    {
+		return;
+		break;
+	    }
+            case 1:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/data/Froyo_DATA");
+            nandroid_backup_data(backup_path);
+	    nandroid_backup_sd(backup_path);
+	    return;
+    	    break;
+       	    }
+	    case 2:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/data/CM6_DATA");
+            nandroid_backup_data(backup_path);
+	    nandroid_backup_sd(backup_path);
+	    return;
+    	    break;
+       	    }
+	    case 3:
+	    {
+            char backup_path[PATH_MAX];
+            sprintf(backup_path, "/sdcard/Android/data/g3mod/data/CM7_DATA");
+            nandroid_backup_data(backup_path);
+	    nandroid_backup_sd(backup_path);
+	    return;
+            break;
+    	    }	
+	}
+}
+}
 void wipe_battery_stats()
 {
     ensure_root_path_mounted("DATA:");
@@ -1382,288 +1437,127 @@ void create_rom_dirs() {
 	__system("mkdir /sdcard/Android/data/g3mod/data/CM6_DATA");
 	__system("mkdir /sdcard/Android/data/g3mod/data/CM7_DATA");
 	
-	//Dalvik-Cache Backup Dir
-	__system("mkdir /sdcard/Android/data/g3mod/data/Froyo_DALVIK");
-	__system("mkdir /sdcard/Android/data/g3mod/data/CM6_DALVIK");
-	__system("mkdir /sdcard/Android/data/g3mod/data/CM7_DALVIK");
-	
 	//Kernel dir
 	__system("mkdir /sdcard/Android/data/g3mod/kernel/Froyo");
 	__system("mkdir /sdcard/Android/data/g3mod/kernel/CM6");
 	__system("mkdir /sdcard/Android/data/g3mod/kernel/CM7");
 }
 
-void show_multi_boot_menu() {
+void show_multi_boot_menu()
+{
+    static char* headers[] = {  "MultiBoot Menu",
+                                "",
+                                NULL
+    };
 
-	int which_to_restore = 0; // 0 = stock, 1 = CM6, 2 = CM7
+    static char* list[] = { "~~~> Go Back <~~~",
+			    "Switch ROM",
+                            "Backup Current ROM",
+			    "Switch Kernel",
+			    "Backup Data",
+			    "Restore Data",
+                            NULL
+    };
 
-	static char* headers[] = {  "MultiBoot Menu", "", NULL };
-	static char* list[] = { "~~~> Go Back <~~~", "Switch ROM", "Backup Current ROM", "Switch Kernel", NULL};
-	
-	for (;;) {
-		int chosen_item = get_menu_selection(headers, list, 0);
-		if (chosen_item == GO_BACK)
-			break;	
-		switch (chosen_item) {
-			case 0:
-			{
-				return;
-				break;
-			}		
-			case 1:
-			{
-				if (ensure_root_path_mounted("SDCARD:") != 0) {
-					LOGE ("Can't mount /sdcard\n");
-					return;
-				}
-				create_rom_dirs();
+    for (;;)
+    {	
+	create_rom_dirs();
+        int chosen_item = get_menu_selection(headers, list, 0);
+	if (chosen_item == GO_BACK)
+            break;
+        switch (chosen_item)
+        {
+		case 0:
+		{
+		return;
+		break;
+		}
+            
+		case 1:
+                {
+		if (ensure_root_path_mounted("SDCARD:") != 0) {
+		LOGE ("Can't mount /sdcard\n");
+		return;
+		}
 		
-				static char* advancedheaders1[] = {  "Choose Which ROM to Activate", NULL };
-				
-				char* file = choose_file_menu("/sdcard/Android/data/g3mod/roms/", NULL, advancedheaders1);
-				
-				if (file == NULL) {
-					return;
-				} else if (strcmp(file, "/sdcard/Android/data/g3mod/roms/CyanogenMod6_ROM") != 0) {
-					which_to_restore = 1;
-				} else if (strcmp(file, "/sdcard/Android/data/g3mod/roms/CyanogenMod7_ROM") != 0) {
-					which_to_restore = 2;
-				}
-				
-				static char* headers[] = {  "Activating ROM", "", NULL };
-				static char* confirm_restore  = "Confirm activate?";
-				
-				if (confirm_selection(confirm_restore, "Yes - Activate ROM")) {	
-				
-					static char* headers2[] = { "Where are you?", "", NULL };
-					static char* list2[] = { "~~~> Go Back <~~~", "Froyo", "Cyanogenmod 6", "Cyanogenmod 7" };
-				
-					if (which_to_restore == 0) {
-						//going to froyo
-						// ask if current rom is stock or cmX
-						for (;;) {
-							int chosen_option = get_menu_selection(headers2, list2, 0);
-							if (chosen_option == GO_BACK) {
-								break;
-							} else if (chosen_option == 0) {
-								break;
-								return;
-							} else if (chosen_option == 2) {
-								// We are on CM6
-								// backup data
-								nandroid_backup_data("/sdcard/Android/data/g3mod/data/CyanogenMod6_DATA");
-								nandroid_backup_sd("/sdcard/Android/data/g3mod/data/CyanogenMod6_DATA");
-								// wipe data
-								wipe_data1(ui_text_visible());
-								if (!ui_text_visible()) return;
-								// wipe dalvik-cache
-								if (0 != ensure_root_path_mounted("DATA:"))
-									break;
-								ensure_root_path_mounted("SDEXT:");
-								ensure_root_path_mounted("CACHE:");
-								__system("rm -r /data/dalvik-cache");
-								__system("rm -r /cache/dalvik-cache");
-								__system("rm -r /sd-ext/dalvik-cache");
-								ensure_root_path_unmounted("DATA:");
-								ui_print("Dalvik Cache wiped.\n");
-								// restore froyo data
-								nandroid_restore_data("/sdcard/Android/data/g3mod/data/Froyo_DATA",1);
-								nandroid_restore_sd("/sdcard/Android/data/g3mod/data/Froyo_DATA",1);
-								nandroid_restore_system(file,1);
-								//restore dalvik-cache
-							} else if (chosen_option == 3) {
-								// We are on CM7
-								// backup data
-								nandroid_backup_data("/sdcard/Android/data/g3mod/data/CyanogenMod7_DATA");
-								nandroid_backup_sd("/sdcard/Android/data/g3mod/data/CyanogenMod7_DATA");
-								// wipe data
-								wipe_data1(ui_text_visible());
-								if (!ui_text_visible()) return;
-								// wipe dalvik-cache
-								if (0 != ensure_root_path_mounted("DATA:"))
-									break;
-								ensure_root_path_mounted("SDEXT:");
-								ensure_root_path_mounted("CACHE:");
-								__system("rm -r /data/dalvik-cache");
-								__system("rm -r /cache/dalvik-cache");
-								__system("rm -r /sd-ext/dalvik-cache");
-								ensure_root_path_unmounted("DATA:");
-								ui_print("Dalvik Cache wiped.\n");
-								//restore froyo data
-								nandroid_restore_data("/sdcard/Android/data/g3mod/data/Froyo_DATA",1);
-								nandroid_restore_sd("/sdcard/Android/data/g3mod/data/Froyo_DATA",1);
-								nandroid_restore_system(file,1);
-							} else if (chosen_option == 1) {
-								//nothing to backup/restore/wipe, as we are on froyo stock
-								nandroid_restore_system(file,1);
-							}
-						break;
-						}
-					} else if (which_to_restore == 1) {
-						//going to restore CM6
-						// ask if current rom is stock or cm7
-						static char* headers2[] = { "Where are you?", "", NULL };
-						static char* list2[] = { "~~~> Go Back <~~~", "Froyo", "Cyanogenmod 7" };
-						for (;;) {
-							int chosen_option = get_menu_selection(headers2, list2, 0);
-							if (chosen_option == GO_BACK) {
-								break;
-							} else if (chosen_option == 0) {
-								break;
-								return;
-							} else if (chosen_option == 1) {
-								// we are on froyo
-								//backup froyo data
-								nandroid_backup_data("/sdcard/Android/data/g3mod/data/Froyo_DATA");
-								nandroid_backup_sd("/sdcard/Android/data/g3mod/data/Froyo_DATA");
-								//wipe data
-								wipe_data1(ui_text_visible());
-								if (!ui_text_visible()) return;
-								// wipe dalvik-cache
-								if (0 != ensure_root_path_mounted("DATA:"))
-									break;
-								ensure_root_path_mounted("SDEXT:");
-								ensure_root_path_mounted("CACHE:");
-								__system("rm -r /data/dalvik-cache");
-								__system("rm -r /cache/dalvik-cache");
-								__system("rm -r /sd-ext/dalvik-cache");
-								ensure_root_path_unmounted("DATA:");
-								ui_print("Dalvik Cache wiped.\n");
-							} else if (chosen_option == 2) {
-								// we are on CM7
-								//backup data
-								nandroid_backup_data("/sdcard/Android/data/g3mod/data/CyanogenMod7_DATA");
-								nandroid_backup_sd("/sdcard/Android/data/g3mod/data/CyanogenMod7_DATA");
-								//wipe data
-								wipe_data1(ui_text_visible());
-								if (!ui_text_visible()) return;
-								// wipe dalvik-cache
-								if (0 != ensure_root_path_mounted("DATA:"))
-									break;
-								ensure_root_path_mounted("SDEXT:");
-								ensure_root_path_mounted("CACHE:");
-								__system("rm -r /data/dalvik-cache");
-								__system("rm -r /cache/dalvik-cache");
-								__system("rm -r /sd-ext/dalvik-cache");
-								ensure_root_path_unmounted("DATA:");
-								ui_print("Dalvik Cache wiped.\n");
-							}
-							//restore CM6
-							nandroid_restore_data("/sdcard/Android/data/g3mod/data/CyanogenMod6_DATA",1);
-							nandroid_restore_sd("/sdcard/Android/data/g3mod/data/CyanogenMod6_DATA",1);
-							nandroid_restore_system(file,1);
-							//restore dalvik-cache
-							if (0 != ensure_root_path_mounted("DATA:"))
-								break;
-							ensure_root_path_mounted("SDEXT:");
-							ensure_root_path_mounted("CACHE:");
-							__system("cp -r /sdcard/Android/data/g3mod/data/CM6_DALVIK/* /data/dalvik-cache/");
-							__system("cp -r /sdcard/Android/data/g3mod/data/CM6_DALVIK/* /cache/dalvik-cache/");
-							__system("cp -r /sdcard/Android/data/g3mod/data/CM6_DALVIK/* /sd-ext/dalvik-cache/");
-							ensure_root_path_unmounted("DATA:");
-							break;
-						}
-					} else if (which_to_restore == 2) {
-						//going to restore CM7
-						// ask if current rom is stock or cm7
-						static char* headers2[] = { "Where are you?", "", NULL };
-						static char* list2[] = { "~~~> Go Back <~~~", "Froyo", "Cyanogenmod 6" };
-						for (;;) {
-							int chosen_option = get_menu_selection(headers2, list2, 0);
-							if (chosen_option == GO_BACK) {
-								break;
-							} else if (chosen_option == 0) {
-								break;
-								return;
-							} else if (chosen_option == 1) {
-								// we are on froyo
-								//backup froyo data
-								nandroid_backup_data("/sdcard/Android/data/g3mod/data/Froyo_DATA");
-								nandroid_backup_sd("/sdcard/Android/data/g3mod/data/Froyo_DATA");
-								// backup Dalvik-cache
-								if (0 != ensure_root_path_mounted("DATA:"))
-									break;
-								ensure_root_path_mounted("SDEXT:");
-								ensure_root_path_mounted("CACHE:");
-								__system("cp -r /data/dalvik-cache/* /sdcard/Android/data/g3mod/data/Froyo_DALVIK/");
-								__system("cp -r /cache/dalvik-cache/* /sdcard/Android/data/g3mod/data/Froyo_DALVIK/");
-								__system("cp -r /sd-ext/dalvik-cache/* /sdcard/Android/data/g3mod/data/Froyo_DALVIK/");
-								ensure_root_path_unmounted("DATA:");
-								//wipe data
-								wipe_data1(ui_text_visible());
-								if (!ui_text_visible()) return;
-								// wipe dalvik-cache
-								if (0 != ensure_root_path_mounted("DATA:"))
-									break;
-								ensure_root_path_mounted("SDEXT:");
-								ensure_root_path_mounted("CACHE:");
-								__system("rm -r /data/dalvik-cache");
-								__system("rm -r /cache/dalvik-cache");
-								__system("rm -r /sd-ext/dalvik-cache");
-								ensure_root_path_unmounted("DATA:");
-								ui_print("Dalvik Cache wiped.\n");
-							} else if (chosen_option == 2) {
-								// we are on CM6
-								// backup data
-								nandroid_backup_data("/sdcard/Android/data/g3mod/data/CyanogenMod6_DATA");
-								nandroid_backup_sd("/sdcard/Android/data/g3mod/data/CyanogenMod6_DATA");
-								// backup Dalvik-cache
-								if (0 != ensure_root_path_mounted("DATA:"))
-									break;
-								ensure_root_path_mounted("SDEXT:");
-								ensure_root_path_mounted("CACHE:");
-								__system("cp -r /data/dalvik-cache/* /sdcard/Android/data/g3mod/data/CM6_DALVIK/");
-								__system("cp -r /cache/dalvik-cache/* /sdcard/Android/data/g3mod/data/CM6_DALVIK/");
-								__system("cp -r /sd-ext/dalvik-cache/* /sdcard/Android/data/g3mod/data/CM6_DALVIK/");
-								ensure_root_path_unmounted("DATA:");
-								// wipe data
-								wipe_data1(ui_text_visible());
-								if (!ui_text_visible()) return;
-								// wipe dalvik-cache
-								if (0 != ensure_root_path_mounted("DATA:"))
-									break;
-								ensure_root_path_mounted("SDEXT:");
-								ensure_root_path_mounted("CACHE:");
-								__system("rm -r /data/dalvik-cache");
-								__system("rm -r /cache/dalvik-cache");
-								__system("rm -r /sd-ext/dalvik-cache");
-								ensure_root_path_unmounted("DATA:");
-								ui_print("Dalvik Cache wiped.\n");
-							}
-						}	
-						//restore CM7
-						nandroid_restore_data("/sdcard/Android/data/g3mod/data/CyanogenMod7_DATA",1);
-						nandroid_restore_sd("/sdcard/Android/data/g3mod/data/CyanogenMod7_DATA",1);
-						nandroid_restore_system(file,1);
-						//restore dalvik-cache
-						if (0 != ensure_root_path_mounted("DATA:"))
-							break;
-						ensure_root_path_mounted("SDEXT:");
-						ensure_root_path_mounted("CACHE:");
-						__system("cp -r /sdcard/Android/data/g3mod/data/CM7_DALVIK/* /data/dalvik-cache/");
-						__system("cp -r /sdcard/Android/data/g3mod/data/CM7_DALVIK/* /cache/dalvik-cache/");
-						__system("cp -r /sdcard/Android/data/g3mod/data/CM7_DALVIK/* /sd-ext/dalvik-cache/");
-						ensure_root_path_unmounted("DATA:");
-						break;
-					}
-				}
-			break;
+   		static char* advancedheaders1[] = {  "Choose Which ROM to Activate",
+                                			NULL
+   						 };
+  		char* file = choose_file_menu("/sdcard/Android/data/g3mod/roms/", NULL, advancedheaders1);
+   		 if (file == NULL)
+     		   return;
+
+    		static char* headers[] = {  "Activating ROM",
+                           		     "",
+                            		    NULL
+  					  };
+
+    		static char* confirm_restore  = "Confirm activate?";
+       	        if (confirm_selection(confirm_restore, "Yes - Activate ROM"))
+		{		
+		nandroid_restore_system(file,1);
+		
 		}
-		case 2:
-		{
-			backup_rom();
-			break;
-		}
-		case 3:
-		{
-			// show_choose_zip_menu();
-			show_choose_kernel_menu();
-			break;
-		}
+		
+		if (0 != ensure_root_path_mounted("DATA:"))
+                    break;
+                ensure_root_path_mounted("SDEXT:");
+                ensure_root_path_mounted("CACHE:");
+                    __system("rm -r /data/dalvik-cache");
+                    __system("rm -r /cache/dalvik-cache");
+                    __system("rm -r /sd-ext/dalvik-cache");
+                ensure_root_path_unmounted("DATA:");
+                ui_print("Dalvik Cache wiped.\n");
+
+		show_choose_kernel_menu();
+		
+                break;
 	}
+            case 2:
+            {
+                backup_rom();
+                break;
+            }
+	case 3:
+                {
+		show_choose_kernel_menu();
+                break;
+	}
+	case 4:
+                {
+		backup_data();
+                break;
+	}
+	case 5:
+                {
+		if (ensure_root_path_mounted("SDCARD:") != 0) {
+		LOGE ("Can't mount /sdcard\n");
+		return;
+		}
+		
+   		static char* advancedheaders1[] = {  "Choose Which Data to Restore",
+                                			NULL
+   						 };
+  		char* file = choose_file_menu("/sdcard/Android/data/g3mod/data/", NULL, advancedheaders1);
+   		 if (file == NULL)
+     		   return;
+
+    		static char* headers[] = {  "Restoring Data",
+                           		     "",
+                            		    NULL
+  					  };
+
+    		static char* confirm_restore  = "Confirm restore?";
+       	        if (confirm_selection(confirm_restore, "Yes - Restore Data"))
+		{		
+		nandroid_restore_data(file,1);
+		nandroid_restore_sd(file,1);
+		}
+                break;
+	}
+        }
+    }
 }
-}
-/* END Modified by moikop */
 
 void write_fstab_root(char *root_path, FILE *file)
 {

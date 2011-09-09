@@ -388,63 +388,6 @@ get_menu_selection(char** headers, char** items, int menu_only) {
 }
 
 static void
-prompt_and_wait() {
-    char** headers = prepend_title(MENU_HEADERS);
-    
-    for (;;) {
-        finish_recovery(NULL);
-        ui_reset_progress();
-
-        allow_display_toggle = 1;
-        int chosen_item = get_menu_selection(headers, MENU_ITEMS, 0);
-        allow_display_toggle = 0;
-
-        // device-specific code may take some action here.  It may
-        // return one of the core actions handled in the switch
-        // statement below.
-        chosen_item = device_perform_action(chosen_item);
-
-        switch (chosen_item) {
-            case ITEM_POWER:
-		powermenu();
-		break;
-	
-            case ITEM_UPDATE:
-                updatemenu();
-                break;
-
-            case ITEM_MULTIBOOT:
-                show_multi_boot_menu();
-                break;
-
-            case ITEM_WIPE:
-               show_wipe_menu();
-                break;
-
-            case ITEM_NANDROID:
-                show_nandroid_menu();
-                break;
-
-            case ITEM_MOUNTS:
-                show_partition_menu();
-                break;
-
-            case ITEM_ADVANCED:
-                show_advanced_menu();
-                break;
-        }
-    }
-}
-
-static int
-erase_root(const char *root) {
-    ui_set_background(BACKGROUND_ICON_INSTALLING);
-    ui_show_indeterminate_progress();
-    ui_print("Formatting %s...\n", root);
-    return format_root_device(root);
-}
-
-static void
 wipe_data(int confirm) {
     if (confirm) {
         static char** title_headers = NULL;
@@ -486,6 +429,72 @@ wipe_data(int confirm) {
     erase_root1("SDEXT:");
     erase_root1("SDCARD:/.android_secure");
     ui_print("Data wipe complete.\n");
+}
+
+static void
+prompt_and_wait() {
+    char** headers = prepend_title(MENU_HEADERS);
+    
+    for (;;) {
+        finish_recovery(NULL);
+        ui_reset_progress();
+
+        allow_display_toggle = 1;
+        int chosen_item = get_menu_selection(headers, MENU_ITEMS, 0);
+        allow_display_toggle = 0;
+
+        // device-specific code may take some action here.  It may
+        // return one of the core actions handled in the switch
+        // statement below.
+        chosen_item = device_perform_action(chosen_item);
+
+        switch (chosen_item) {
+	    case ITEM_REBOOT:
+		reboot(RB_AUTOBOOT);
+		break;	    
+		
+            case ITEM_POWER:
+		powermenu();
+		break;
+	
+            case ITEM_UPDATE:
+                updatemenu();
+                break;
+
+            case ITEM_MULTIBOOT:
+                show_multi_boot_menu();
+                break;
+
+            case ITEM_WIPE_DATA:
+               wipe_data(ui_text_visible());
+                if (!ui_text_visible()) return;
+                break;
+
+            case ITEM_WIPE:
+               show_wipe_menu();
+                break;
+
+            case ITEM_NANDROID:
+                show_nandroid_menu();
+                break;
+
+            case ITEM_MOUNTS:
+                show_partition_menu();
+                break;
+
+            case ITEM_ADVANCED:
+                show_advanced_menu();
+                break;
+        }
+    }
+}
+
+static int
+erase_root(const char *root) {
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_show_indeterminate_progress();
+    ui_print("Formatting %s...\n", root);
+    return format_root_device(root);
 }
 
 static int

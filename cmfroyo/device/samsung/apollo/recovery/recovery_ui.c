@@ -22,13 +22,15 @@
 
 char* MENU_HEADERS[] = { NULL };
 
-char* MENU_ITEMS[] = { "Power Menu",
+char* MENU_ITEMS[] = { "Reboot",
+		       "Extended Power Menu",
                        "Update.zip",
                        "Multiboot",
-                       "Wipe",
+		       "Wipe Data / Factory Reset",
+                       "Extended Wipe Menu",
                        "Backup & Restore",
 		       "Mounts & Storage",
-		       "Advanced",
+		       "Miscellaneous",
                        NULL };
 
 int device_recovery_start() {
