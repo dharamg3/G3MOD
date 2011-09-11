@@ -50,7 +50,7 @@ loglevel 3
 
     insmod /lib/modules/param.ko
     
-    insmod /lib/modules/vibrator.ko
+    insmod /lib/modules/g3_vibrator_module.ko
 
 # install tun.ko tunneling service
     insmod /lib/modules/tun.ko
