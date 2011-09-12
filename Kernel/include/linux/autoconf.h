@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Sun Sep 11 20:09:42 2011
+ * Mon Sep 12 17:07:08 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
@@ -537,6 +537,7 @@
 #define CONFIG_FB_S3C_S6D04D1 1
 #define CONFIG_VIDEO_DEV 1
 #define CONFIG_WIRELESS_EXT_SYSFS 1
+#define CONFIG_CPU_FREQ_GOV_INTERACTIVEX 1
 #define CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE 1
 #define CONFIG_FB_S3C_BPP_24 1
 #define CONFIG_MODULE_FORCE_UNLOAD 1
