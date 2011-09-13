@@ -441,31 +441,42 @@ cd /
 
 # Identify CyanogenMod or Samsung
 mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
-if [ -f /system/app/CMParts.apk ]
+
+androidfinger=`grep "ro.build.fingerprint" /system/build.prop`
+
+echo "System detected: $androidfinger" >> /g3mod.log
+if [ "$androidfinger" == "ro.build.fingerprint=samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]
 then
-	sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0777 wifi wifi|" /init.rc
-	sed -i "s|g3_wifi_data_02|chown wifi wifi /data/misc/wifi|" /init.rc
-	sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi|" /init.rc
-	sed -i "s|g3_wifi_data_04|mkdir /data/system 0775 system system|" /init.rc
-	sed -i "s|g3_wifi_data_05|mkdir /data/system/wpa_supplicant 0777 wifi wifi|" /init.rc
-	sed -i "s|g3_wifi_data_06|chown wifi wifi /data/system/wpa_supplicant|" /init.rc
-	sed -i "s|g3_wifi_data_07|chmod 0777 /data/system/wpa_supplicant|" /init.rc
-	sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf -dd|" /init.rc
-	sed -i "s|g3_vibrator_module|vibrator-cm6|" /init.rc
-
-	echo "System booted with CyanogenMod kernel mode" >> /g3mod.log
+		echo "System booted with CyanogenMod 7 Kernel mode" >> /g3mod.log
+		
 else
-	sed -i "s|g3_wifi_data_01|mkdir /data/wifi 0777 wifi wifi|" /init.rc
-	sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0771 wifi wifi|" /init.rc
-	sed -i "s|g3_wifi_data_01|chmod 0777 /data/misc/wifi/|" /init.rc
-	sed -i "s|g3_wifi_data_04|# Line not needed for Samsung|" /init.rc
-	sed -i "s|g3_wifi_data_05|# Line not needed for Samsung|" /init.rc
-	sed -i "s|g3_wifi_data_06|# Line not needed for Samsung|" /init.rc
-	sed -i "s|g3_wifi_data_07|# Line not needed for Samsung|" /init.rc
-	sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/wifi/bcm_supp.conf|" /init.rc
-	sed -i "s|g3_vibrator_module|vibrator-sam|" /init.rc
+	if [ "$androidfinger" == "ro.build.fingerprint=samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]
 
-	echo "System booted with Samsung kernel mode" >> /g3mod.log
+	then
+		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0777 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_02|chown wifi wifi /data/misc/wifi|" /init.rc
+		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi|" /init.rc
+		sed -i "s|g3_wifi_data_04|mkdir /data/system 0775 system system|" /init.rc
+		sed -i "s|g3_wifi_data_05|mkdir /data/system/wpa_supplicant 0777 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_06|chown wifi wifi /data/system/wpa_supplicant|" /init.rc
+		sed -i "s|g3_wifi_data_07|chmod 0777 /data/system/wpa_supplicant|" /init.rc
+		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf -dd|" /init.rc
+		sed -i "s|g3_vibrator_module|vibrator-cm6|" /init.rc
+
+		echo "System booted with CyanogenMod 6 kernel mode" >> /g3mod.log
+	else
+		sed -i "s|g3_wifi_data_01|mkdir /data/wifi 0777 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0771 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_01|chmod 0777 /data/misc/wifi/|" /init.rc
+		sed -i "s|g3_wifi_data_04|# Line not needed for Samsung|" /init.rc
+		sed -i "s|g3_wifi_data_05|# Line not needed for Samsung|" /init.rc
+		sed -i "s|g3_wifi_data_06|# Line not needed for Samsung|" /init.rc
+		sed -i "s|g3_wifi_data_07|# Line not needed for Samsung|" /init.rc
+		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/wifi/bcm_supp.conf|" /init.rc
+		sed -i "s|g3_vibrator_module|vibrator-sam|" /init.rc
+
+		echo "System booted with Samsung kernel mode" >> /g3mod.log
+	fi
 fi
 umount /system
 
