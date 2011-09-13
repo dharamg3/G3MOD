@@ -182,8 +182,18 @@ static unsigned int cpufreq_interactivex_calc_freq(unsigned int cpu)
 
 	cpu_load = 100 * (delta_time - idle_time) / delta_time;
 
-	if (cpu_load > 98) newfreq = policy->max;
-	else newfreq = policy->cur * cpu_load / 100;	
+	if (cpu_load > 98) {
+		newfreq = policy->max;
+	} else {
+		newfreq = policy->cur * cpu_load / 100;
+	}
+	
+	if (newfreq < policy->min) {
+		newfreq = policy->min;	
+	}
+	if (newfreq > policy->max) {
+		newfreq = policy->max;
+	}
 
 	return newfreq;
 }
