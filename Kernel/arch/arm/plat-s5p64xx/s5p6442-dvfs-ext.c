@@ -74,16 +74,16 @@ static unsigned char transition_state_666_166MHz[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Matched VDD ARM voltage , Matched VDD INT*/
-	{1400000,1525, 1525, 0},	
-	{1300000,1525, 1525, 1},        
-	{1200000,1500, 1500, 2},        
-	{1100000,1500, 1500, 3},        
-	{1000000,1400, 1400, 4},
-        {900000, 1400, 1400, 5},
-        {800000, 1300, 1300, 6},
-        {700000, 1300, 1300, 7},
-        {600000, 1250, 1250, 8},
-        {500000, 1250, 1250, 9},
+	{1400000,1525, 1200, 0},	
+	{1300000,1525, 1200, 1},        
+	{1200000,1500, 1200, 2},        
+	{1100000,1500, 1200, 3},        
+	{1000000,1400, 1200, 4},
+        {900000, 1400, 1200, 5},
+        {800000, 1300, 1200, 6},
+        {700000, 1300, 1200, 7},
+        {600000, 1250, 1200, 8},
+        {500000, 1250, 1200, 9},
         {400000, 1200, 1200, 10},
         {300000, 1200, 1200, 11},
         {200000, 1200, 1200, 12},
@@ -209,7 +209,6 @@ int set_voltage(unsigned int freq_index, bool force)
 
 if( FakeShmoo_UV_mV_Ptr != NULL ) {
 		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
-		int_voltage -= FakeShmoo_UV_mV_Ptr[index];
 	}
 
 #if 1 // future work
