@@ -191,13 +191,6 @@ int nandroid_backup(const char* backup_path)
         else if (0 != (ret = nandroid_backup_partition(backup_path, "SDEXT:")))
             return ret;
     }
-
-    ui_print("Generating md5 sum...\n");
-    sprintf(tmp, "nandroid-md5.sh %s", backup_path);
-    if (0 != (ret = __system(tmp))) {
-        ui_print("Error while generating md5 sum!\n");
-        return ret;
-    }
     
     sync();
     ui_set_background(BACKGROUND_ICON_NONE);
@@ -470,11 +463,6 @@ int nandroid_restore(const char* backup_path, int restore_boot, int restore_syst
         return print_and_error("Can't mount /sdcard\n");
     
     char tmp[PATH_MAX];
-
-    ui_print("Checking MD5 sums...\n");
-    sprintf(tmp, "cd %s && md5sum -c nandroid.md5", backup_path);
-    if (0 != __system(tmp))
-        return print_and_error("MD5 mismatch!\n");
     
     int ret;
 #ifndef BOARD_RECOVERY_IGNORE_BOOTABLES

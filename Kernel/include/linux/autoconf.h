@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Thu Sep  8 03:14:31 2011
+ * Sun Sep 11 23:09:44 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
