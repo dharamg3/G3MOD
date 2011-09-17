@@ -36,8 +36,8 @@ static spinlock_t dvfs_lock;
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
-	{0, 1400*KHZ_T},	
-	{1, 1300*KHZ_T},
+        {0, 1400*KHZ_T},
+        {1, 1300*KHZ_T},
         {2, 1200*KHZ_T},
         {3, 1100*KHZ_T},
         {4, 1000*KHZ_T},
@@ -74,20 +74,20 @@ static unsigned char transition_state_666_166MHz[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Matched VDD ARM voltage , Matched VDD INT*/
-	{1400000,1525, 1200, 0},	
-	{1300000,1525, 1200, 1},        
-	{1200000,1500, 1200, 2},        
-	{1100000,1500, 1200, 3},        
-	{1000000,1400, 1200, 4},
-        {900000, 1400, 1200, 5},
-        {800000, 1300, 1200, 6},
-        {700000, 1300, 1200, 7},
-        {600000, 1250, 1200, 8},
-        {500000, 1250, 1200, 9},
-        {400000, 1200, 1200, 10},
-        {300000, 1200, 1200, 11},
-        {200000, 1200, 1200, 12},
-        {100000, 1200, 1200, 13},
+	{1400000,1525, 1200, 0},        
+	{1300000,1525, 1200, 0},        
+	{1200000,1500, 1200, 0},        
+	{1100000,1500, 1200, 1},        
+	{1000000,1400, 1200, 2},
+        {900000, 1400, 1200, 3},
+        {800000, 1300, 1200, 4},
+        {700000, 1300, 1200, 5},
+        {600000, 1250, 1200, 6},
+        {500000, 1250, 1200, 7},
+        {400000, 1200, 1200, 8},
+        {300000, 1200, 1200, 9},
+        {200000, 1200, 1200, 10},
+        {100000, 1200, 1200, 11},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -209,6 +209,7 @@ int set_voltage(unsigned int freq_index, bool force)
 
 if( FakeShmoo_UV_mV_Ptr != NULL ) {
 		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
+		int_voltage -= FakeShmoo_UV_mV_Ptr[index];
 	}
 
 #if 1 // future work
