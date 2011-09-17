@@ -627,13 +627,16 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 			bat_level = 1;
 		else if (bat_vol > (batt_off + (temp * 0)))
 			bat_level = 0;
+		
 	}
 	else
 	if (batt_off >= bat_vol)
 	{
 	bat_level = 0;
 	}
-	// printk("----> Battery : bat_vol = %d batt_level : %d batt_max : %d batt_off : %d\n", bat_vol, bat_level, batt_max, batt_off ); // dmesg battery info
+
+
+	//printk("----> Battery : bat_vol = %d batt_level : %d batt_max : %d batt_off : %d\n", bat_vol, bat_level, batt_max, batt_off ); // dmesg battery info
 	/*
 	if (bat_vol > batt_full)
 	{

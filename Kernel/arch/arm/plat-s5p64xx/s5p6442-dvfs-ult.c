@@ -27,10 +27,10 @@
 #include <linux/io.h>
 #include <plat/map.h>
 
-unsigned int S5P6442_MAXFREQLEVEL = 6;
-unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 6;
+unsigned int S5P6442_MAXFREQLEVEL = 12;
+unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 12;
 static unsigned int s5p6442_cpufreq_level = 0;
-unsigned int s5p6442_cpufreq_index = 6;
+unsigned int s5p6442_cpufreq_index = 12;
 static spinlock_t dvfs_lock;
  
 #define CLIP_LEVEL(a, b) (a > b ? b : a)

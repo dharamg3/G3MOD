@@ -19,7 +19,7 @@
 #define VOLTAGE_CAL		(0)	// temp calibration value
 #define BATT_CAL			(2115 + VOLTAGE_CAL)	/* 3.65V */
 
-#define BATT_MAXIMUM		605		/* 4.0V */
+#define BATT_MAXIMUM		605		/* 4.1V */
 #define BATT_OFF		(-114)		/* 3.6V */
 
 
