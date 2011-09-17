@@ -273,7 +273,10 @@ reiserfs)
 	echo /sbin/reiserfsck /dev/block/${DEVICE}
 ;;
 btrfs)
-	/sbin/btrfsck /dev/block/${DEVICE}
+	/sbin/btrfsck /dev/blocservice ramzswap /sbin/ramzswap.sh
+    user root
+    oneshot
+k/${DEVICE}
 ;;
 	esac
 done
@@ -480,6 +483,20 @@ else
 fi
 umount /system
 
+# Enable Compcache if enabled by user
+if [ -e "$G3DIR/compcache" ];
+then
+	sed -i "s|g3_compcache_1|service ramzswap /sbin/ramzswap.sh|" /init.rc
+	sed -i "s|g3_compcache_2|user root|" /init.rc
+	sed -i "s|g3_compcache_3|oneshot|" /init.rc
+	echo "Compcache enabled" >> /g3mod.log
+else
+	sed -i "s|g3_compcache_1|# Compcache disabled|" /init.rc
+	sed -i "s|g3_compcache_2|# Compcache disabled|" /init.rc
+	sed -i "s|g3_compcache_3|# Compcache disabled|" /init.rc
+	echo "Compcache disabled" >> /g3mod.log
+
+fi
 
 
 umount /g3mod_sd
