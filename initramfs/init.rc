@@ -498,8 +498,8 @@ on property:persist.service.adb.enable=0
     stop adbd
 
 g3_compcache_1
-    g3_compcache_2
-    g3_compcache_3
+g3_compcache_2
+g3_compcache_3
 
 service servicemanager /system/bin/servicemanager
     user system

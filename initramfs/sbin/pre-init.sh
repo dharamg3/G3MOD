@@ -273,10 +273,7 @@ reiserfs)
 	echo /sbin/reiserfsck /dev/block/${DEVICE}
 ;;
 btrfs)
-	/sbin/btrfsck /dev/blocservice ramzswap /sbin/ramzswap.sh
-    user root
-    oneshot
-k/${DEVICE}
+	/sbin/btrfsck /dev/block/${DEVICE}
 ;;
 	esac
 done
