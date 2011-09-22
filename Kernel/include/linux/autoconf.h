@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Tue Sep 13 13:35:55 2011
+ * Wed Sep 21 22:13:33 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
@@ -354,6 +354,7 @@
 #define CONFIG_I2C_HELPER_AUTO 1
 #define CONFIG_TOUCHSCREEN_QT602240 1
 #define CONFIG_AF_RXRPC 1
+#define CONFIG_CPU_FREQ_STAT_DETAILS 1
 #define CONFIG_CPU_FREQ 1
 #define CONFIG_PM_SLEEP 1
 #define CONFIG_CONTEXT_SWITCH_TRACER 1
