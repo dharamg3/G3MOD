@@ -49,7 +49,7 @@ static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
         {10, 400*KHZ_T},
         {11, 300*KHZ_T},
         {12, 200*KHZ_T},
-        {13, 100*KHZ_T},
+        {13, 83*KHZ_T},
         {14, CPUFREQ_TABLE_END},
 };
 
