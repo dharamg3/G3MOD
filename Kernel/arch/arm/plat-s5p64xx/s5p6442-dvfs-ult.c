@@ -47,7 +47,7 @@ static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
         {8, 400*KHZ_T},
         {9, 300*KHZ_T},
         {10, 200*KHZ_T},
-        {11, 100*KHZ_T},
+        {13, 83*KHZ_T},
         {12, CPUFREQ_TABLE_END},
 };
 
@@ -81,7 +81,7 @@ unsigned int frequency_match_666_166MHz[][4] = {
         {400000, 1200, 1200, 8},
         {300000, 1200, 1200, 9},
         {200000, 1200, 1200, 10},
-        {100000, 1200, 1200, 11},
+        {83000,  1100, 1100, 4},
 }; 
 
 extern int is_pmic_initialized(void);

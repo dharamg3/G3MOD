@@ -31,7 +31,7 @@ loglevel 3
 #    install dpram, multipdp module
 #    insmod /lib/modules/dpram.ko
 #    insmod /lib/modules/multipdp.ko
-#    insmod /lib/modules/onedram.ko
+    insmod /lib/modules/onedram.ko
     insmod /lib/modules/svnet.ko
     insmod /lib/modules/modemctl.ko
     insmod /lib/modules/storage.ko
