@@ -45,7 +45,7 @@ static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
         {6, 400*KHZ_T},
         {7, 300*KHZ_T},
         {8, 200*KHZ_T},
-        {9, 100*KHZ_T},
+        {13, 83*KHZ_T},
         {10, CPUFREQ_TABLE_END},
 };
 
@@ -66,16 +66,16 @@ static unsigned char transition_state_666_166MHz[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Matched VDD ARM voltage , Matched VDD INT*/
-        {1000000,1400, 1400, 0},
-        {900000, 1350, 1350, 1},
-        {800000, 1300, 1300, 2},
-        {700000, 1275, 1275, 3},
-        {600000, 1250, 1250, 4},
-        {500000, 1225, 1225, 5},
+        {1000000,1400, 1200, 0},
+        {900000, 1400, 1200, 1},
+        {800000, 1300, 1200, 2},
+        {700000, 1300, 1200, 3},
+        {600000, 1250, 1200, 4},
+        {500000, 1250, 1200, 5},
         {400000, 1200, 1200, 6},
         {300000, 1200, 1200, 7},
         {200000, 1200, 1200, 8},
-        {100000, 1200, 1200, 9},
+        {83000,  1100, 1100, 4},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -486,6 +486,11 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 	return cpufreq_frequency_table_cpuinfo(policy, s5p6442_freq_table[S5P6442_FREQ_TAB]);
 }
 
+static struct freq_attr *s5p6442_cpufreq_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
+
 static struct cpufreq_driver s5p6442_driver = {
 	.flags		= CPUFREQ_STICKY,
 	.verify		= s5p6442_verify_speed,
@@ -493,6 +498,7 @@ static struct cpufreq_driver s5p6442_driver = {
 	.get		= s5p6442_getspeed,
 	.init		= s5p6442_cpu_init,
 	.name		= "s5p6442",
+	.attr		= s5p6442_cpufreq_attr,
 };
 
 static int __init s5p6442_cpufreq_init(void)

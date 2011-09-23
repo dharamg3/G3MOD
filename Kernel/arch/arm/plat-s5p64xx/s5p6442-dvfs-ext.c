@@ -36,8 +36,8 @@ static spinlock_t dvfs_lock;
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
-	{0, 1400*KHZ_T},	
-	{1, 1300*KHZ_T},
+        {0, 1400*KHZ_T},
+        {1, 1300*KHZ_T},
         {2, 1200*KHZ_T},
         {3, 1100*KHZ_T},
         {4, 1000*KHZ_T},
@@ -49,7 +49,7 @@ static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
         {10, 400*KHZ_T},
         {11, 300*KHZ_T},
         {12, 200*KHZ_T},
-        {13, 100*KHZ_T},
+        {13, 83*KHZ_T},
         {14, CPUFREQ_TABLE_END},
 };
 
@@ -74,20 +74,20 @@ static unsigned char transition_state_666_166MHz[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Matched VDD ARM voltage , Matched VDD INT*/
-	{1400000,1525, 1525, 0},	
-	{1300000,1500, 1500, 1},        
-	{1200000,1500, 1500, 2},        
-	{1100000,1450, 1450, 3},        
-	{1000000,1400, 1400, 4},
-        {900000, 1350, 1350, 5},
-        {800000, 1300, 1300, 6},
-        {700000, 1275, 1275, 7},
-        {600000, 1250, 1250, 8},
-        {500000, 1225, 1225, 9},
-        {400000, 1200, 1200, 10},
-        {300000, 1200, 1200, 11},
-        {200000, 1200, 1200, 12},
-        {100000, 1200, 1200, 13},
+	{1400000,1525, 1200, 0},        
+	{1300000,1525, 1200, 0},        
+	{1200000,1500, 1200, 0},        
+	{1100000,1500, 1200, 1},        
+	{1000000,1400, 1200, 2},
+        {900000, 1400, 1200, 3},
+        {800000, 1300, 1200, 4},
+        {700000, 1300, 1200, 5},
+        {600000, 1250, 1200, 6},
+        {500000, 1250, 1200, 7},
+        {400000, 1200, 1200, 8},
+        {300000, 1200, 1200, 9},
+        {200000, 1200, 1200, 10},
+        {100000, 1200, 1200, 11},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -498,6 +498,11 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 	return cpufreq_frequency_table_cpuinfo(policy, s5p6442_freq_table[S5P6442_FREQ_TAB]);
 }
 
+static struct freq_attr *s5p6442_cpufreq_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
+
 static struct cpufreq_driver s5p6442_driver = {
 	.flags		= CPUFREQ_STICKY,
 	.verify		= s5p6442_verify_speed,
@@ -505,6 +510,7 @@ static struct cpufreq_driver s5p6442_driver = {
 	.get		= s5p6442_getspeed,
 	.init		= s5p6442_cpu_init,
 	.name		= "s5p6442",
+	.attr		= s5p6442_cpufreq_attr,
 };
 
 static int __init s5p6442_cpufreq_init(void)

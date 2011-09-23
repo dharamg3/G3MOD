@@ -470,6 +470,11 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 	return cpufreq_frequency_table_cpuinfo(policy, s5p6442_freq_table[S5P6442_FREQ_TAB]);
 }
 
+static struct freq_attr *s5p6442_cpufreq_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
+
 static struct cpufreq_driver s5p6442_driver = {
 	.flags		= CPUFREQ_STICKY,
 	.verify		= s5p6442_verify_speed,
@@ -477,6 +482,7 @@ static struct cpufreq_driver s5p6442_driver = {
 	.get		= s5p6442_getspeed,
 	.init		= s5p6442_cpu_init,
 	.name		= "s5p6442",
+	.attr		= s5p6442_cpufreq_attr,
 };
 
 static int __init s5p6442_cpufreq_init(void)

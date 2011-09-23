@@ -27,10 +27,10 @@
 #include <linux/io.h>
 #include <plat/map.h>
 
-unsigned int S5P6442_MAXFREQLEVEL = 6;
-unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 6;
+unsigned int S5P6442_MAXFREQLEVEL = 12;
+unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 12;
 static unsigned int s5p6442_cpufreq_level = 0;
-unsigned int s5p6442_cpufreq_index = 6;
+unsigned int s5p6442_cpufreq_index = 12;
 static spinlock_t dvfs_lock;
  
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
@@ -47,7 +47,7 @@ static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
         {8, 400*KHZ_T},
         {9, 300*KHZ_T},
         {10, 200*KHZ_T},
-        {11, 100*KHZ_T},
+        {13, 83*KHZ_T},
         {12, CPUFREQ_TABLE_END},
 };
 
@@ -70,18 +70,18 @@ static unsigned char transition_state_666_166MHz[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Matched VDD ARM voltage , Matched VDD INT*/
-	{1200000,1500, 1500, 0},        
-	{1100000,1450, 1450, 1},        
-	{1000000,1400, 1400, 2},
-        {900000, 1350, 1350, 3},
-        {800000, 1300, 1300, 4},
-        {700000, 1275, 1275, 5},
-        {600000, 1250, 1250, 6},
-        {500000, 1225, 1225, 7},
+	{1200000,1500, 1200, 0},        
+	{1100000,1500, 1200, 1},        
+	{1000000,1400, 1200, 2},
+        {900000, 1400, 1200, 3},
+        {800000, 1300, 1200, 4},
+        {700000, 1300, 1200, 5},
+        {600000, 1250, 1200, 6},
+        {500000, 1250, 1200, 7},
         {400000, 1200, 1200, 8},
         {300000, 1200, 1200, 9},
         {200000, 1200, 1200, 10},
-        {100000, 1200, 1200, 11},
+        {83000,  1100, 1100, 4},
 }; 
 
 extern int is_pmic_initialized(void);
@@ -492,6 +492,11 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 	return cpufreq_frequency_table_cpuinfo(policy, s5p6442_freq_table[S5P6442_FREQ_TAB]);
 }
 
+static struct freq_attr *s5p6442_cpufreq_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
+
 static struct cpufreq_driver s5p6442_driver = {
 	.flags		= CPUFREQ_STICKY,
 	.verify		= s5p6442_verify_speed,
@@ -499,6 +504,7 @@ static struct cpufreq_driver s5p6442_driver = {
 	.get		= s5p6442_getspeed,
 	.init		= s5p6442_cpu_init,
 	.name		= "s5p6442",
+	.attr		= s5p6442_cpufreq_attr,
 };
 
 static int __init s5p6442_cpufreq_init(void)
