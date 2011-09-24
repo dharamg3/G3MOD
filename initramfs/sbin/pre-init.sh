@@ -305,13 +305,6 @@ done
 
 rm /g3mod_sd/g3mod_data.tar
 
-if test -f $G3DIR/fs.data2sd
-then
-  DATA2SD=mmcblk0p2
-else
-  DATA2SD=stl7
-fi
-
 #check if we need to convert something (from sanitized output)
 if test -f $G3DIR/fs.convert
 then
@@ -381,6 +374,7 @@ then
 	build_fs_current
 	rm /g3mod_sd/g3mod_data.tar
 fi
+
 #/sbin/mkfs.btrfs -d single /dev/block/mmcblk0p2
 
 if test -f $G3DIR/fs.tmpfs
@@ -425,23 +419,59 @@ STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
 STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
 MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 
+mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
+
+# DATA2SD CODE
+
+if test -f $G3DIR/fs.data2sd
+then
+	DATA2SDmode=`cat $G3DIR/fs.data2sd`
+	if [ "$DATA2SDmode" = "hybrid" ]
+	then
+		echo "Data2SD Enabled - Hybrid Mode" >> /g3mod.log
+		mkdir /sdext
+		mkdir /data
+		mkdir /mnt
+		mkdir /mnt/stl7
+		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /data
+		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /mnt/stl7
+		mount -t $MMC_FS /dev/block/mmcblk0p2 /sdext
+		sed -i "s|g3_mount_stl7|# Line not needed for Hybrid Data2SD|" /init.rc /recovery.rc
+
+		if test -f $G3DIR/data2sd.dirs; then
+			DATA2SDconf="$G3DIR/data2sd.dirs"
+		else
+			DATA2SDconf="/system/etc/data2sd.dirs"
+		fi
+		
+		cat $DATA2SDconf | while read line
+		do
+			DATA2SDtemp="${line%?}"
+			mkdir /sdext/$DATA2SDtemp
+			mkdir /data/$DATA2SDtemp
+			echo "/data/$DATA2SDtemp - /sdext/$DATA2SDtemp" >> /data2sd.log
+			mount -o bind /sdext/$DATA2SDtemp /data/$DATA2SDtemp >> /data2sd.log
+		done
+	
+	else
+		echo "Data2SD Enabled - Standard Mode" >> /g3mod.log
+		sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw|" /init.rc /recovery.rc
+	fi
+else
+	echo "Data2SD Disabled" >> /g3mod.log
+	sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
+fi
+
+# END OF DATA2SD CODE
+
 # Inline inject mountpoints
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
 sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
 
-if [ "$DATA2SD" == "stl7" ]
-then
-  sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
-else
-  sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw|" /init.rc /recovery.rc
-fi
-
 cd /
 
 # Identify CyanogenMod or Samsung
-mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
-
 androidfinger=`grep "ro.build.fingerprint" /system/build.prop`
 
 echo "System detected: $androidfinger" >> /g3mod.log
