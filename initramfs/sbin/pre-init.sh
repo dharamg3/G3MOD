@@ -305,13 +305,6 @@ done
 
 rm /g3mod_sd/g3mod_data.tar
 
-if test -f $G3DIR/fs.data2sd
-then
-  DATA2SD=mmcblk0p2
-else
-  DATA2SD=stl7
-fi
-
 #check if we need to convert something (from sanitized output)
 if test -f $G3DIR/fs.convert
 then
@@ -381,6 +374,7 @@ then
 	build_fs_current
 	rm /g3mod_sd/g3mod_data.tar
 fi
+
 #/sbin/mkfs.btrfs -d single /dev/block/mmcblk0p2
 
 if test -f $G3DIR/fs.tmpfs
@@ -425,17 +419,44 @@ STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
 STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
 MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 
+# DATA2SD CODE
+
+if test -f $G3DIR/fs.data2sd
+then
+	DATA2SDmode=`cat $G3DIR/fs.data2sd`
+	if [ "$DATA2SDmode" = "hybrid" ]
+	then
+		echo "Data2SD Enabled - Hybrid Mode" >> /g3mod.log
+		mkdir /sdext
+		mkdir /data		
+		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /data
+		mount -t $MMC_FS /dev/block/mmcblk0p2 /sdext
+		sed -i "s|g3_mount_stl7|# Line not needed for Hybrid Data2SD|" /init.rc /recovery.rc
+
+		
+		cat $G3DIR/data2sd.dirs | while read line
+		do
+			mkdir /sdext/$line
+			mkdir /data/$line
+			echo "/data/$lin - /sdext/$line" >> /data2sd.log
+			mount -o bind /sdext/$line /data/$line >> /data2sd.log
+		done
+	
+	else
+		echo "Data2SD Enabled - Standard Mode" >> /g3mod.log
+		sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw|" /init.rc /recovery.rc
+	fi
+else
+	echo "Data2SD Disabled" >> /g3mod.log
+	sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
+fi
+
+# END OF DATA2SD CODE
+
 # Inline inject mountpoints
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
 sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
-
-if [ "$DATA2SD" == "stl7" ]
-then
-  sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
-else
-  sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw|" /init.rc /recovery.rc
-fi
 
 cd /
 
