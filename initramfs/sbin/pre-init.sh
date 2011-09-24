@@ -419,6 +419,8 @@ STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
 STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
 MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 
+mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
+
 # DATA2SD CODE
 
 if test -f $G3DIR/fs.data2sd
@@ -428,18 +430,27 @@ then
 	then
 		echo "Data2SD Enabled - Hybrid Mode" >> /g3mod.log
 		mkdir /sdext
-		mkdir /data		
+		mkdir /data
+		mkdir /mnt
+		mkdir /mnt/stl7
 		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /data
+		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /mnt/stl7
 		mount -t $MMC_FS /dev/block/mmcblk0p2 /sdext
 		sed -i "s|g3_mount_stl7|# Line not needed for Hybrid Data2SD|" /init.rc /recovery.rc
 
+		if test -f $G3DIR/data2sd.dirs; then
+			DATA2SDconf="$G3DIR/data2sd.dirs"
+		else
+			DATA2SDconf="/system/etc/data2sd.dirs"
+		fi
 		
-		cat $G3DIR/data2sd.dirs | while read line
+		cat $DATA2SDconf | while read line
 		do
-			mkdir /sdext/$line
-			mkdir /data/$line
-			echo "/data/$lin - /sdext/$line" >> /data2sd.log
-			mount -o bind /sdext/$line /data/$line >> /data2sd.log
+			DATA2SDtemp="${line%?}"
+			mkdir /sdext/$DATA2SDtemp
+			mkdir /data/$DATA2SDtemp
+			echo "/data/$DATA2SDtemp - /sdext/$DATA2SDtemp" >> /data2sd.log
+			mount -o bind /sdext/$DATA2SDtemp /data/$DATA2SDtemp >> /data2sd.log
 		done
 	
 	else
@@ -461,8 +472,6 @@ sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noat
 cd /
 
 # Identify CyanogenMod or Samsung
-mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
-
 androidfinger=`grep "ro.build.fingerprint" /system/build.prop`
 
 echo "System detected: $androidfinger" >> /g3mod.log
