@@ -121,8 +121,8 @@ g3_mount_stl6
     # We chown/chmod /data again so because mount is run as root + defaults
     # mount yaffs2 mtd@userdata /data nosuid nodev
     # mount yaffs2 /dev/bml6 /data nosuid nodev
-    #mount ext4 /dev/block/stl7 /data nosuid nodev check=no
-g3_mount_stl7
+    # mount ext4 /dev/block/stl7 /data nosuid nodev check=no
+    # g3_mount_stl7
 
 
     chown system system /data

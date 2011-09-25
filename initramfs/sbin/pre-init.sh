@@ -431,10 +431,9 @@ then
 		echo "Data2SD Enabled - Hybrid Mode" >> /g3mod.log
 		mkdir /sdext
 		mkdir /data
-		mkdir /mnt
-		mkdir /mnt/stl7
+		mkdir /intdata
 		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /data
-		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /mnt/stl7
+		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
 		mount -t $MMC_FS /dev/block/mmcblk0p2 /sdext
 		sed -i "s|g3_mount_stl7|# Line not needed for Hybrid Data2SD|" /init.rc /recovery.rc
 
@@ -496,8 +495,8 @@ else
 		echo "System booted with CyanogenMod 6 kernel mode" >> /g3mod.log
 	else
 		sed -i "s|g3_wifi_data_01|mkdir /data/wifi 0777 wifi wifi|" /init.rc
-		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0771 wifi wifi|" /init.rc
-		sed -i "s|g3_wifi_data_01|chmod 0777 /data/misc/wifi/|" /init.rc
+		sed -i "s|g3_wifi_data_02|mkdir /data/misc/wifi 0771 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi/|" /init.rc
 		sed -i "s|g3_wifi_data_04|# Line not needed for Samsung|" /init.rc
 		sed -i "s|g3_wifi_data_05|# Line not needed for Samsung|" /init.rc
 		sed -i "s|g3_wifi_data_06|# Line not needed for Samsung|" /init.rc
