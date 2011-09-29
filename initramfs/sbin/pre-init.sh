@@ -422,38 +422,29 @@ MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
 
 # DATA2SD CODE
+mkdir /data
+mkdir /intdata
+mkdir /sdext
+mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
+mount -t $MMC_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/mmcblk0p2 /sdext
+mount -o bind /intdata /data
 
 if test -f $G3DIR/fs.data2sd
 then
 	DATA2SDmode=`cat $G3DIR/fs.data2sd`
 	if [ "$DATA2SDmode" = "hybrid" ]
-	then
+	then	
+		echo "Data2SD Enabled - Hybrid Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Hybrid Mode" >> /g3mod.log
-		mkdir /sdext
-		mkdir /data
-		mkdir /intdata
-		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /data
-		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
-		mount -t $MMC_FS /dev/block/mmcblk0p2 /sdext
 		sed -i "s|g3_mount_stl7|# Line not needed for Hybrid Data2SD|" /init.rc /recovery.rc
 
-		if test -f $G3DIR/data2sd.dirs; then
-			DATA2SDconf="$G3DIR/data2sd.dirs"
-		else
-			DATA2SDconf="/system/etc/data2sd.dirs"
-		fi
-		
-		cat $DATA2SDconf | while read line
-		do
-			DATA2SDtemp="${line%?}"
-			mkdir /sdext/$DATA2SDtemp
-			mkdir /data/$DATA2SDtemp
-			echo "/data/$DATA2SDtemp - /sdext/$DATA2SDtemp" >> /data2sd.log
-			mount -o bind /sdext/$DATA2SDtemp /data/$DATA2SDtemp >> /data2sd.log
-		done
-	
+		cp /system/etc/data2sd.dirs /
+		cp $G3DIR/data2sd.dirs /
 	else
+		echo "Data2SD Enabled - Standard Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Standard Mode" >> /g3mod.log
+		umount /data
+		mount -o bind /sdext /data
 		sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw|" /init.rc /recovery.rc
 	fi
 else

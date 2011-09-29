@@ -9,6 +9,25 @@ export PATH=/sbin:/system/bin:/system/xbin
 exec >>/res/user.log
 exec 2>&1
 
+if test -f /data2sd.dirs
+then
+	echo "Mounting Hybrid Data2SD" >> /data2sd.log
+	cat /data2sd.dirs | while read line
+	do
+		DATA2SDtemp="${line%?}"
+		mkdir /sdext/$DATA2SDtemp
+		mkdir /data/$DATA2SDtemp
+		echo "/data/$DATA2SDtemp - /sdext/$DATA2SDtemp" >> /data2sd.log
+		mount -o bind /sdext/$DATA2SDtemp /data/$DATA2SDtemp >> /data2sd.log
+	done
+	chmod 777 /sdext
+	chmod 777 /sdext/*
+	chmod 777 /sdext/app/*
+	rm data2sd.dirs
+else
+	echo "No Data2SD config file found (/system/etc/data2sd.dirs or /sdcard/Android/g3mod/data/data2sd.dirs" >> /data2sd.log
+fi
+
 # continue with playing the logo
 exec /system/bin/playlogo&
 
