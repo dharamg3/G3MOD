@@ -454,6 +454,14 @@ fi
 
 # END OF DATA2SD CODE
 
+if test -f $G3DIR/multiosdata
+then
+	echo `grep "ro.build.id" /system/build.prop|awk '{FS="="};{print $2}'` > /multios
+	echo "Multi-OS Data Enabled" >> /g3mod.log
+else
+	echo "Multi-OS Data Disabled" >> /g3mod.log
+fi
+
 # Inline inject mountpoints
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
