@@ -9,16 +9,31 @@ export PATH=/sbin:/system/bin:/system/xbin
 exec >>/res/user.log
 exec 2>&1
 
+echo "Cleaning up symlinks" >> /data2sd.log
+cd /data/
+for x in *
+	do if [ -L $x ]
+	then
+		echo "- /data/$x is a symlink" >> /data2sd.log
+		rm /data/$x
+		mkdir /data/$x
+	fi
+done
+cd /
+
 if test -f /data2sd.dirs
 then
-	echo "Mounting Hybrid Data2SD" >> /data2sd.log
+	echo "Connecting Hybrid Data2SD Links" >> /data2sd.log
 	cat /data2sd.dirs | while read line
 	do
 		DATA2SDtemp="${line%?}"
 		mkdir /sdext/$DATA2SDtemp
 		mkdir /data/$DATA2SDtemp
-		echo "/data/$DATA2SDtemp - /sdext/$DATA2SDtemp" >> /data2sd.log
-		mount -o bind /sdext/$DATA2SDtemp /data/$DATA2SDtemp >> /data2sd.log
+		cp -rf /intdata/$DATA2SDtemp /sdext/
+		rm -r /intdata/$DATA2SDtemp
+		ln -s /sdext/$DATA2SDtemp /data/$DATA2SDtemp
+		echo "- /data/$DATA2SDtemp - /sdext/$DATA2SDtemp" >> /data2sd.log
+		#mount -o bind /sdext/$DATA2SDtemp /data/$DATA2SDtemp >> /data2sd.log
 	done
 	chmod 777 /sdext
 	chmod 777 /sdext/*
