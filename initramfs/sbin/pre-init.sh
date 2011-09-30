@@ -470,15 +470,15 @@ sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noat
 cd /
 
 # Identify CyanogenMod or Samsung
-androidfinger=`grep "ro.build.fingerprint" /system/build.prop`
+androidfinger=`grep "ro.build.fingerprint" /system/build.prop|awk '{FS="="};{print $2}'`
 
 echo "System detected: $androidfinger" >> /g3mod.log
-if [ "$androidfinger" == "ro.build.fingerprint=samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]
+if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]
 then
 		echo "System booted with CyanogenMod 7 Kernel mode" >> /g3mod.log
 		
 else
-	if [ "$androidfinger" == "ro.build.fingerprint=samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]
+	if [ "$androidfinger" == "samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]
 
 	then
 		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0777 wifi wifi|" /init.rc
