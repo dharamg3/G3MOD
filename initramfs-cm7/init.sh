@@ -1,4 +1,4 @@
 #!/sbin/busybox sh
 
-exec /init_cm7
+/sbin/pre-init.sh > /res/pre-init.log 2>&1
 

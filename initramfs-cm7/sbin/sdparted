@@ -268,7 +268,10 @@ PrepareSdCard() {
 	[ $TTISLOOP -gt 0 ] && echo -n "setting partition table to msdos..."
 	[ $TTISMSDOS -gt 0 ] && echo -n "removing all partitions..."
 	
-	"$CMPARTED" -s "$SDPATH" mklabel msdos 2>&1 >>"$LOGFILE"
+	"$CMPARTED" -s "$SDPATH" rm 4 2>&1 >>"$LOGFILE"
+        "$CMPARTED" -s "$SDPATH" rm 3 2>&1 >>"$LOGFILE"
+        "$CMPARTED" -s "$SDPATH" rm 2 2>&1 >>"$LOGFILE"
+
 	echo "done"
 	echo
 	
@@ -320,20 +323,24 @@ PartitionSdCard() {
 	
 	if [ $FATSIZE -gt 0 ] ; then
 		echo -n "creating fat32 partition..."
-		"$CMPARTED" -s "$SDPATH" mkpartfs primary fat32 0 "$FATSIZE"MB 2>&1 >>"$LOGFILE"
+                EXTEND1="$FATSIZE"
+                FATSIZE=$(($FATSIZE - $EXTSIZE))
+		"$CMPARTED" -s "$SDPATH" resize 1 0 "$FATSIZE"MB 2>&1 >>"$LOGFILE"
 		echo "done"
 	fi
 	
 	if [ $EXTSIZE -gt 0 ] ; then
 		echo -n "creating ext2 partition..."
-		"$CMPARTED" -s "$SDPATH" mkpartfs primary ext2 "$FATSIZE"MB "$EXTEND"MB 2>&1 >>"$LOGFILE"
-		"$CMTUNE2FS" -L sd-ext "$EXTPATH" 2>&1 >>"$LOGFILE"
+                "$CMPARTED" -s "$SDPATH" mkpart primary "$FATSIZE"MB "$EXTEND1"MB 2>&1 >>"$LOGFILE"
+		"$CMPARTED" -s "$SDPATH" mkpart primary "$EXTEND1"MB "$EXTEND"MB 2>&1 >>"$LOGFILE"
+                "$MKFS" -T ext2 -b 4096 -m 0 /dev/block/mmcblk0p2
+                "$MKFS" -T ext2 -b 4096 -m 0 /dev/block/mmcblk0p3
 		echo "done"
 	fi
 	
 	if [ $SWAPSIZE -gt 0 ] ; then
 		echo -n "creating swap partition..."
-		"$CMPARTED" -s "$SDPATH" mkpartfs primary linux-swap "$EXTEND"MB "$SWAPEND"MB 2>&1 >>"$LOGFILE"
+                "$CMPARTED" -s "$SDPATH" mkpartfs primary linux-swap "$EXTEND"MB "$SWAPEND"MB 2>&1 >>"$LOGFILE"
 		echo "done"
 	fi
 	echo
@@ -580,13 +587,14 @@ EXTPATH=$SDPATH"p2"
 EXTEND=
 
 SWAPSIZE=32
-SWAPTYPE="linux-swap"
-SWAPPATH=$SDPATH"p3"
+SWAPTYPE="ext2"
+SWAPPATH=$SDPATH"p4"
 SWAPEND=
 
 CMPARTED="/sbin/parted"
 CMTUNE2FS="/sbin/tune2fs"
 CME2FSCK="/sbin/e2fsck"
+MKFS="/sbin/mke2fs"
 
 # give the output some breathing room
 echo "$SCRIPTREV" >> "$LOGFILE" 
