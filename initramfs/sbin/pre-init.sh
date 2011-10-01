@@ -456,11 +456,82 @@ fi
 
 if test -f $G3DIR/multiosdata
 then
-	echo `grep "ro.build.id" /system/build.prop|awk '{FS="="};{print $2}'` > /multios
-	echo "Multi-OS Data Enabled" >> /g3mod.log
+	MultiOS=`grep "ro.build.id" /system/build.prop|awk '{FS="="};{print $2}'`
+	if test -f /sdext/lastos; then
+		LastOS=`cat /sdext/lastos`
+	fi
+	mkdir /sdext/multios
+	echo "Multi-OS Data Enabled: $MultiOS" >> /g3mod.log
 else
 	echo "Multi-OS Data Disabled" >> /g3mod.log
 fi
+
+echo "Cleaning up symlinks" >> /data2sd.log
+cd /data/
+for x in *
+	do if [ -L $x ]; then
+		echo "- /data/$x is a symlink" >> /data2sd.log
+		rm /data/$x
+		mkdir /data/$x
+	fi
+done
+cd /
+
+if [ "$LastOS" = "" ]; then
+	LastOS=$MultiOS
+fi
+
+if [ "$MultiOS" != "" ]; then
+	if [ "$MultiOS" != "$LastOS" ]; then
+		echo "System has changed! Multi-OS Data changing too..." >> /multidata.log
+		rm /sdext/multios/$LastOS.data.tar
+		rm /sdext/multios/$LastOS.dalvikcache.tar
+
+		if test -f $G3DIR/multiosdata.cache; then
+			echo "Backing up dalvik-cache" >> /multidata.log
+			tar cvf /sdext/multios/$LastOS.dalvikcache.tar /data/dalvik-cache 2>>/multidata.log
+		fi
+		rm -r /data/dalvik-cache/*
+		echo "Backing up old data" >> /multidata.log
+		tar cvf /sdext/multios/$LastOS.data.tar /data 2>>/multidata.log 
+		
+		rm -r /data/*
+		echo "Extracting new data" >> /multidata.log
+		tar xvf /sdext/multios/$MultiOS.data.tar 2>>/multidata.log
+		if test -f $G3DIR/multiosdata.cache; then
+			echo "Extracting new dalvik-cache" >> /multidata.log
+			tar xvf /sdext/multios/$LastOS.dalvikcache.tar 2>>/multidata.log
+		fi
+		echo "Data switched from $LastOS to $MultiOS" >> /multidata.log
+	fi		
+fi
+
+echo $MultiOS > /sdext/lastos
+
+# Hybrid Data2SD Enabler
+if test -f /data2sd.dirs; then
+	echo "Connecting Hybrid Data2SD Links" >> /data2sd.log
+	cat /data2sd.dirs | while read line
+	do
+		DATA2SDtemp="${line%?}"
+
+		cp -prf /intdata/$DATA2SDtemp /sdext/
+		mkdir /sdext/$DATA2SDtemp
+		mkdir /intdata/$DATA2SDtemp
+		rm -r /intdata/$DATA2SDtemp
+		ln -s /sdext/$DATA2SDtemp /intdata/$DATA2SDtemp
+		echo "- /data/$DATA2SDtemp linked to /sdext/$DATA2SDtemp" >> /data2sd.log
+	done
+	chmod 771 /sdext
+
+
+else
+	echo "No Data2SD config file found (/system/etc/data2sd.dirs or /sdcard/Android/data/g3mod/data2sd.dirs" >> /data2sd.log
+fi
+
+rm /data2sd.dirs
+rm /multios
+
 
 # Inline inject mountpoints
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc

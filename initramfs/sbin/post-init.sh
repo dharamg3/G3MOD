@@ -9,60 +9,7 @@ export PATH=/sbin:/system/bin:/system/xbin
 exec >>/res/user.log
 exec 2>&1
 
-# Hybrid Data2SD Enabler
-echo "Cleaning up symlinks" >> /data2sd.log
-cd /data/
-for x in *
-	do if [ -L $x ]; then
-		echo "- /data/$x is a symlink" >> /data2sd.log
-		rm /data/$x
-		mkdir /data/$x
-	fi
-done
-cd /
-
-if test -f /multios; then
-	MultiOSprefix=`cat /multios`
-	mkdir /sdext/$MultiOSprefix
-	echo "Multi OS Active: $MultiOSprefix" >> /data2sd.log
-fi
-
-if test -f /data2sd.dirs; then
-	echo "Connecting Hybrid Data2SD Links" >> /data2sd.log
-	cat /data2sd.dirs | while read line
-	do
-		DATA2SDtemp="${line%?}"
-		if test -f /multios; then
-			DATA2SDext="$MultiOSprefix/$DATA2SDtemp"
-
-			# SAFE COMMON FOLDERS
-			if [ "$DATA2SDtemp" = "app" ]; then
-				DATA2SDext="app"
-			fi
-
-			# END OF SAFE COMMON FOLDERS
-			cp -rf /intdata/$DATA2SDtemp /sdext/$MultiOSprefix/
-		else
-			DATA2SDext="$DATA2SDtemp"
-			cp -rf /intdata/$DATA2SDtemp /sdext/
-		fi
-
-		mkdir /sdext/$DATA2SDext
-		mkdir /data/$DATA2SDtemp
-		rm -r /intdata/$DATA2SDtemp
-		ln -s /sdext/$DATA2SDext /data/$DATA2SDtemp
-		echo "- /data/$DATA2SDtemp - /sdext/$DATA2SDext" >> /data2sd.log
-	done
-	chmod 777 /sdext
-	chmod 777 /sdext/*
-	chmod 777 /sdext/app/*
-else
-	echo "No Data2SD config file found (/system/etc/data2sd.dirs or /sdcard/Android/data/g3mod/data2sd.dirs" >> /data2sd.log
-fi
-
-rm /data2sd.dirs
-rm /multios
-
+chmod 777 /sdext/app
 
 # continue with playing the logo
 exec /system/bin/playlogo&
