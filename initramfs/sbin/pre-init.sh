@@ -543,7 +543,6 @@ echo "System detected: $androidfinger" >> /g3mod.log
 if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]; then
 	rm /init.rc
 	rm /recovery.rc
-	rm /sbin/recovery
 	mv /init_ging.rc /init.rc
 	mv /recovery_ging.rc /recovery.rc
 	INITbin=init_ging
@@ -552,7 +551,6 @@ if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/releas
 else
 	rm /init.rc
 	rm /recovery.rc
-	rm /sbin/recovery_ging
 	mv /init_froyo.rc /init.rc
 	mv /recovery_froyo.rc /recovery.rc
 	INITbin=init_froyo
