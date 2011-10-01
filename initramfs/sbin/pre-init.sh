@@ -425,8 +425,12 @@ mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
 mkdir /data
 mkdir /intdata
 mkdir /sdext
-mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
-mount -t $MMC_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/mmcblk0p2 /sdext
+mount -t ext4 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
+mount -t ext2 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
+mount -t rfs -o nosuid,nodev,check=no /dev/block/stl7 /intdata
+mount -t ext4 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/mmcblk0p2 /sdext
+mount -t ext2 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/mmcblk0p2 /sdext
+mount -t rfs -o nosuid,nodev,check=no /dev/block/mmcblk0p2 /sdext
 mount -o bind /intdata /data
 
 if test -f $G3DIR/fs.data2sd
@@ -531,27 +535,29 @@ fi
 
 rm /data2sd.dirs
 rm /multios
-
-
-# Inline inject mountpoints
-sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc
-sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
-sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
-
 cd /
 
 # Identify CyanogenMod or Samsung
 androidfinger=`grep "ro.build.fingerprint" /system/build.prop|awk '{FS="="};{print $2}'`
-
 echo "System detected: $androidfinger" >> /g3mod.log
-if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]
-then
-		echo "System booted with CyanogenMod 7 Kernel mode" >> /g3mod.log
-		
-else
-	if [ "$androidfinger" == "samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]
+if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]; then
+	rm /init.rc
+	rm /recovery.rc
+	rm /sbin/recovery
+	mv /init_ging.rc /init.rc
+	mv /recovery_ging.rc /recovery.rc
+	INITbin=init_ging
 
-	then
+	echo "System booted with CyanogenMod 7 Kernel mode" >> /g3mod.log
+else
+	rm /init.rc
+	rm /recovery.rc
+	rm /sbin/recovery_ging
+	mv /init_froyo.rc /init.rc
+	mv /recovery_froyo.rc /recovery.rc
+	INITbin=init_froyo
+
+	if [ "$androidfinger" == "samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]; then
 		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0777 wifi wifi|" /init.rc
 		sed -i "s|g3_wifi_data_02|chown wifi wifi /data/misc/wifi|" /init.rc
 		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi|" /init.rc
@@ -580,8 +586,7 @@ fi
 umount /system
 
 # Enable Compcache if enabled by user
-if [ -e "$G3DIR/compcache" ];
-then
+if [ -e "$G3DIR/compcache" ]; then
 	sed -i "s|g3_compcache_1|service ramzswap /sbin/ramzswap.sh|" /init.rc
 	sed -i "s|g3_compcache_2|user root|" /init.rc
 	sed -i "s|g3_compcache_3|oneshot|" /init.rc
@@ -594,11 +599,15 @@ else
 
 fi
 
+# Inline inject mountpoints
+sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc
+sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
+sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
 
 umount /g3mod_sd
 
 rmdir /g3mod_sd
 
-exec /init_samsung
+exec /$INITbin
 
 

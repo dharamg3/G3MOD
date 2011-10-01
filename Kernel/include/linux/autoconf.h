@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Thu Sep 29 00:41:04 2011
+ * Sat Oct  1 05:42:06 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
@@ -171,6 +171,7 @@
 #define CONFIG_VIDEO_MEDIA 1
 #define CONFIG_BOARD_REVISION 0x02
 #define CONFIG_SLUB 1
+#define CONFIG_CC_OPTIMIZE_FOR_SIZE 1
 #define CONFIG_PROC_PAGE_MONITOR 1
 #define CONFIG_ANDROID_PARANOID_NETWORK 1
 #define CONFIG_IOSCHED_BFQ 1
