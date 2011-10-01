@@ -422,38 +422,33 @@ MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
 
 # DATA2SD CODE
+mkdir /data
+mkdir /intdata
+mkdir /sdext
+mount -t ext4 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
+mount -t ext2 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
+mount -t rfs -o nosuid,nodev,check=no /dev/block/stl7 /intdata
+mount -t ext4 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/mmcblk0p2 /sdext
+mount -t ext2 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/mmcblk0p2 /sdext
+mount -t rfs -o nosuid,nodev,check=no /dev/block/mmcblk0p2 /sdext
+mount -o bind /intdata /data
 
 if test -f $G3DIR/fs.data2sd
 then
 	DATA2SDmode=`cat $G3DIR/fs.data2sd`
 	if [ "$DATA2SDmode" = "hybrid" ]
-	then
+	then	
+		echo "Data2SD Enabled - Hybrid Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Hybrid Mode" >> /g3mod.log
-		mkdir /sdext
-		mkdir /data
-		mkdir /intdata
-		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /data
-		mount -t $STL7_FS -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
-		mount -t $MMC_FS /dev/block/mmcblk0p2 /sdext
 		sed -i "s|g3_mount_stl7|# Line not needed for Hybrid Data2SD|" /init.rc /recovery.rc
 
-		if test -f $G3DIR/data2sd.dirs; then
-			DATA2SDconf="$G3DIR/data2sd.dirs"
-		else
-			DATA2SDconf="/system/etc/data2sd.dirs"
-		fi
-		
-		cat $DATA2SDconf | while read line
-		do
-			DATA2SDtemp="${line%?}"
-			mkdir /sdext/$DATA2SDtemp
-			mkdir /data/$DATA2SDtemp
-			echo "/data/$DATA2SDtemp - /sdext/$DATA2SDtemp" >> /data2sd.log
-			mount -o bind /sdext/$DATA2SDtemp /data/$DATA2SDtemp >> /data2sd.log
-		done
-	
+		cp /system/etc/data2sd.dirs /
+		cp $G3DIR/data2sd.dirs /
 	else
+		echo "Data2SD Enabled - Standard Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Standard Mode" >> /g3mod.log
+		umount /data
+		mount -o bind /sdext /data
 		sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw|" /init.rc /recovery.rc
 	fi
 else
@@ -463,25 +458,104 @@ fi
 
 # END OF DATA2SD CODE
 
-# Inline inject mountpoints
-sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc
-sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
-sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
+if test -f $G3DIR/multiosdata
+then
+	MultiOS=`grep "ro.build.id" /system/build.prop|awk '{FS="="};{print $2}'`
+	if test -f /sdext/lastos; then
+		LastOS=`cat /sdext/lastos`
+	fi
+	mkdir /sdext/multios
+	echo "Multi-OS Data Enabled: $MultiOS" >> /g3mod.log
+else
+	echo "Multi-OS Data Disabled" >> /g3mod.log
+fi
 
+echo "Cleaning up symlinks" >> /data2sd.log
+cd /data/
+for x in *
+	do if [ -L $x ]; then
+		echo "- /data/$x is a symlink" >> /data2sd.log
+		rm /data/$x
+		mkdir /data/$x
+	fi
+done
+cd /
+
+if [ "$LastOS" = "" ]; then
+	LastOS=$MultiOS
+fi
+
+if [ "$MultiOS" != "" ]; then
+	if [ "$MultiOS" != "$LastOS" ]; then
+		echo "System has changed! Multi-OS Data changing too..." >> /multidata.log
+		rm /sdext/multios/$LastOS.data.tar
+		rm /sdext/multios/$LastOS.dalvikcache.tar
+
+		if test -f $G3DIR/multiosdata.cache; then
+			echo "Backing up dalvik-cache" >> /multidata.log
+			tar cvf /sdext/multios/$LastOS.dalvikcache.tar /data/dalvik-cache 2>>/multidata.log
+		fi
+		rm -r /data/dalvik-cache/*
+		echo "Backing up old data" >> /multidata.log
+		tar cvf /sdext/multios/$LastOS.data.tar /data 2>>/multidata.log 
+		
+		rm -r /data/*
+		echo "Extracting new data" >> /multidata.log
+		tar xvf /sdext/multios/$MultiOS.data.tar 2>>/multidata.log
+		if test -f $G3DIR/multiosdata.cache; then
+			echo "Extracting new dalvik-cache" >> /multidata.log
+			tar xvf /sdext/multios/$LastOS.dalvikcache.tar 2>>/multidata.log
+		fi
+		echo "Data switched from $LastOS to $MultiOS" >> /multidata.log
+	fi		
+fi
+
+echo $MultiOS > /sdext/lastos
+
+# Hybrid Data2SD Enabler
+if test -f /data2sd.dirs; then
+	echo "Connecting Hybrid Data2SD Links" >> /data2sd.log
+	cat /data2sd.dirs | while read line
+	do
+		DATA2SDtemp="${line%?}"
+
+		cp -prf /intdata/$DATA2SDtemp /sdext/
+		mkdir /sdext/$DATA2SDtemp
+		mkdir /intdata/$DATA2SDtemp
+		rm -r /intdata/$DATA2SDtemp
+		ln -s /sdext/$DATA2SDtemp /intdata/$DATA2SDtemp
+		echo "- /data/$DATA2SDtemp linked to /sdext/$DATA2SDtemp" >> /data2sd.log
+	done
+	chmod 771 /sdext
+
+
+else
+	echo "No Data2SD config file found (/system/etc/data2sd.dirs or /sdcard/Android/data/g3mod/data2sd.dirs" >> /data2sd.log
+fi
+
+rm /data2sd.dirs
+rm /multios
 cd /
 
 # Identify CyanogenMod or Samsung
-androidfinger=`grep "ro.build.fingerprint" /system/build.prop`
-
+androidfinger=`grep "ro.build.fingerprint" /system/build.prop|awk '{FS="="};{print $2}'`
 echo "System detected: $androidfinger" >> /g3mod.log
-if [ "$androidfinger" == "ro.build.fingerprint=samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]
-then
-		echo "System booted with CyanogenMod 7 Kernel mode" >> /g3mod.log
-		
-else
-	if [ "$androidfinger" == "ro.build.fingerprint=samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]
+if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]; then
+	rm /init.rc
+	rm /recovery.rc
+	mv /init_ging.rc /init.rc
+	mv /recovery_ging.rc /recovery.rc
+	INITbin=init_ging
 
-	then
+	echo "System booted with CyanogenMod 7 Kernel mode" >> /g3mod.log
+else
+	rm /init.rc
+	rm /recovery.rc
+	mv /init_froyo.rc /init.rc
+	mv /recovery_froyo.rc /recovery.rc
+	INITbin=init_froyo
+
+	if [ "$androidfinger" == "samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]; then
 		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0777 wifi wifi|" /init.rc
 		sed -i "s|g3_wifi_data_02|chown wifi wifi /data/misc/wifi|" /init.rc
 		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi|" /init.rc
@@ -510,8 +584,7 @@ fi
 umount /system
 
 # Enable Compcache if enabled by user
-if [ -e "$G3DIR/compcache" ];
-then
+if [ -e "$G3DIR/compcache" ]; then
 	sed -i "s|g3_compcache_1|service ramzswap /sbin/ramzswap.sh|" /init.rc
 	sed -i "s|g3_compcache_2|user root|" /init.rc
 	sed -i "s|g3_compcache_3|oneshot|" /init.rc
@@ -524,11 +597,15 @@ else
 
 fi
 
+# Inline inject mountpoints
+sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc
+sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
+sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
 
 umount /g3mod_sd
 
 rmdir /g3mod_sd
 
-exec /init_samsung
+exec /$INITbin
 
 

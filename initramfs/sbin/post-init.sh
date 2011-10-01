@@ -9,6 +9,8 @@ export PATH=/sbin:/system/bin:/system/xbin
 exec >>/res/user.log
 exec 2>&1
 
+chmod 777 /sdext/app
+
 # continue with playing the logo
 exec /system/bin/playlogo&
 

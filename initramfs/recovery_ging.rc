@@ -5,7 +5,7 @@ on init
 
 sysclktz 0
 
-loglevel 3
+loglevel 9
 
 # setup the global environment
     export PATH /sbin:/system/sbin:/system/bin:/system/xbin
@@ -273,11 +273,34 @@ on boot
 
 ## Daemon processes to be run by init.
 ##
+on post-fs
+    #mount rootfs rootfs / ro remount
+
+    write /proc/sys/kernel/panic_on_oops 1
+    write /proc/sys/kernel/hung_task_timeout_secs 0
+    write /proc/cpu/alignment 4
+    write /proc/sys/kernel/sched_latency_ns 10000000
+    write /proc/sys/kernel/sched_wakeup_granularity_ns 2000000
+    write /proc/sys/kernel/sched_compat_yield 1
+    write /proc/sys/kernel/sched_child_runs_first 0
+
+on boot
+
+    ifup lo
+    hostname localhost
+    domainname localdomain
+
+    class_start default
+
+## Daemon processes to be run by init.
+##
+service ueventd /sbin/ueventd
+    critical
+
 service console /system/bin/sh
     console
 
 service recovery /sbin/recovery
-    console
     oneshot
 
 # adbd is controlled by the persist.service.adb.enable system property
