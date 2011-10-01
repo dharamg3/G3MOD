@@ -1,7 +1,0 @@
-# mount     fstype      device                  device2
-
-/boot       bml         boot
-/cache      ext2        /dev/block/stl8
-/data       ext2        /dev/block/mmcblk0p2
-/sdcard     vfat        /dev/block/mmcblk0p1    /dev/block/mmcblk0
-/system     ext2        /dev/block/stl6

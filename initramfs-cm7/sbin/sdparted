@@ -268,10 +268,7 @@ PrepareSdCard() {
 	[ $TTISLOOP -gt 0 ] && echo -n "setting partition table to msdos..."
 	[ $TTISMSDOS -gt 0 ] && echo -n "removing all partitions..."
 	
-	"$CMPARTED" -s "$SDPATH" rm 4 2>&1 >>"$LOGFILE"
-        "$CMPARTED" -s "$SDPATH" rm 3 2>&1 >>"$LOGFILE"
-        "$CMPARTED" -s "$SDPATH" rm 2 2>&1 >>"$LOGFILE"
-
+	"$CMPARTED" -s "$SDPATH" mklabel msdos 2>&1 >>"$LOGFILE"
 	echo "done"
 	echo
 	
@@ -323,24 +320,19 @@ PartitionSdCard() {
 	
 	if [ $FATSIZE -gt 0 ] ; then
 		echo -n "creating fat32 partition..."
-                EXTEND1="$FATSIZE"
-                FATSIZE=$(($FATSIZE - $EXTSIZE))
-		"$CMPARTED" -s "$SDPATH" resize 1 0 "$FATSIZE"MB 2>&1 >>"$LOGFILE"
+		"$CMPARTED" -s "$SDPATH" mkpartfs primary fat32 0 "$FATSIZE"MB 2>&1 >>"$LOGFILE"
 		echo "done"
 	fi
 	
 	if [ $EXTSIZE -gt 0 ] ; then
 		echo -n "creating ext2 partition..."
-                "$CMPARTED" -s "$SDPATH" mkpart primary "$FATSIZE"MB "$EXTEND1"MB 2>&1 >>"$LOGFILE"
-		"$CMPARTED" -s "$SDPATH" mkpart primary "$EXTEND1"MB "$EXTEND"MB 2>&1 >>"$LOGFILE"
-                "$MKFS" -T ext2 -b 4096 -m 0 /dev/block/mmcblk0p2
-                "$MKFS" -T ext2 -b 4096 -m 0 /dev/block/mmcblk0p3
+		"$CMPARTED" -s "$SDPATH" mkpartfs primary ext2 "$FATSIZE"MB "$EXTEND"MB 2>&1 >>"$LOGFILE"
 		echo "done"
 	fi
 	
 	if [ $SWAPSIZE -gt 0 ] ; then
 		echo -n "creating swap partition..."
-                "$CMPARTED" -s "$SDPATH" mkpartfs primary linux-swap "$EXTEND"MB "$SWAPEND"MB 2>&1 >>"$LOGFILE"
+		"$CMPARTED" -s "$SDPATH" mkpartfs primary linux-swap "$EXTEND"MB "$SWAPEND"MB 2>&1 >>"$LOGFILE"
 		echo "done"
 	fi
 	echo
@@ -553,29 +545,12 @@ TTISMSDOS=
 
 SDSIZE=
 SDSIZEMB=
-SDINFO=$(cat /etc/fstab | grep /sdcard | awk '{print $1}')
-if [ -L "$SDINFO" ]
+if [ -z "$SDPATH" ]
 then
-	SDPATH=$(ls -l $SDINFO | awk '{print $11}')
+    SDPATH="/dev/block/mmcblk0"
 else
-	SDPATH=$SDINFO
+    echo Found SDPATH=$SDPATH
 fi
-# we may now have an SDPATH, let's make sure its on mmcblkX or mmcblkXp1
-CHECK_SDPATH1=$(echo $SDPATH | grep mmcblk.$)
-CHECK_SDPATH2=$(echo $SDPATH | grep mmcblk.p1$)
-if [ -z "$CHECK_SDPATH1" ]
-then
-	if [ -z "$CHECK_SDPATH2" ]
-	then
-		echo fail1
-		unset SDPATH
-	else
-		LEN=${#SDPATH}
-		BLKLEN=$(expr $LEN - 2)
-		SDPATH=${SDPATH:0:$BLKLEN}
-	fi
-fi
-
 
 FATSIZE=
 FATTYPE="fat32"
@@ -587,14 +562,13 @@ EXTPATH=$SDPATH"p2"
 EXTEND=
 
 SWAPSIZE=32
-SWAPTYPE="ext2"
-SWAPPATH=$SDPATH"p4"
+SWAPTYPE="linux-swap"
+SWAPPATH=$SDPATH"p3"
 SWAPEND=
 
 CMPARTED="/sbin/parted"
 CMTUNE2FS="/sbin/tune2fs"
 CME2FSCK="/sbin/e2fsck"
-MKFS="/sbin/mke2fs"
 
 # give the output some breathing room
 echo "$SCRIPTREV" >> "$LOGFILE" 
