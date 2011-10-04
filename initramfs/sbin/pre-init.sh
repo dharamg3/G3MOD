@@ -441,6 +441,8 @@ then
 		echo "Data2SD Enabled - Hybrid Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Hybrid Mode" >> /g3mod.log
 		sed -i "s|g3_mount_stl7|# Line not needed for Hybrid Data2SD|" /init.rc /recovery.rc
+		cp /system/etc/data2sd.dirs /
+		cp $G3DIR/data2sd.dirs /
 	else
 		echo "Data2SD Enabled - Standard Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Standard Mode" >> /g3mod.log
@@ -448,9 +450,6 @@ then
 		mount -o bind /sdext /data
 		sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw|" /init.rc /recovery.rc
 	fi
-	
-	cp /system/etc/data2sd.dirs /
-	cp $G3DIR/data2sd.dirs /
 	
 else
 	echo "Data2SD Disabled" >> /g3mod.log
