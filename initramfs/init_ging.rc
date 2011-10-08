@@ -35,6 +35,7 @@ loglevel 3
     insmod /lib/modules/svnet.ko
     insmod /lib/modules/modemctl.ko
     insmod /lib/modules/storage.ko
+    insmod /lib/modules/tun.ko
  
     insmod /lib/modules/param.ko
         
@@ -488,6 +489,7 @@ service vold /system/bin/vold
 
 service netd /system/bin/netd
     socket netd stream 0660 root system
+    socket dnsproxyd stream 0660 root inet
 
 service debuggerd /system/bin/debuggerd
 
