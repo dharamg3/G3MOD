@@ -413,25 +413,22 @@ rm -rf /etc
 sync
 cd /
 
-# modify mount options to inject in android inits
-STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
-STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
-STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
-MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
-
 mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
 
 # DATA2SD CODE
 mkdir /data
 mkdir /intdata
 mkdir /sdext
-mount -t ext4 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
-mount -t ext2 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/stl7 /intdata
-mount -t rfs -o nosuid,nodev,check=no /dev/block/stl7 /intdata
-mount -t ext4 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/mmcblk0p2 /sdext
-mount -t ext2 -o noatime,nodiratime,nosuid,nodev,rw /dev/block/mmcblk0p2 /sdext
-mount -t rfs -o nosuid,nodev,check=no /dev/block/mmcblk0p2 /sdext
+echo "STL7 mounting options: [nodiratime,nosuid,nodev,rw$STL7_MNT]" > g3mod.log
+mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /intdata
+mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
 mount -o bind /intdata /data
+
+# modify mount options to inject in android inits
+STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
+STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
+STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
+MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 
 if test -f $G3DIR/fs.data2sd
 then
@@ -448,7 +445,7 @@ then
 		echo "Data2SD Enabled - Standard Mode" >> /g3mod.log
 		umount /data
 		mount -o bind /sdext /data
-		sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw|" /init.rc /recovery.rc
+		sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw ${MMC_MNT}|" /init.rc /recovery.rc
 	fi
 	
 else
@@ -547,7 +544,7 @@ if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/releas
 	mv /recovery_ging.rc /recovery.rc
 	INITbin=init_ging
 
-	echo "System booted with CyanogenMod 7 Kernel mode" >> /g3mod.log
+	echo "System booted with AOSP Gingerbread Kernel mode" >> /g3mod.log
 else
 	rm /init.rc
 	rm /recovery.rc
@@ -566,7 +563,7 @@ else
 		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf -dd|" /init.rc
 		sed -i "s|g3_vibrator_module|vibrator-cm6|" /init.rc
 
-		echo "System booted with CyanogenMod 6 kernel mode" >> /g3mod.log
+		echo "System booted with AOSP Froyo kernel mode" >> /g3mod.log
 	else
 		sed -i "s|g3_wifi_data_01|mkdir /data/wifi 0777 wifi wifi|" /init.rc
 		sed -i "s|g3_wifi_data_02|mkdir /data/misc/wifi 0771 wifi wifi|" /init.rc
@@ -578,7 +575,7 @@ else
 		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/wifi/bcm_supp.conf|" /init.rc
 		sed -i "s|g3_vibrator_module|vibrator-sam|" /init.rc
 
-		echo "System booted with Samsung kernel mode" >> /g3mod.log
+		echo "System booted with Samsung Froyo kernel mode" >> /g3mod.log
 	fi
 fi
 umount /system
