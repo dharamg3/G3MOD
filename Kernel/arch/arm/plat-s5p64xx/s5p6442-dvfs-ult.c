@@ -27,28 +27,32 @@
 #include <linux/io.h>
 #include <plat/map.h>
 
-unsigned int S5P6442_MAXFREQLEVEL = 12;
-unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 12;
+unsigned int S5P6442_MAXFREQLEVEL = 16;
+unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 16;
 static unsigned int s5p6442_cpufreq_level = 0;
-unsigned int s5p6442_cpufreq_index = 12;
+unsigned int s5p6442_cpufreq_index = 16;
 static spinlock_t dvfs_lock;
  
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
-        {0, 1200*KHZ_T},
-        {1, 1100*KHZ_T},
-        {2, 1000*KHZ_T},
-        {3, 900*KHZ_T},
-        {4, 800*KHZ_T},
-        {5, 700*KHZ_T},
-        {6, 600*KHZ_T},
-        {7, 500*KHZ_T},
-        {8, 400*KHZ_T},
-        {9, 300*KHZ_T},
-        {10, 200*KHZ_T},
-        {13, 83*KHZ_T},
-        {12, CPUFREQ_TABLE_END},
+		{0, 1336*KHZ_T},
+		{1, 1251*KHZ_T},
+		{2, 1168*KHZ_T},
+        {3, 1084*KHZ_T},
+        {4, 1001*KHZ_T},
+        {5, 917*KHZ_T},
+        {6, 834*KHZ_T},
+        {7, 750*KHZ_T},
+        {8, 667*KHZ_T},
+        {9, 583*KHZ_T},
+        {10, 500*KHZ_T},
+        {11, 416*KHZ_T},
+        {12, 333*KHZ_T},
+        {13, 249*KHZ_T},
+        {14, 166*KHZ_T},
+        {15, 83*KHZ_T},
+        {16, CPUFREQ_TABLE_END},
 };
 
 static unsigned char transition_state_666_166MHz[][2] = {
@@ -56,31 +60,39 @@ static unsigned char transition_state_666_166MHz[][2] = {
         {2, 1},
         {3, 2},
         {4, 3},
-	{5, 4},
-	{6, 5},
-	{7, 6},
-	{8, 7},
-	{9, 8},
-	{10, 9},
-	{11, 10},
-        {3, 1},
+		{5, 4},
+		{6, 5},
+		{7, 6},
+		{8, 7},
+		{9, 8},
+		{10, 9},
+		{11, 10},
+		{12, 11},
+		{13, 12},
+		{14, 13},
+		{15, 14},
+		{3, 1},
 };
 
 
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Matched VDD ARM voltage , Matched VDD INT*/
-	{1200000,1500, 1200, 0},        
-	{1100000,1500, 1200, 1},        
-	{1000000,1400, 1200, 2},
-        {900000, 1400, 1200, 3},
-        {800000, 1300, 1200, 4},
-        {700000, 1300, 1200, 5},
-        {600000, 1250, 1200, 6},
-        {500000, 1250, 1200, 7},
-        {400000, 1200, 1200, 8},
-        {300000, 1200, 1200, 9},
-        {200000, 1200, 1200, 10},
+		{1366000,1500, 1200, 0},
+		{1251000,1500, 1200, 1},
+		{1168000,1500, 1200, 2},
+		{1084000,1400, 1200, 3},
+		{1001000,1400, 1200, 4},        
+		{917000,1400, 1200, 4},        
+		{834000,1300, 1200, 5},
+        {750000, 1300, 1200, 6},
+        {667000, 1250, 1200, 7},
+        {583000, 1250, 1200, 8},
+        {500000, 1250, 1200, 9},
+        {416000, 1200, 1200, 10},
+        {333000, 1200, 1200, 11},
+        {249000, 1200, 1200, 12},
+        {166000, 1150, 1200, 13},
         {83000,  1100, 1100, 4},
 }; 
 
