@@ -36,9 +36,9 @@ static spinlock_t dvfs_lock;
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
-		{0, 1336*KHZ_T},
-		{1, 1251*KHZ_T},
-		{2, 1168*KHZ_T},
+	{0, 1336*KHZ_T},
+	{1, 1251*KHZ_T},
+	{2, 1168*KHZ_T},
         {3, 1084*KHZ_T},
         {4, 1001*KHZ_T},
         {5, 917*KHZ_T},
@@ -60,31 +60,31 @@ static unsigned char transition_state_666_166MHz[][2] = {
         {2, 1},
         {3, 2},
         {4, 3},
-		{5, 4},
-		{6, 5},
-		{7, 6},
-		{8, 7},
-		{9, 8},
-		{10, 9},
-		{11, 10},
-		{12, 11},
-		{13, 12},
-		{14, 13},
-		{15, 14},
-		{3, 1},
+	{5, 4},
+	{6, 5},
+	{7, 6},
+	{8, 7},
+	{9, 8},
+	{10, 9},
+	{11, 10},
+	{12, 11},
+	{13, 12},
+	{14, 13},
+	{15, 14},
+	{3, 1},
 };
 
 
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Matched VDD ARM voltage , Matched VDD INT*/
-		{1366000,1500, 1200, 0},
-		{1251000,1500, 1200, 1},
-		{1168000,1500, 1200, 2},
-		{1084000,1400, 1200, 3},
-		{1001000,1400, 1200, 4},        
-		{917000,1400, 1200, 4},        
-		{834000,1300, 1200, 5},
+	{1336000,1500, 1200, 0},
+	{1251000,1500, 1200, 1},
+	{1168000,1500, 1200, 2},
+	{1084000,1400, 1200, 3},
+	{1001000,1400, 1200, 4},        
+	{917000, 1400, 1200, 4},        
+	{834000, 1300, 1200, 5},
         {750000, 1300, 1200, 6},
         {667000, 1250, 1200, 7},
         {583000, 1250, 1200, 8},
@@ -482,13 +482,13 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 
 	if(policy->cpu != 0)
 		return -EINVAL;
-	policy->min = s5p6442_freq_table[S5P6442_FREQ_TAB][11].frequency;
+	policy->min = s5p6442_freq_table[S5P6442_FREQ_TAB][15].frequency;
 	policy->cur = policy->max = s5p6442_getspeed(0);
 //	printk("---> [s5p6442_cpu_init] : getspeed(0) : %d\n", s5p6442_getspeed(0));
 
 	S5P6442_FREQ_TAB = 0;
-	S5P6442_MAXFREQLEVEL_ONLYCPU = 12;
-	S5P6442_MAXFREQLEVEL = 12;
+	S5P6442_MAXFREQLEVEL_ONLYCPU = 16;
+	S5P6442_MAXFREQLEVEL = 16;
 
   //      printk("##s5p6442###%s::max_freq %d FREQ_TAB %d\n", __FUNCTION__, policy->max, S5P6442_FREQ_TAB);
 	s5p6442_cpufreq_level = S5P6442_MAXFREQLEVEL;
