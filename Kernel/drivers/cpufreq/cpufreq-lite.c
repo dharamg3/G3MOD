@@ -678,7 +678,7 @@ static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy, char 
 	int i;
 	char *table = buf;
 
-	for( i=0; i<5; i++ )
+	for( i=0; i<8; i++ )
 	{
 		table += sprintf(table, "%d %d %d\n", frequency_match_666_166MHz[i][0], frequency_match_666_166MHz[i][1], frequency_match_666_166MHz[i][1] - FakeShmoo_UV_mV_Ptr[i] );
 	}
@@ -690,7 +690,7 @@ static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 	int i;
 	char *table = buf;
 
-	for( i=0; i<5; i++ )
+	for( i=0; i<8; i++ )
 	{
 		table += sprintf(table, "%d ", FakeShmoo_UV_mV_Ptr[i] );
 	}
@@ -700,8 +700,8 @@ static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 
 static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, const char *buf, size_t count)
 {
-	int ret = sscanf( buf, "%i %i %i %i %i", &FakeShmoo_UV_mV_Ptr[0], &FakeShmoo_UV_mV_Ptr[1], &FakeShmoo_UV_mV_Ptr[2], &FakeShmoo_UV_mV_Ptr[3], &FakeShmoo_UV_mV_Ptr[4]);
-	printk("---> voltage store : 0=%d 1=%d 2=%d 3=%d 4=%d\n", FakeShmoo_UV_mV_Ptr[0], FakeShmoo_UV_mV_Ptr[1], FakeShmoo_UV_mV_Ptr[2], FakeShmoo_UV_mV_Ptr[3], FakeShmoo_UV_mV_Ptr[4]);
+	int ret = sscanf( buf, "%i %i %i %i %i %i %i %i", &FakeShmoo_UV_mV_Ptr[0], &FakeShmoo_UV_mV_Ptr[1], &FakeShmoo_UV_mV_Ptr[2], &FakeShmoo_UV_mV_Ptr[3], &FakeShmoo_UV_mV_Ptr[4], &FakeShmoo_UV_mV_Ptr[5], &FakeShmoo_UV_mV_Ptr[6], &FakeShmoo_UV_mV_Ptr[7]);
+	printk("---> voltage store : 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n", FakeShmoo_UV_mV_Ptr[0], FakeShmoo_UV_mV_Ptr[1], FakeShmoo_UV_mV_Ptr[2], FakeShmoo_UV_mV_Ptr[3], FakeShmoo_UV_mV_Ptr[4], FakeShmoo_UV_mV_Ptr[5], FakeShmoo_UV_mV_Ptr[6], FakeShmoo_UV_mV_Ptr[7]);
 	printk("---> voltage : index = %d\n", s5p6442_cpufreq_index);
 	printk("---> set voltage!\n");
 	ret = set_voltage(s5p6442_cpufreq_index, true);
