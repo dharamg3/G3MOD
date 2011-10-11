@@ -30,7 +30,23 @@
 
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL         (10)
 #define DEF_FREQUENCY_UP_THRESHOLD              (80)
+
+#ifdef CONFIG_LITE
+#ifndef CONFIG_PERFORMANCE
+#define DEF_SAMPLING_DOWN_FACTOR                (1)
+#endif
+#endif
+
+#ifdef CONFIG_LITE
+#ifdef CONFIG_PERFORMANCE
+#ifdef CONFIG_ULTIMATE
+#ifndef CONFIG_EXTREME
 #define DEF_SAMPLING_DOWN_FACTOR                (90)
+#endif
+#endif
+#endif
+#endif
+
 #define MAX_SAMPLING_DOWN_FACTOR                (100000)
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL       (3)
 #define MICRO_FREQUENCY_UP_THRESHOLD            (95)
