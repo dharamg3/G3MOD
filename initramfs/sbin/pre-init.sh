@@ -417,12 +417,16 @@ mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
 
 # DATA2SD CODE
 mkdir /data
-mkdir /intdata
-mkdir /sdext
 echo "STL7 mounting options: [nodiratime,nosuid,nodev,rw$STL7_MNT]" > g3mod.log
-mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /intdata
-mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
-mount -o bind /intdata /data
+if test -f $G3DIR/fs.data2sd; then
+	mkdir /intdata
+	mkdir /sdext
+	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /intdata
+	mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
+	mount -o bind /intdata /data
+else
+	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
+fi
 
 # modify mount options to inject in android inits
 STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
