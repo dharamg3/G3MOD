@@ -75,20 +75,20 @@ config S5P_HIGH_RES_TIMERS_HZ
             Kernel HRTimer HZ.
 
 config LITE
-	bool "Lite"
+	bool "Non-OC Kernel"
 	depends on MACH_APOLLO
 	help
 		Provide non-overclocking CPU
 
 config PERFORMANCE
-	bool "Performance"
+	bool "OC Kernel"
 	depends on MACH_APOLLO
 	depends on LITE
 	help
 		Provide overclocking for the CPU
 
 config ULTIMATE
-	bool "Ultimate"
+	bool "OC+ Kernel"
 	depends on MACH_APOLLO
 	depends on PERFORMANCE
 	help

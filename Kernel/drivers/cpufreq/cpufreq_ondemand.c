@@ -30,6 +30,7 @@
 
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL         (10)
 #define DEF_FREQUENCY_UP_THRESHOLD              (80)
+#define DEF_SAMPLING_DOWN_FACTOR                (90)
 
 #ifdef CONFIG_LITE
 #ifndef CONFIG_PERFORMANCE
