@@ -60,15 +60,15 @@ static unsigned char transition_state_666_166MHz[][2] = {
 
 /* frequency voltage matching table */
 unsigned int frequency_match_666_166MHz[][4] = {
-/* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {667000, 1250, 1200, 1},
-        {583000, 1250, 1200, 2},
-        {500000, 1250, 1200, 3},
+/* frequency, Matched VDD ARM voltage , Matched VDD INT*/
+        {667000, 1200, 1200, 1},
+        {583000, 1200, 1200, 2},
+        {500000, 1200, 1200, 3},
         {416000, 1200, 1200, 4},
         {333000, 1200, 1200, 5},
         {249000, 1200, 1200, 6},
         {166000, 1150, 1200, 7},
-        {83000,  1100, 1100, 4},
+        {83000,  1100, 1200, 8},
 }; 
 
 extern int is_pmic_initialized(void);
