@@ -424,41 +424,36 @@ if test -f $G3DIR/fs.data2sd; then
 	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /intdata
 	mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
 	mount -o bind /intdata /data
-else
-	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
-fi
-
-# modify mount options to inject in android inits
-STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
-STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
-STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
-MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
-
-if test -f $G3DIR/fs.data2sd
-then
 	DATA2SDmode=`cat $G3DIR/fs.data2sd`
 	if [ "$DATA2SDmode" = "hybrid" ]
 	then	
 		echo "Data2SD Enabled - Hybrid Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Hybrid Mode" >> /g3mod.log
-		sed -i "s|g3_mount_stl7|# Line not needed for Hybrid Data2SD|" /init.rc /recovery.rc
-		cp /system/etc/data2sd.dirs /
-		cp $G3DIR/data2sd.dirs /
+		tr -d '\r' < /system/etc/data2sd.dirs > /data2sd.dirs
+		tr -d '\r' < $G3DIR/data2sd.dirs > /data2sd.dirs
 	else
 		echo "Data2SD Enabled - Standard Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Standard Mode" >> /g3mod.log
 		umount /data
 		mount -o bind /sdext /data
-		sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw ${MMC_MNT}|" /init.rc /recovery.rc
+		#sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw ${MMC_MNT}|" /init.rc /recovery.rc
+		sed -i "s|g3_mount_stl7|# Line not needed for Data2SD|" /init.rc /recovery.rc
 	fi
-	
 else
 	echo "Data2SD Disabled" >> /g3mod.log
+	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
+
+	# modify mount options to inject in android inits
+	STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
+	STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
+	STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
+	MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 	sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
 fi
 
 # END OF DATA2SD CODE
 
+# Multi Data Code
 if test -f $G3DIR/multiosdata
 then
 	MultiOS=`grep "ro.build.id" /system/build.prop|awk '{FS="="};{print $2}'`
@@ -478,6 +473,7 @@ for x in *
 		echo "- /data/$x is a symlink" >> /data2sd.log
 		rm /data/$x
 		mkdir /data/$x
+		chmod 777 /data/$x
 	fi
 done
 cd /
@@ -512,6 +508,7 @@ if [ "$MultiOS" != "" ]; then
 fi
 
 echo $MultiOS > /sdext/lastos
+# End of Multi Data
 
 # Hybrid Data2SD Enabler
 if test -f /data2sd.dirs; then
@@ -537,6 +534,7 @@ fi
 rm /data2sd.dirs
 rm /multios
 cd /
+# End of Hybrid Data2SD
 
 # Identify CyanogenMod or Samsung
 androidfinger=`grep "ro.build.fingerprint" /system/build.prop|awk '{FS="="};{print $2}'`

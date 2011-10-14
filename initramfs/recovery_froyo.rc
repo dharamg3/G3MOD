@@ -277,7 +277,6 @@ service console /system/bin/sh
     console
 
 service recovery /sbin/recovery
-    console
     oneshot
 
 # adbd is controlled by the persist.service.adb.enable system property

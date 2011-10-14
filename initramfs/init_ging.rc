@@ -474,8 +474,8 @@ on property:ro.kernel.qemu=1
 on property:persist.service.adb.enable=1
     start adbd
 
-on property:persist.service.adb.enable=0
-    stop adbd
+# on property:persist.service.adb.enable=0
+#    stop adbd
 
 service servicemanager /system/bin/servicemanager
     user system

@@ -494,9 +494,6 @@ on property:ro.kernel.qemu=1
 on property:persist.service.adb.enable=1
     start adbd
  
-on property:persist.service.adb.enable=0
-    stop adbd
-
 g3_compcache_1
 g3_compcache_2
 g3_compcache_3
