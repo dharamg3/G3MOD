@@ -562,3 +562,4 @@ static struct bfq_queue *bfq_get_queue(struct bfq_data *bfqd,
 static void bfq_put_async_queues(struct bfq_data *bfqd, struct bfq_group *bfqg);
 static void bfq_exit_bfqq(struct bfq_data *bfqd, struct bfq_queue *bfqq);
 #endif
+

@@ -417,13 +417,13 @@ mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
 
 # DATA2SD CODE
 mkdir /data
-echo "STL7 mounting options: [nodiratime,nosuid,nodev,rw$STL7_MNT]" > g3mod.log
 if test -f $G3DIR/fs.data2sd; then
 	mkdir /intdata
 	mkdir /sdext
 	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /intdata
-	mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
-	mount -o bind /intdata /data
+	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
+	mount -t $MMC_FS -o rw,$MMC_MNT /dev/block/mmcblk0p2 /sdext
+	# nodiratime,nosuid,nodev,rw
 	DATA2SDmode=`cat $G3DIR/fs.data2sd`
 	if [ "$DATA2SDmode" = "hybrid" ]
 	then	
@@ -435,36 +435,40 @@ if test -f $G3DIR/fs.data2sd; then
 		echo "Data2SD Enabled - Standard Mode" >> /data2sd.log	
 		echo "Data2SD Enabled - Standard Mode" >> /g3mod.log
 		umount /data
-		mount -o bind /sdext /data
-		#sed -i "s|g3_mount_stl7|mount ${MMC_FS} /dev/block/mmcblk0p2 /data noatime nodiratime nosuid nodev rw ${MMC_MNT}|" /init.rc /recovery.rc
-		sed -i "s|g3_mount_stl7|# Line not needed for Data2SD|" /init.rc /recovery.rc
+		mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
 	fi
+	sed -i "s|g3_mount_stl7|# Line not needed for Data2SD|" /init.rc /recovery.rc
 else
 	echo "Data2SD Disabled" >> /g3mod.log
 	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
-
-	# modify mount options to inject in android inits
-	STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
 	STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
-	STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
-	MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 	sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
 fi
+
+# modify mount options to inject in android inits
+STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
+STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
+STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
+MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 
 # END OF DATA2SD CODE
 
 # Multi Data Code
-if test -f $G3DIR/multiosdata
-then
+if test -f $G3DIR/multiosdata; then
 	MultiOS=`grep "ro.build.id" /system/build.prop|awk '{FS="="};{print $2}'`
 	if test -f /sdext/lastos; then
 		LastOS=`cat /sdext/lastos`
 	fi
 	mkdir /sdext/multios
 	echo "Multi-OS Data Enabled: $MultiOS" >> /g3mod.log
+
+	if test -f $G3DIR/multiosdata.comp; then	
+		MultiOSCompression=`cat $G3DIR/multiosdata.comp`
+	fi
 else
 	echo "Multi-OS Data Disabled" >> /g3mod.log
 fi
+
 
 echo "Cleaning up symlinks" >> /data2sd.log
 cd /data/
@@ -478,36 +482,36 @@ for x in *
 done
 cd /
 
-if [ "$LastOS" = "" ]; then
-	LastOS=$MultiOS
-fi
-
 if [ "$MultiOS" != "" ]; then
+	if [ "$LastOS" = "" ]; then
+		LastOS=$MultiOS
+	fi
+
 	if [ "$MultiOS" != "$LastOS" ]; then
 		echo "System has changed! Multi-OS Data changing too..." >> /multidata.log
 		rm /sdext/multios/$LastOS.data.tar
 		rm /sdext/multios/$LastOS.dalvikcache.tar
 
 		if test -f $G3DIR/multiosdata.cache; then
-			echo "Backing up dalvik-cache" >> /multidata.log
-			tar cvf /sdext/multios/$LastOS.dalvikcache.tar /data/dalvik-cache 2>>/multidata.log
+			echo "Backing up dalvik-cache ($MultiOSCompression)" >> /multidata.log
+			tar cvf$MultiOSCompression /sdext/multios/$LastOS.dalvikcache.tar /data/dalvik-cache 2>>/multidata.log
 		fi
 		rm -r /data/dalvik-cache/*
-		echo "Backing up old data" >> /multidata.log
-		tar cvf /sdext/multios/$LastOS.data.tar /data 2>>/multidata.log 
+		echo "Backing up old data ($MultiOSCompression)" >> /multidata.log
+		tar cvf$MultiOSCompression /sdext/multios/$LastOS.data.tar /data 2>>/multidata.log 
 		
 		rm -r /data/*
-		echo "Extracting new data" >> /multidata.log
-		tar xvf /sdext/multios/$MultiOS.data.tar 2>>/multidata.log
+		echo "Extracting new data ($MultiOSCompression)" >> /multidata.log
+		tar xvf$MultiOSCompression /sdext/multios/$MultiOS.data.tar 2>>/multidata.log
 		if test -f $G3DIR/multiosdata.cache; then
-			echo "Extracting new dalvik-cache" >> /multidata.log
-			tar xvf /sdext/multios/$LastOS.dalvikcache.tar 2>>/multidata.log
+			echo "Extracting new dalvik-cache ($MultiOSCompression)" >> /multidata.log
+			tar xvf$MultiOSCompression /sdext/multios/$LastOS.dalvikcache.tar 2>>/multidata.log
 		fi
 		echo "Data switched from $LastOS to $MultiOS" >> /multidata.log
 	fi		
-fi
 
-echo $MultiOS > /sdext/lastos
+	echo $MultiOS > /sdext/lastos
+fi
 # End of Multi Data
 
 # Hybrid Data2SD Enabler
@@ -563,7 +567,8 @@ else
 		sed -i "s|g3_wifi_data_06|chown wifi wifi /data/system/wpa_supplicant|" /init.rc
 		sed -i "s|g3_wifi_data_07|chmod 0777 /data/system/wpa_supplicant|" /init.rc
 		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf -dd|" /init.rc
-		sed -i "s|g3_vibrator_module|vibrator-cm6|" /init.rc
+		sed -i "s|g3_vibratecho "STL7 mounting options: [nodiratime,nosuid,nodev,rw$STL7_MNT]" > g3mod.log
+or_module|vibrator-cm6|" /init.rc
 
 		echo "System booted with AOSP Froyo kernel mode" >> /g3mod.log
 	else

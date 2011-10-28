@@ -711,6 +711,7 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, const char *buf,
 	return count;
 }
 
+
 static ssize_t show_plls_table(struct cpufreq_policy *policy, char *buf)
 {
 	int i;
@@ -2168,4 +2169,3 @@ static int __init cpufreq_core_init(void)
 }
 
 core_initcall(cpufreq_core_init);
-

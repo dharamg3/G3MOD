@@ -11,6 +11,9 @@ exec 2>&1
 
 chmod 777 /sdext/app
 
+mkdir /system/sd
+mount -o bind /sdext /system/sd
+
 # continue with playing the logo
 exec /system/bin/playlogo&
 

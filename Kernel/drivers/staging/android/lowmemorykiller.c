@@ -85,9 +85,7 @@ static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 	int tasksize;
 	int i;
 	int min_adj = OOM_ADJUST_MAX + 1;
-	int target_free = 0;
 	int selected_tasksize = 0;
-	int selected_target_offset;
 	int selected_oom_adj;
 	int array_size = ARRAY_SIZE(lowmem_adj);
 	int other_free = global_page_state(NR_FREE_PAGES);
@@ -111,7 +109,6 @@ static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 		if (other_free < lowmem_minfree[i] &&
 		    other_file < lowmem_minfree[i]) {
 			min_adj = lowmem_adj[i];
-			target_free = lowmem_minfree[i] - (other_free + other_file);
 			break;
 		}
 	}
@@ -135,7 +132,6 @@ static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 		struct mm_struct *mm;
 		struct signal_struct *sig;
 		int oom_adj;
-		int target_offset;
 
 		task_lock(p);
 		mm = p->mm;
@@ -157,12 +153,11 @@ static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 			if (oom_adj < selected_oom_adj)
 				continue;
 			if (oom_adj == selected_oom_adj &&
-			    target_offset >= selected_target_offset)
+			    tasksize <= selected_tasksize)
 				continue;
 		}
 		selected = p;
 		selected_tasksize = tasksize;
-		selected_target_offset = target_offset;
 		selected_oom_adj = oom_adj;
 		lowmem_print(2, "select %d (%s), adj %d, size %d, to kill\n",
 			     p->pid, p->comm, oom_adj, tasksize);
