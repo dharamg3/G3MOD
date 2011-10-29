@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Thu Oct 27 17:44:33 2011
+ * Fri Oct 28 01:50:18 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
@@ -325,7 +325,6 @@
 #define CONFIG_MEDIA_TUNER_TDA9887 1
 #define CONFIG_INET_TUNNEL 1
 #define CONFIG_CPU_FREQ_GOV_ONDEMAND 1
-#define CONFIG_ULTIMATE 1
 #define CONFIG_CPU_IDLE 1
 #define CONFIG_FB_CFB_FILLRECT 1
 #define CONFIG_SYN_COOKIES 1
@@ -639,6 +638,7 @@
 #define CONFIG_NF_NAT_NEEDED 1
 #define CONFIG_HAS_EARLYSUSPEND 1
 #define CONFIG_SUNRPC_MODULE 1
+#define CONFIG_JFS_FS 1
 #define CONFIG_CPU_FREQ_GOV_POWERSAVE 1
 #define CONFIG_DETECT_HUNG_TASK 1
 #define CONFIG_S5P6442_MFC 1

@@ -73,7 +73,7 @@ case $STL7_FS in
 	STL7_MNT=',noatime,iocharset=utf8'
 	;;
 	ext4)
-	STL7_MNT=',noatime,nodelalloc,data=ordered,noauto_da_alloc,barrier=0,commit=20'
+	STL7_MNT=',noatime,data=ordered,noauto_da_alloc,barrier=0,commit=20'
 	;;
 	ext2)
 	STL7_MNT=''
@@ -365,7 +365,7 @@ then
 			tar xvf /g3mod_sd/g3mod_data.tar >>/g3mod.log 2>>/g3mod.log
 			cd /
 			sync
-			umount /dev/block/${DEVICE}
+			umount /dev/block/${DEVICE}$G3DIR/multiosdata
 		fi
 	done
 	rm $G3DIR/fs.convert
@@ -480,6 +480,16 @@ for x in *
 		chmod 777 /data/$x
 	fi
 done
+mkdir /data/dalvik-cache
+cd /data/dalvik-cache
+for x in *
+	do if [ -L $x ]; then
+		echo "- /data/$x is a symlink" >> /data2sd.log
+		rm /data/$x
+		mkdir /data/$x
+		chmod 777 /data/$x
+	fi
+done
 cd /
 
 if [ "$MultiOS" != "" ]; then
@@ -527,6 +537,26 @@ if test -f /data2sd.dirs; then
 		rm -r /intdata/$DATA2SDtemp
 		ln -s /sdext/$DATA2SDtemp /intdata/$DATA2SDtemp
 		echo "- /data/$DATA2SDtemp linked to /sdext/$DATA2SDtemp" >> /data2sd.log
+		if [ "$line" == "dalvik-cache" ]; then
+			if test -f $G3DIR/hybrid.intsys; then
+				echo "Internalising dalvik-cache" >> /data2sd.log
+				mkdir /intdata/dalvik-syscache
+				cd /data/dalvik-cache/
+				for x in system@*; do
+					if [ -L $x ]; then
+						echo "- /data/dalvik-cache/$x already internal" >> /data2sd.log
+					else
+						mv $x /intdata/dalvik-syscache/
+						rm $x
+						ln -s /intdata/dalvik-syscache/$x $x
+						chmod 777 /intdata/dalvik-syscache/$x
+						chmod 777 $x
+						echo "- /data/dalvik-cache/$x internalised to /intdata/dalvik-syscache/$x" >> /data2sd.log
+					fi
+				done
+				cd /
+			fi
+		fi
 	done
 	chmod 771 /sdext
 
