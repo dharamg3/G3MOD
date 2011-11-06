@@ -622,6 +622,7 @@ if [ -e "$G3DIR/compcache" ]; then
 	sed -i "s|g3_compcache_1|service ramzswap /sbin/ramzswap.sh|" /init.rc
 	sed -i "s|g3_compcache_2|user root|" /init.rc
 	sed -i "s|g3_compcache_3|oneshot|" /init.rc
+	cp "$G3DIR/compcache" "/compcache"
 	echo "Compcache enabled" >> /g3mod.log
 else
 	sed -i "s|g3_compcache_1|# Compcache disabled|" /init.rc
