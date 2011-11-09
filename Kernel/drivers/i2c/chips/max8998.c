@@ -1603,32 +1603,25 @@ long led_delay_on = 0;
 long led_delay_off = 0;
 
 void led_blink(unsigned long data) {
-  if (led_status) {
+	if (led_status) {
 		if (!led_rstatus) {
 			if (led_start >= led_delay_on) {
-	  		led_rstatus = !led_rstatus;
-			  led_start = 0;
-      }
-      else
-      {
+				led_rstatus = !led_rstatus;
+				led_start = 0;
+			} else {
 				led_start = led_start + data;
-        Set_MAX8998_PM_REG(ELDO17, 1);
+				Set_MAX8998_PM_REG(ELDO17, 1);
 			}
-		}
-		else
-		{
+		} else {
 			if (led_stop >= led_delay_off) {
 				led_rstatus = !led_rstatus;
 				led_stop = 0;
-			}
-			else
-			{
+			} else {
 				led_stop = led_stop + data;
 				Set_MAX8998_PM_REG(ELDO17, 0);
 			}
 		}
-  }  
-
+	}  
 }
 
 static void progress_timer_handler(unsigned long data)
