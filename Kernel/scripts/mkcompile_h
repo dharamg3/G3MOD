@@ -29,7 +29,7 @@ export LC_ALL
 if [ -z "$KBUILD_BUILD_VERSION" ]; then
 	if [ -r .version ]; then
 		VERSION=`cat .version`
-		VERSION="G3MOD Test Version $VERSION"
+		VERSION="Test_Version_$VERSION"
 	else
 		VERSION=0
 		echo 0 > .version
