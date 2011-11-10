@@ -415,57 +415,6 @@ cd /
 
 mount -t $STL6_FS -o nodev,noatime,nodiratime,ro /dev/block/stl6 /system
 
-# modify mount options to inject in android inits
-STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
-STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
-STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
-MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
-
-# Identify CyanogenMod or Samsung
-androidfinger=`grep "ro.build.fingerprint" /system/build.prop|awk '{FS="="};{print $2}'`
-echo "System detected: $androidfinger" >> /g3mod.log
-if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]; then
-	rm /init.rc
-	rm /recovery.rc
-	mv /init_ging.rc /init.rc
-	mv /recovery_ging.rc /recovery.rc
-	INITbin=init_ging
-
-	echo "System booted with AOSP Gingerbread Kernel mode" >> /g3mod.log
-else
-	rm /init.rc
-	rm /recovery.rc
-	mv /init_froyo.rc /init.rc
-	mv /recovery_froyo.rc /recovery.rc
-	INITbin=init_froyo
-
-	if [ "$androidfinger" == "samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]; then
-		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0777 wifi wifi|" /init.rc
-		sed -i "s|g3_wifi_data_02|chown wifi wifi /data/misc/wifi|" /init.rc
-		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi|" /init.rc
-		sed -i "s|g3_wifi_data_04|mkdir /data/system 0775 system system|" /init.rc
-		sed -i "s|g3_wifi_data_05|mkdir /data/system/wpa_supplicant 0777 wifi wifi|" /init.rc
-		sed -i "s|g3_wifi_data_06|chown wifi wifi /data/system/wpa_supplicant|" /init.rc
-		sed -i "s|g3_wifi_data_07|chmod 0777 /data/system/wpa_supplicant|" /init.rc
-		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf -dd|" /init.rc
-		sed -i "s|g3_vibrator_module|vibrator-cm6|" /init.rc
-
-		echo "System booted with AOSP Froyo kernel mode" >> /g3mod.log
-	else
-		sed -i "s|g3_wifi_data_01|mkdir /data/wifi 0777 wifi wifi|" /init.rc
-		sed -i "s|g3_wifi_data_02|mkdir /data/misc/wifi 0771 wifi wifi|" /init.rc
-		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi/|" /init.rc
-		sed -i "s|g3_wifi_data_04|# Line not needed for Samsung|" /init.rc
-		sed -i "s|g3_wifi_data_05|# Line not needed for Samsung|" /init.rc
-		sed -i "s|g3_wifi_data_06|# Line not needed for Samsung|" /init.rc
-		sed -i "s|g3_wifi_data_07|# Line not needed for Samsung|" /init.rc
-		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/wifi/bcm_supp.conf|" /init.rc
-		sed -i "s|g3_vibrator_module|vibrator-sam|" /init.rc
-
-		echo "System booted with Samsung Froyo kernel mode" >> /g3mod.log
-	fi
-fi
-
 # DATA2SD CODE
 mkdir /data
 if test -f $G3DIR/fs.data2sd; then
@@ -473,7 +422,6 @@ if test -f $G3DIR/fs.data2sd; then
 	mkdir /sdext
 	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /intdata
 	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
-	sed -i "s|g3_mount_stl7|# Line not needed for Data2SD|" /init.rc /recovery.rc
 	mount -t $MMC_FS -o rw,$MMC_MNT /dev/block/mmcblk0p2 /sdext
 	# nodiratime,nosuid,nodev,rw
 	DATA2SDmode=`cat $G3DIR/fs.data2sd`
@@ -489,12 +437,19 @@ if test -f $G3DIR/fs.data2sd; then
 		umount /data
 		mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
 	fi
+	sed -i "s|g3_mount_stl7|# Line not needed for Data2SD|" /init.rc /recovery.rc
 else
 	echo "Data2SD Disabled" >> /g3mod.log
-	#mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
+	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
 	STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
 	sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
 fi
+
+# modify mount options to inject in android inits
+STL6_MNT=`echo ${STL6_MNT} | sed 's/\,/ /g'`
+STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
+STL8_MNT=`echo ${STL8_MNT} | sed 's/\,/ /g'`
+MMC_MNT=`echo ${MMC_MNT} | sed 's/\,/ /g'`
 
 # END OF DATA2SD CODE
 
@@ -615,6 +570,51 @@ rm /multios
 cd /
 # End of Hybrid Data2SD
 
+# Identify CyanogenMod or Samsung
+androidfinger=`grep "ro.build.fingerprint" /system/build.prop|awk '{FS="="};{print $2}'`
+echo "System detected: $androidfinger" >> /g3mod.log
+if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]; then
+	rm /init.rc
+	rm /recovery.rc
+	mv /init_ging.rc /init.rc
+	mv /recovery_ging.rc /recovery.rc
+	INITbin=init_ging
+
+	echo "System booted with AOSP Gingerbread Kernel mode" >> /g3mod.log
+else
+	rm /init.rc
+	rm /recovery.rc
+	mv /init_froyo.rc /init.rc
+	mv /recovery_froyo.rc /recovery.rc
+	INITbin=init_froyo
+
+	if [ "$androidfinger" == "samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]; then
+		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0777 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_02|chown wifi wifi /data/misc/wifi|" /init.rc
+		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi|" /init.rc
+		sed -i "s|g3_wifi_data_04|mkdir /data/system 0775 system system|" /init.rc
+		sed -i "s|g3_wifi_data_05|mkdir /data/system/wpa_supplicant 0777 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_06|chown wifi wifi /data/system/wpa_supplicant|" /init.rc
+		sed -i "s|g3_wifi_data_07|chmod 0777 /data/system/wpa_supplicant|" /init.rc
+		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf -dd|" /init.rc
+		sed -i "s|g3_vibratecho "STL7 mounting options: [nodiratime,nosuid,nodev,rw$STL7_MNT]" > g3mod.log
+or_module|vibrator-cm6|" /init.rc
+
+		echo "System booted with AOSP Froyo kernel mode" >> /g3mod.log
+	else
+		sed -i "s|g3_wifi_data_01|mkdir /data/wifi 0777 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_02|mkdir /data/misc/wifi 0771 wifi wifi|" /init.rc
+		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi/|" /init.rc
+		sed -i "s|g3_wifi_data_04|# Line not needed for Samsung|" /init.rc
+		sed -i "s|g3_wifi_data_05|# Line not needed for Samsung|" /init.rc
+		sed -i "s|g3_wifi_data_06|# Line not needed for Samsung|" /init.rc
+		sed -i "s|g3_wifi_data_07|# Line not needed for Samsung|" /init.rc
+		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/wifi/bcm_supp.conf|" /init.rc
+		sed -i "s|g3_vibrator_module|vibrator-sam|" /init.rc
+
+		echo "System booted with Samsung Froyo kernel mode" >> /g3mod.log
+	fi
+fi
 umount /system
 
 # Enable Compcache if enabled by user
