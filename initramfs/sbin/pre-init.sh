@@ -597,8 +597,8 @@ else
 		sed -i "s|g3_wifi_data_06|chown wifi wifi /data/system/wpa_supplicant|" /init.rc
 		sed -i "s|g3_wifi_data_07|chmod 0777 /data/system/wpa_supplicant|" /init.rc
 		sed -i "s|g3_wifi_service|service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf -dd|" /init.rc
-		sed -i "s|g3_vibratecho "STL7 mounting options: [nodiratime,nosuid,nodev,rw$STL7_MNT]" > g3mod.log
-or_module|vibrator-cm6|" /init.rc
+		sed -i "s|g3_vibrator_module|vibrator-cm6|" /init.rc 
+		echo "STL7 mounting options: [nodiratime,nosuid,nodev,rw$STL7_MNT]" > g3mod.log
 
 		echo "System booted with AOSP Froyo kernel mode" >> /g3mod.log
 	else
