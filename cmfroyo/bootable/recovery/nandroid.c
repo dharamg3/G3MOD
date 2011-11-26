@@ -244,6 +244,43 @@ int nandroid_backup_boot(const char* backup_path)
     return 0;
 }
 
+int nandroid_backup_androidSecure(const char* backup_path)
+{
+    ui_set_background(BACKGROUND_ICON_INSTALLING);
+    
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    int ret;
+    struct statfs s;
+    if (0 != (ret = statfs("/sdcard", &s)))
+        return print_and_error("Unable to stat /sdcard\n");
+    uint64_t bavail = s.f_bavail;
+    uint64_t bsize = s.f_bsize;
+    uint64_t sdcard_free = bavail * bsize;
+    uint64_t sdcard_free_mb = sdcard_free / (uint64_t)(1024 * 1024);
+    ui_print("SD Card space free: %lluMB\n", sdcard_free_mb);
+    if (sdcard_free_mb < 150)
+        ui_print("There may not be enough free space to complete backup... continuing...\n");
+    
+    struct stat st;
+    if (0 != stat("/mnt/sdcard/.android_secure", &st))
+    {
+        ui_print("No /mnt/sdcard/.android_secure found. Skipping backup of applications on external storage.\n");
+    }
+    else
+    {
+        if (0 != (ret = nandroid_backup_partition_extended(backup_path, "SDCARD:/.android_secure", 0)))
+            return ret;
+    }
+
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nBackup complete!\n");
+    return 0;
+}
+
 int nandroid_backup_system(const char* backup_path)
 {
     ui_set_background(BACKGROUND_ICON_INSTALLING);
@@ -578,6 +615,29 @@ int nandroid_restore_sd(const char* backup_path, int restore_sdext)
     int ret;
 
     if (restore_sdext && 0 != (ret = nandroid_restore_partition(backup_path, "SDEXT:")))
+        return ret;
+
+    sync();
+    ui_set_background(BACKGROUND_ICON_NONE);
+    ui_reset_progress();
+    ui_print("\nRestore complete!\n");
+    return 0;
+}
+
+int nandroid_restore_androidSecure(const char* backup_path, int restore_androidSecure)
+{
+	ui_set_background(BACKGROUND_ICON_INSTALLING);
+    ui_show_indeterminate_progress();
+    yaffs_files_total = 0;
+
+    if (ensure_root_path_mounted("SDCARD:") != 0)
+        return print_and_error("Can't mount /sdcard\n");
+    
+    char tmp[PATH_MAX];
+
+    int ret;
+
+    if (restore_androidSecure && 0 != (ret = nandroid_restore_partition_extended(backup_path, "SDCARD:/.android_secure", 0)))
         return ret;
 
     sync();
