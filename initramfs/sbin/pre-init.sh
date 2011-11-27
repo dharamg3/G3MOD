@@ -655,8 +655,10 @@ sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noat
 umount /g3mod_sd
 rmdir /g3mod_sd
 
-umount /sdext
-rmdir /sdext
+if ! test -f $G3DIR/fs.data2sd; then
+	umount /sdext
+	rmdir /sdext
+fi
 
 exec /$INITbin
 
