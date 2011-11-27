@@ -223,6 +223,8 @@ mkdir /system
 mkdir /g3mod_sd
 mount -t vfat -o utf8 /dev/block/mmcblk0p1 /g3mod_sd
 
+mkdir /sdext
+
 # Check if conf directory exists, if not create one
 if ! test -d $G3DIR
 then
@@ -443,6 +445,7 @@ else
 	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
 	STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
 	sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
+	mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
 fi
 
 # modify mount options to inject in android inits
@@ -501,21 +504,33 @@ if [ "$MultiOS" != "" ]; then
 		echo "System has changed! Multi-OS Data changing too..." >> /multidata.log
 		rm /sdext/multios/$LastOS.data.tar
 		rm /sdext/multios/$LastOS.dalvikcache.tar
+		rm /sdext/multios/$LastOS.android_secure.tar
 
 		if test -f $G3DIR/multiosdata.cache; then
 			echo "Backing up dalvik-cache ($MultiOSCompression)" >> /multidata.log
 			tar cvf$MultiOSCompression /sdext/multios/$LastOS.dalvikcache.tar /data/dalvik-cache 2>>/multidata.log
 		fi
 		rm -r /data/dalvik-cache/*
+
 		echo "Backing up old data ($MultiOSCompression)" >> /multidata.log
 		tar cvf$MultiOSCompression /sdext/multios/$LastOS.data.tar /data 2>>/multidata.log 
-		
 		rm -r /data/*
+
+		if test -d /g3mod_sd/.android_secure; then
+			echo "Backing up old android_secure ($MultiOSCompression)" >> /multidata.log
+			tar cvf$MultiOSCompression /sdext/multios/$LastOS.android_secure.tar /g3mod_sd/.android_secure 2>>/multidata.log 
+		fi
+		rm -r /g3mod_sd/.android_secure/*
+		
 		echo "Extracting new data ($MultiOSCompression)" >> /multidata.log
 		tar xvf$MultiOSCompression /sdext/multios/$MultiOS.data.tar 2>>/multidata.log
 		if test -f $G3DIR/multiosdata.cache; then
 			echo "Extracting new dalvik-cache ($MultiOSCompression)" >> /multidata.log
-			tar xvf$MultiOSCompression /sdext/multios/$LastOS.dalvikcache.tar 2>>/multidata.log
+			tar xvf$MultiOSCompression /sdext/multios/$MultiOS.dalvikcache.tar 2>>/multidata.log
+		fi
+		if test -f /sdext/multios/$MultiOS.android_secure.tar; then
+			echo "Extracting new android_secure ($MultiOSCompression)" >> /multidata.log
+			tar xvf$MultiOSCompression /sdext/multios/$MultiOS.android_secure.tar 2>>/multidata.log 
 		fi
 		echo "Data switched from $LastOS to $MultiOS" >> /multidata.log
 	fi		
@@ -637,8 +652,12 @@ sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime n
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
 sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
 
-umount /g3mod_sd
+if ! test -f $G3DIR/fs.data2sd; then
+	umount /sdext
+	rmdir /sdext
+fi
 
+umount /g3mod_sd
 rmdir /g3mod_sd
 
 exec /$INITbin

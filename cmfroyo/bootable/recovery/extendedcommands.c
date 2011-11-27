@@ -983,6 +983,7 @@ void backup_data()
             sprintf(backup_path, "/sdcard/Android/data/g3mod/data/Froyo_DATA");
             nandroid_backup_data(backup_path);
 	    nandroid_backup_sd(backup_path);
+	    nandroid_backup_androidSecure(backup_path);
 	    return;
     	    break;
        	    }
@@ -992,6 +993,7 @@ void backup_data()
             sprintf(backup_path, "/sdcard/Android/data/g3mod/data/CM6_DATA");
             nandroid_backup_data(backup_path);
 	    nandroid_backup_sd(backup_path);
+	    nandroid_backup_androidSecure(backup_path);
 	    return;
     	    break;
        	    }
@@ -1001,6 +1003,7 @@ void backup_data()
             sprintf(backup_path, "/sdcard/Android/data/g3mod/data/CM7_DATA");
             nandroid_backup_data(backup_path);
 	    nandroid_backup_sd(backup_path);
+	    nandroid_backup_androidSecure(backup_path);
 	    return;
             break;
     	    }	
@@ -1567,8 +1570,9 @@ void show_multi_boot_menu()
     		static char* confirm_restore  = "Confirm restore?";
        	        if (confirm_selection(confirm_restore, "Yes - Restore Data"))
 		{		
-		nandroid_restore_data(file,1);
-		nandroid_restore_sd(file,1);
+			nandroid_restore_data(file,1);
+			nandroid_restore_sd(file,1);
+			nandroid_restore_androidSecure(file,1);
 		}
                 break;
 	}
