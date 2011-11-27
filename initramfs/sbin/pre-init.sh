@@ -652,13 +652,13 @@ sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime n
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
 sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
 
-umount /g3mod_sd
-rmdir /g3mod_sd
-
 if ! test -f $G3DIR/fs.data2sd; then
 	umount /sdext
 	rmdir /sdext
 fi
+
+umount /g3mod_sd
+rmdir /g3mod_sd
 
 exec /$INITbin
 
