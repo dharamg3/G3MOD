@@ -42,7 +42,10 @@ build_fs_current()
 		mount | awk '/\/g3_mnt/ { print $1 " " $5 }' | awk -F "/" '{ print $4 }' | sed 's/vfat/rfs/' >> $G3DIR/fs.current
 		umount /g3_mnt
 	done
-	rmdir /g3_mnt
+	rmdir /g3_mnt	mv /init_ging.rc /init.rc
+	mv /recovery_ging.rc /recovery.rc
+	INITbin=init_ging
+
 }
 
 
@@ -586,9 +589,10 @@ cd /
 # End of Hybrid Data2SD
 
 # Identify CyanogenMod or Samsung
-androidfinger=`grep "ro.build.fingerprint" /system/build.prop|awk '{FS="="};{print $2}'`
+androidfinger=`grep "ro.build.id" /system/build.prop|awk '{FS="="};{print $2}'`
+
 echo "System detected: $androidfinger" >> /g3mod.log
-if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/release-keys" ]; then
+if [ "$androidfinger" == "GRJ22" ]; then
 	rm /init.rc
 	rm /recovery.rc
 	mv /init_ging.rc /init.rc
@@ -596,6 +600,13 @@ if [ "$androidfinger" == "samsung/apollo/GT-I5800:2.3.5/GRJ22/121341:user/releas
 	INITbin=init_ging
 
 	echo "System booted with AOSP Gingerbread Kernel mode" >> /g3mod.log
+elif [ "$androidfinger" == "ITL41D" ]; then
+	rm /init.rc
+	rm /recovery.rc
+	mv /init_ics.rc /init.rc
+	mv /recovery_ics.rc /recovery.rc
+	INITbin=init_ging
+
 else
 	rm /init.rc
 	rm /recovery.rc
@@ -603,7 +614,7 @@ else
 	mv /recovery_froyo.rc /recovery.rc
 	INITbin=init_froyo
 
-	if [ "$androidfinger" == "samsung_apollo/apollo/GT-I5800:2.2/FRF91/226611:user/release-keys" ]; then
+	if [ "$androidfinger" == "FRF91" ]; then
 		sed -i "s|g3_wifi_data_01|mkdir /data/misc/wifi 0777 wifi wifi|" /init.rc
 		sed -i "s|g3_wifi_data_02|chown wifi wifi /data/misc/wifi|" /init.rc
 		sed -i "s|g3_wifi_data_03|chmod 0777 /data/misc/wifi|" /init.rc
@@ -630,6 +641,10 @@ else
 		echo "System booted with Samsung Froyo kernel mode" >> /g3mod.log
 	fi
 fi
+
+rm /init_*.rc
+rm /recovery_*.rc
+
 umount /system
 
 # Enable Compcache if enabled by user
@@ -651,11 +666,6 @@ fi
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime ro ${STL6_MNT}|" /init.rc
 sed -i "s|g3_mount_stl6|mount ${STL6_FS} /dev/block/stl6 /system nodev noatime nodiratime rw ${STL6_MNT}|" /recovery.rc
 sed -i "s|g3_mount_stl8|mount ${STL8_FS} /dev/block/stl8 /cache sync noexec noatime nodiratime nosuid nodev rw ${STL8_MNT}|" /init.rc /recovery.rc
-
-if ! test -f $G3DIR/fs.data2sd; then
-	umount /sdext
-	rmdir /sdext
-fi
 
 umount /g3mod_sd
 rmdir /g3mod_sd
