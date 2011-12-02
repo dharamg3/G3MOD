@@ -1916,14 +1916,20 @@ void get_message(void)
 				input_report_abs(qt602240->input_dev, ABS_MT_POSITION_X, fingerInfo[i].x);
 				input_report_abs(qt602240->input_dev, ABS_MT_POSITION_Y, fingerInfo[i].y);
 				input_report_abs(qt602240->input_dev, ABS_MT_TOUCH_MAJOR, fingerInfo[i].status);
-				input_report_abs(qt602240->input_dev, ABS_MT_WIDTH_MAJOR, fingerInfo[i].size_id);		
+				input_report_abs(qt602240->input_dev, ABS_MT_WIDTH_MAJOR, fingerInfo[i].size_id);
 				input_mt_sync(qt602240->input_dev);
 			#if DEBUG_CHJ
 				printk("[TSP] x=%3d, y=%3d ", fingerInfo[i].x, fingerInfo[i].y);
 				printk("ID[%d] = %s, size=%d\n", i, (fingerInfo[i].status == 0)?"Up ":"", fingerInfo[i].size_id );
 			#endif
 	
-				if ( fingerInfo[i].status == 0 ) fingerInfo[i].status= -1;
+				if ( fingerInfo[i].status == 0 ) {
+					input_report_key(qt602240->input_dev, BTN_TOUCH, 0);
+					fingerInfo[i].status= -1;
+				}
+				else
+					input_report_key(qt602240->input_dev, BTN_TOUCH, 1);
+
 				}
 			input_sync(qt602240->input_dev);
 		#if DEBUG_CHJ
