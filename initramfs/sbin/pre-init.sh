@@ -42,6 +42,7 @@ build_fs_current()
 		mount | awk '/\/g3_mnt/ { print $1 " " $5 }' | awk -F "/" '{ print $4 }' | sed 's/vfat/rfs/' >> $G3DIR/fs.current
 		umount /g3_mnt
 	done
+
 	rmdir /g3_mnt	mv /init_ging.rc /init.rc
 	mv /recovery_ging.rc /recovery.rc
 	INITbin=init_ging
@@ -601,6 +602,12 @@ if [ "$androidfinger" == "GRJ22" ]; then
 
 	echo "System booted with AOSP Gingerbread Kernel mode" >> /g3mod.log
 elif [ "$androidfinger" == "ITL41D" ]; then
+	rm /init.rc
+	rm /recovery.rc
+	mv /init_ics.rc /init.rc
+	mv /recovery_ics.rc /recovery.rc
+	INITbin=init_ging
+elif [ "$androidfinger" == "ICS_MR0" ]; then
 	rm /init.rc
 	rm /recovery.rc
 	mv /init_ics.rc /init.rc
