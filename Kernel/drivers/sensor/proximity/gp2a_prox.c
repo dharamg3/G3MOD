@@ -429,7 +429,7 @@ static int gp2a_prox_probe(struct i2c_client *client,const struct i2c_device_id 
 	s3c_gpio_setpull(GPIO_PS_OUT, S3C_GPIO_PULL_UP);
 
 	/*Setting the device into shutdown mode*/
-	gp2a_prox_mode(0);
+	gp2a_prox_mode(1);
 
 	printk("------ %s end\n", __func__);	
 	return ret;
