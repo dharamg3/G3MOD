@@ -1,9 +1,6 @@
 on early-init
     start ueventd
 
-# create mountpoints
-    mkdir /mnt 0775 root system
-
 on init
 
 sysclktz 0
@@ -22,7 +19,7 @@ loglevel 3
     export EXTERNAL_STORAGE /mnt/sdcard
     export ASEC_MOUNTPOINT /mnt/asec
     export LOOP_MOUNTPOINT /mnt/obb
-    export SD_EXT_DIRECTORY /sd-ext
+    export SD_EXT_DIRECTORY /sdext
     export BOOTCLASSPATH /system/framework/core.jar:/system/framework/core-junit.jar:/system/framework/bouncycastle.jar:/system/framework/ext.jar:/system/framework/framework.jar:/system/framework/android.policy.jar:/system/framework/services.jar:/system/framework/apache-xml.jar:/system/framework/filterfw.jar
 
 
@@ -38,6 +35,7 @@ loglevel 3
     insmod /lib/modules/svnet.ko
     insmod /lib/modules/modemctl.ko
     insmod /lib/modules/storage.ko
+    insmod /lib/modules/tun.ko
  
     insmod /lib/modules/param.ko
         
@@ -136,19 +134,10 @@ loglevel 3
 on fs
 # mount mtd partitions
     # Mount /system rw first to give the filesystem a chance to save a checkpoint
-    # mount yaffs2 mtd@system /system ro remount
-    # mount ext4 /dev/block/stl6 /system rw 
-    # mount rfs /dev/block/stl6 /system rw check=no
       g3_mount_stl6
 
-    # mount yaffs2 mtd@userdata /data nosuid nodev
-    # mount ext4 /dev/block/stl7 /data nosuid nodev
-    # mount rfs /dev/block/stl7 /data nosuid nodev check=no
       g3_mount_stl7
 
-    # mount yaffs2 mtd@cache /cache nosuid nodev
-    # mount ext4 /dev/block/stl8 /cache nosuid nodev
-    # mount rfs /dev/block/stl8 /cache nosuid nodev check=no
       g3_mount_stl8
 
 on post-fs
@@ -362,7 +351,7 @@ on boot
     setprop ro.HIDDEN_APP_MEM 7168
     setprop ro.EMPTY_APP_MEM 8192
 
-#    write /sys/block/mmcblk0/bdi/read_ahead_kb 2048
+    write /sys/block/mmcblk0/bdi/read_ahead_kb 2048
 
 # Write value must be consistent with the above properties.
 # Note that the driver only supports 6 slots, so we have combined some of
@@ -406,12 +395,6 @@ on boot
     chown system system /sys/class/leds/lcd-backlight/brightness
     chown system system /sys/class/leds/button-backlight/brightness
     chown system system /sys/class/leds/jogball-backlight/brightness
-    chown system system /sys/class/leds/red/brightness
-    chown system system /sys/class/leds/green/brightness
-    chown system system /sys/class/leds/blue/brightness
-    chown system system /sys/class/leds/red/device/grpfreq
-    chown system system /sys/class/leds/red/device/grppwm
-    chown system system /sys/class/leds/red/device/blink
     chown system system /sys/class/leds/red/brightness
     chown system system /sys/class/leds/green/brightness
     chown system system /sys/class/leds/blue/brightness
