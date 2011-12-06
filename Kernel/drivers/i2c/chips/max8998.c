@@ -1593,68 +1593,6 @@ void camera_ldo_control(int onoff)
 }
 
 #ifdef CONFIG_MACH_APOLLO
-static struct timer_list progress_timer;
-static bool led_status;
-static bool led_rstatus;
-static int led_count;
-long led_stop = 0;
-long led_start = 0;
-long led_delay_on = 0;
-long led_delay_off = 0;
-
-void led_blink(unsigned long data) {
-	if (led_status) {
-		if (!led_rstatus) {
-			if (led_start >= led_delay_on) {
-				led_rstatus = !led_rstatus;
-				led_start = 0;
-			} else {
-				led_start = led_start + data;
-				Set_MAX8998_PM_REG(ELDO17, 1);
-			}
-		} else {
-			if (led_stop >= led_delay_off) {
-				led_rstatus = !led_rstatus;
-				led_stop = 0;
-			} else {
-				led_stop = led_stop + data;
-				Set_MAX8998_PM_REG(ELDO17, 0);
-			}
-		}
-	}  
-}
-
-static void progress_timer_handler(unsigned long data)
-{
-
-  if (led_delay_on != 0) { // blink mode
-		led_blink(data);
-  }
-
-	progress_timer.expires = (get_jiffies_64() + data); 
-	progress_timer.function = progress_timer_handler; 
-	add_timer(&progress_timer);
-}
-
-static int apollo_button_blink_set(struct led_classdev *led_cdev, unsigned long *delay_on, unsigned long *delay_off)
-{
-  printk("----> apollo_button_blink_set on = %d, off = %d\n", delay_on, delay_off);
-	if (delay_on == 255) 
-		delay_on = 0;
-
-  led_delay_on = delay_on;
-  led_delay_off = delay_off;
-  return 0;
-}
-
-void init_led_timer() {
-	init_timer(&progress_timer);
-	progress_timer.expires = (get_jiffies_64() + (100)); 
-	progress_timer.function = progress_timer_handler; 
-	progress_timer.data = (100);
-	add_timer(&progress_timer);
-}
-
 static void apollo_button_brightness_set(struct led_classdev *led_cdev, enum led_brightness value)
 {
 	//mutex_lock(&apollo_button_backlight_lock);
@@ -1665,9 +1603,6 @@ static void apollo_button_brightness_set(struct led_classdev *led_cdev, enum led
 			{
 			printk("%s, error: LDO17 turn on\n", __func__);
 			}	
-		  led_status = true;
-      apollo_button_blink_set(led_cdev, (unsigned long *)value, (unsigned long *)value);
-      led_count++;
 		}
 	else
 		{
@@ -1676,12 +1611,6 @@ static void apollo_button_brightness_set(struct led_classdev *led_cdev, enum led
 			{
 			printk("%s, error: LDO17 turn off\n", __func__);
 			}	
-    led_count--;
-    if (!led_count) {
-			led_status = false;
-			apollo_button_blink_set(led_cdev, 0, 0);
-     }
-
 		}
 	//mutex_unlock(&apollo_button_backlight_lock);
 }
@@ -1689,7 +1618,6 @@ static void apollo_button_brightness_set(struct led_classdev *led_cdev, enum led
 static struct led_classdev apollo_button_backlight_led  = {
 	.name		= "button-backlight",
 	.brightness_set = apollo_button_brightness_set,
-  .blink_set = apollo_button_blink_set,
 };
 #endif
 
@@ -2229,9 +2157,6 @@ static int MAX8998_probe (struct i2c_client *client,const struct i2c_device_id *
 	}
 
 #ifdef CONFIG_MACH_APOLLO
-  led_count = 0;
-  led_status = false;
-	init_led_timer();
 	ret = led_classdev_register(&client->dev, &apollo_button_backlight_led);
 	if (ret < 0)
 		printk("%s fail: led_classdev_register\n", __func__);
@@ -2344,5 +2269,4 @@ module_exit(MAX8998_exit);
 MODULE_AUTHOR("Minsung Kim <ms925.kim@samsung.com>");
 MODULE_DESCRIPTION("MAX8998 Driver");
 MODULE_LICENSE("GPL");
-
 
