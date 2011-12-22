@@ -449,7 +449,6 @@ else
 	mount -t $STL7_FS -o nodiratime,nosuid,nodev,rw$STL7_MNT /dev/block/stl7 /data
 	STL7_MNT=`echo ${STL7_MNT} | sed 's/\,/ /g'`
 	sed -i "s|g3_mount_stl7|mount ${STL7_FS} /dev/block/stl7 /data noatime nodiratime nosuid nodev rw ${STL7_MNT}|" /init.rc /recovery.rc
-	mount -t $MMC_FS -o nodiratime,nosuid,nodev,rw$MMC_MNT /dev/block/mmcblk0p2 /sdext
 fi
 
 # modify mount options to inject in android inits
