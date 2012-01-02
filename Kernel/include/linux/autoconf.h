@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.32.9
- * Thu Nov 24 23:57:54 2011
+ * Wed Dec  7 06:49:44 2011
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_MMC_SDHCI_S3C_DMA 1
@@ -166,7 +166,6 @@
 #define CONFIG_SCSI 1
 #define CONFIG_IP_SCTP 1
 #define CONFIG_TCP_CONG_CUBIC 1
-#define CONFIG_PERFORMANCE 1
 #define CONFIG_CGROUP_CPUACCT 1
 #define CONFIG_NTFS_FS 1
 #define CONFIG_CRYPTO_LZO 1
@@ -618,7 +617,7 @@
 #define CONFIG_TRACER_MAX_TRACE 1
 #define CONFIG_INPUT_UINPUT 1
 #define CONFIG_CRYPTO_BLKCIPHER 1
-#define CONFIG_S5P_HIGH_RES_TIMERS_HZ 500
+#define CONFIG_S5P_HIGH_RES_TIMERS_HZ 250
 #define CONFIG_FAIR_GROUP_SCHED 1
 #define CONFIG_PROXIMITY 1
 #define CONFIG_IP_NF_RAW 1
