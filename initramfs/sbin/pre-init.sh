@@ -371,7 +371,7 @@ then
 			tar xvf /g3mod_sd/g3mod_data.tar >>/g3mod.log 2>>/g3mod.log
 			cd /
 			sync
-			umount /dev/block/${DEVICE}$G3DIR/multiosdata
+			umount /dev/block/${DEVICE}
 		fi
 	done
 	rm $G3DIR/fs.convert
