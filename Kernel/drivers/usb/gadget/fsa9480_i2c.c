@@ -594,7 +594,30 @@ void usb_switch_mode(int sel)
 EXPORT_SYMBOL(usb_switch_mode);
 
 
-/* for sysfs control (/sys/class/sec/switch/usb_sel) */
+/* for sysfs control (/sys/class/sec/switch/) */
+
+/* USB Samsung & CM7 compatibility by moikop */
+
+int os_mode = 0; // os_mode == 0 ? samsung_mode : cm_mode; Default samsungs.
+
+static ssize_t usb_os_mode_store(struct device *dev, struct device_attribute *attr,	const char *buf, size_t size) {
+	unsigned int input;
+	int ret = sscanf(buf, "%u", &input);
+	if (ret != 0) {
+		os_mode = input;
+		return size;
+	}
+	return -EINVAL;
+}
+
+static ssize_t usb_os_mode_show(struct device *dev, struct device_attribute *attr, char *buf) {
+	return sprintf(buf, "%u\n", os_mode);
+}
+
+static DEVICE_ATTR(usb_os_mode, S_IRUGO |S_IWUGO | S_IRUSR | S_IWUSR, usb_os_mode_show, usb_os_mode_store);
+
+/* END by moikop */
+
 static ssize_t usb_sel_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 //	struct i2c_client *client = fsa9480_i2c_client;
@@ -1093,11 +1116,12 @@ static ssize_t print_switch_name(struct switch_dev *sdev, char *buf)
 
 static ssize_t print_switch_state(struct switch_dev *sdev, char *buf)
 {
+	//printk("os_mode = %s(%d)\n", os_mode == 0 ? "Samsung" : "AOSP", os_mode);
 	if (usb_state & CRA_USB || (usb_state & CRB_JIG_USB))  {
-			if(usb_menu_path & USBSTATUS_VTP)
+			if(usb_menu_path & USBSTATUS_VTP) 
 				return sprintf(buf, "%s\n", "tethering online");
 			else
-				return sprintf(buf, "%s\n", "ums online");
+				return sprintf(buf, "%s\n", os_mode == 0 ? "ums online" : "online");
 /*		if((usb_menu_path & USBSTATUS_UMS) || (usb_menu_path & USBSTATUS_ADB))
 			return sprintf(buf, "%s\n", "ums online");
 //			return sprintf(buf, "%s\n", "online");
@@ -1110,11 +1134,11 @@ static ssize_t print_switch_state(struct switch_dev *sdev, char *buf)
 	else 
 	{
 		if((usb_menu_path & USBSTATUS_UMS) || (usb_menu_path & USBSTATUS_ADB))
-			return sprintf(buf, "%s\n", "ums offline");
+			return sprintf(buf, "%s\n", os_mode == 0 ? "ums offline" : "offline");
 //			return sprintf(buf, "%s\n", "offline");
 //			return sprintf(buf, "%s\n", "RemoveOnline");
 		else
-			return sprintf(buf, "%s\n", "ums offline");
+			return sprintf(buf, "%s\n", os_mode == 0 ? "ums offline" : "offline");
 //			return sprintf(buf, "%s\n", "offline");
 //			return sprintf(buf, "%s\n", "RemoveOffline");
 	}		
@@ -1168,6 +1192,9 @@ static int fsa9480_codec_probe(struct i2c_client *client, const struct i2c_devic
 	
 	if (device_create_file(switch_dev, &dev_attr_tethering) < 0)		
 		pr_err("Failed to create device file(%s)!\n", dev_attr_tethering.attr.name);
+		
+	if (device_create_file(switch_dev, &dev_attr_usb_os_mode) < 0)
+		pr_err("Failed to create device file (%s)!\n", dev_attr_usb_os_mode.attr.mode);
 
 	/* FSA9480 Interrupt */
 	s3c_gpio_cfgpin(GPIO_JACK_nINT, S3C_GPIO_SFN(GPIO_JACK_nINT_STATE));

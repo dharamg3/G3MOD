@@ -338,6 +338,9 @@ on boot
     setprop ro.HOME_APP_ADJ 6
     setprop ro.HIDDEN_APP_MIN_ADJ 7
     setprop ro.EMPTY_APP_ADJ 15
+    
+#USB Samsung & CM7 compatibility by moikop
+write /sys/class/sec/switch/usb_os_mode 1
 
 # Define the memory thresholds at which the above process classes will
 # be killed.  These numbers are in pages (4k).
