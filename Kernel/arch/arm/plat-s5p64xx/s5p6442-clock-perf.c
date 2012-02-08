@@ -23,6 +23,7 @@
 #include <linux/sysdev.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+#include <linux/i2c/pmic.h>
 
 #include <mach/hardware.h>
 #include <mach/map.h>
@@ -1333,8 +1334,9 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	u32 mux_stat0;
 	u32 mux_stat1;
 
+        __raw_writel(((1 << 31) | (800 << 16) | (6 << 8) | 1),S5P_APLL_CON);
+
 	printk(KERN_DEBUG "%s: registering clocks\n", __func__);
-	s5p6442_clock800();
 	clkdiv0 = __raw_readl(S5P_CLK_DIV0);
 
 #ifdef MUXD0D1_A2M
