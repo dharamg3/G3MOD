@@ -48,9 +48,12 @@ extern void ltc3714_init(void);
 
 /* frequency */
 static struct cpufreq_frequency_table s5p6442_freq_table[] = {
-	{APLL_GEN_CLK, APLL_GEN_CLK},
-	{APLL_GEN_CLK, APLL_GEN_CLK/2},
-	{APLL_GEN_CLK, APLL_GEN_CLK/4},
+	{1200*1000, 667*1000},
+	{1000*1000, 667*1000},
+	{ 833*1000, 667*1000},
+    { 667*1000, 667*1000},
+	{ 667*1000, (667*1000)/2},
+	{ (667*1000)/2, APLL_GEN_CLK/4},
 	{0, CPUFREQ_TABLE_END},
 };
 
