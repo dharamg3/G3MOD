@@ -86,6 +86,7 @@
 #include <plat/fimc.h>
 
 #include <linux/i2c/max8998.h>
+#include <mach/s5p_leds.h>
 
 #ifdef CONFIG_SEC_HEADSET
 #include <mach/sec_headset.h>
@@ -714,6 +715,19 @@ static struct platform_device s3c_device_i2c4 = {
         .dev.platform_data      = &i2c4_platdata,
 };
 
+/* LEDS */
+static struct s5p6442_led_platdata s5p_led1_pdata = {
+	.name		= "button_led",
+	.flags		= S5P6442_LEDF_ACTLOW | S5P6442_LEDF_TRISTATE,
+	.def_trigger	= "none",
+};
+
+static struct platform_device  s5p_led1 = {
+	.name		= "s5p6442_led",
+	.id		= 1,
+	.dev.platform_data	= &s5p_led1_pdata,
+};
+
 /*
 static  struct  i2c_gpio_platform_data  i2c5_platdata = {
         .sda_pin                = GPIO_AP_PMIC_SDA,
@@ -1031,6 +1045,7 @@ static struct platform_device *smdk6442_devices[] __initdata = {
 	&samsung_virtual_rtc_device,
 #endif
 
+	&s5p_led1,
 };
 
 /*
