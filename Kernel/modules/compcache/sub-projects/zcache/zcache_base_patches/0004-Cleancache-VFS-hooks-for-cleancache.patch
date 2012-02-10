@@ -1,0 +1,205 @@
+From 7231b92abff1199b5d99bb2a6d47a6ef92dd551d Mon Sep 17 00:00:00 2001
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Date: Fri, 3 Sep 2010 13:03:13 -0700
+Subject: [PATCH 4/8] Cleancache: VFS hooks for cleancache
+
+[PATCH V5 4/8] Cleancache: VFS hooks for cleancache
+
+Implement core hooks in VFS for: initializing cleancache
+per filesystem; capturing clean pages evicted by page cache;
+attempting to get pages from cleancache before filesystem
+read; and ensuring coherency between pagecache, disk,
+and cleancache.  All hooks become no-ops if CONFIG_CLEANCACHE
+is unset, or become compare-function-pointer-to-NULL if
+CONFIG_CLEANCACHE is set but no cleancache "backend" has
+claimed cleancache_ops.
+
+Signed-off-by: Chris Mason <chris.mason@oracle.com>
+Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+
+Diffstat:
+ fs/buffer.c                              |    5 +++++
+ fs/mpage.c                               |    7 +++++++
+ fs/super.c                               |    3 +++
+ mm/filemap.c                             |   11 +++++++++++
+ mm/truncate.c                            |   10 ++++++++++
+ 5 files changed, 36 insertions(+)
+---
+ fs/buffer.c   |    5 +++++
+ fs/mpage.c    |    7 +++++++
+ fs/super.c    |    3 +++
+ mm/filemap.c  |   11 +++++++++++
+ mm/truncate.c |   10 ++++++++++
+ 5 files changed, 36 insertions(+), 0 deletions(-)
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 2219a76..65ad0b4 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -41,6 +41,7 @@
+ #include <linux/bitops.h>
+ #include <linux/mpage.h>
+ #include <linux/bit_spinlock.h>
++#include <linux/cleancache.h>
+ 
+ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
+ 
+@@ -277,6 +278,10 @@ void invalidate_bdev(struct block_device *bdev)
+ 	invalidate_bh_lrus();
+ 	lru_add_drain_all();	/* make sure all lru add caches are flushed */
+ 	invalidate_mapping_pages(mapping, 0, -1);
++	/* 99% of the time, we don't need to flush the cleancache on the bdev.
++	 * But, for the strange corners, lets be cautious
++	 */
++	cleancache_flush_inode(mapping);
+ }
+ EXPORT_SYMBOL(invalidate_bdev);
+ 
+diff --git a/fs/mpage.c b/fs/mpage.c
+index d78455a..7d0e666 100644
+--- a/fs/mpage.c
++++ b/fs/mpage.c
+@@ -27,6 +27,7 @@
+ #include <linux/writeback.h>
+ #include <linux/backing-dev.h>
+ #include <linux/pagevec.h>
++#include <linux/cleancache.h>
+ 
+ /*
+  * I/O completion handler for multipage BIOs.
+@@ -271,6 +272,12 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
+ 		SetPageMappedToDisk(page);
+ 	}
+ 
++	if (fully_mapped && blocks_per_page == 1 && !PageUptodate(page) &&
++	    cleancache_get_page(page) == 0) {
++		SetPageUptodate(page);
++		goto confused;
++	}
++
+ 	/*
+ 	 * This page will go to BIO.  Do we need to send this BIO off first?
+ 	 */
+diff --git a/fs/super.c b/fs/super.c
+index 74e149e..30605f5 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -31,6 +31,7 @@
+ #include <linux/mutex.h>
+ #include <linux/backing-dev.h>
+ #include <linux/rculist_bl.h>
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ 
+@@ -111,6 +112,7 @@ static struct super_block *alloc_super(struct file_system_type *type)
+ 		s->s_maxbytes = MAX_NON_LFS;
+ 		s->s_op = &default_op;
+ 		s->s_time_gran = 1000000000;
++		s->cleancache_poolid = -1;
+ 	}
+ out:
+ 	return s;
+@@ -177,6 +179,7 @@ void deactivate_locked_super(struct super_block *s)
+ 	struct file_system_type *fs = s->s_type;
+ 	if (atomic_dec_and_test(&s->s_active)) {
+ 		fs->kill_sb(s);
++		cleancache_flush_fs(s);
+ 		put_filesystem(fs);
+ 		put_super(s);
+ 	} else {
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 83a45d3..1f5a66f 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -34,6 +34,7 @@
+ #include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
+ #include <linux/memcontrol.h>
+ #include <linux/mm_inline.h> /* for page_is_file_cache() */
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ /*
+@@ -116,6 +117,16 @@ void __remove_from_page_cache(struct page *page)
+ {
+ 	struct address_space *mapping = page->mapping;
+ 
++	/*
++	 * if we're uptodate, flush out into the cleancache, otherwise
++	 * invalidate any existing cleancache entries.  We can't leave
++	 * stale data around in the cleancache once our page is gone
++	 */
++	if (PageUptodate(page))
++		cleancache_put_page(page);
++	else
++		cleancache_flush_page(mapping, page);
++
+ 	radix_tree_delete(&mapping->page_tree, page->index);
+ 	page->mapping = NULL;
+ 	mapping->nrpages--;
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 3c2d5dd..60c1ce6 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -19,6 +19,7 @@
+ #include <linux/task_io_accounting_ops.h>
+ #include <linux/buffer_head.h>	/* grr. try_to_release_page,
+ 				   do_invalidatepage */
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ 
+@@ -51,6 +52,7 @@ void do_invalidatepage(struct page *page, unsigned long offset)
+ static inline void truncate_partial_page(struct page *page, unsigned partial)
+ {
+ 	zero_user_segment(page, partial, PAGE_CACHE_SIZE);
++	cleancache_flush_page(page->mapping, page);
+ 	if (page_has_private(page))
+ 		do_invalidatepage(page, partial);
+ }
+@@ -108,6 +110,10 @@ truncate_complete_page(struct address_space *mapping, struct page *page)
+ 	clear_page_mlock(page);
+ 	remove_from_page_cache(page);
+ 	ClearPageMappedToDisk(page);
++	/* this must be after the remove_from_page_cache which
++	 * calls cleancache_put_page (and note page->mapping is now NULL)
++	 */
++	cleancache_flush_page(mapping, page);
+ 	page_cache_release(page);	/* pagecache ref */
+ 	return 0;
+ }
+@@ -215,6 +221,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 	pgoff_t next;
+ 	int i;
+ 
++	cleancache_flush_inode(mapping);
+ 	if (mapping->nrpages == 0)
+ 		return;
+ 
+@@ -290,6 +297,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 		pagevec_release(&pvec);
+ 		mem_cgroup_uncharge_end();
+ 	}
++	cleancache_flush_inode(mapping);
+ }
+ EXPORT_SYMBOL(truncate_inode_pages_range);
+ 
+@@ -432,6 +440,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 	int did_range_unmap = 0;
+ 	int wrapped = 0;
+ 
++	cleancache_flush_inode(mapping);
+ 	pagevec_init(&pvec, 0);
+ 	next = start;
+ 	while (next <= end && !wrapped &&
+@@ -490,6 +499,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 		mem_cgroup_uncharge_end();
+ 		cond_resched();
+ 	}
++	cleancache_flush_inode(mapping);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(invalidate_inode_pages2_range);
+-- 
+1.7.3.5
+

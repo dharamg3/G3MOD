@@ -38,7 +38,7 @@
 #define DEFAULT_FMT		V4L2_PIX_FMT_VYUY	/* YUV422 */
 
 //#define CONFIG_LOAD_FILE	//For techwin tunning binary
-//#define VIEW_FUNCTION_CALL
+#define VIEW_FUNCTION_CALL
 
 #ifndef VIEW_FUNCTION_CALL
 #define printk(...)

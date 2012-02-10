@@ -1501,7 +1501,7 @@ static int onenand_multiple_read_ops_nolock(struct mtd_info *mtd, loff_t from,
 
 	return mtd->ecc_stats.corrected - stats.corrected ? -EUCLEAN : 0;
 }
-#else
+#endif
 /**
  * onenand_simple_read_ops_nolock - OneNAND simple read main and/or out-of-band
  * @param mtd		MTD device structure
@@ -1602,7 +1602,6 @@ static int onenand_simple_read_ops_nolock(struct mtd_info *mtd, loff_t from,
 
 	return mtd->ecc_stats.corrected - stats.corrected ? -EUCLEAN : 0;
 }
-#endif	// #ifdef ONENAND_SUPERLOAD
 
 /**
  * onenand_read_ops_nolock - [OneNAND Interface] OneNAND read main and/or out-of-band

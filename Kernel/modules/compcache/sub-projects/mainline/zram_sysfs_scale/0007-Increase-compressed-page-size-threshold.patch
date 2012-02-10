@@ -1,0 +1,37 @@
+From 00682a9aec8efdb9002115c5be5a8d5ec0f5e032 Mon Sep 17 00:00:00 2001
+From: Nitin Gupta <ngupta@vflare.org>
+Date: Thu, 5 Aug 2010 11:58:58 +0530
+Subject: [PATCH 07/10] Increase compressed page size threshold
+
+Compression takes much more time than decompression. So, its quite
+wasteful in terms of both CPU cycles and memory usage to have a very
+low compressed page size threshold and thereby storing such not-so-well
+compressible pages as-is (uncompressed). So, increasing it from
+PAGE_SIZE/2 to PAGE_SIZE/8*7. A low threshold was useful when we had
+"backing swap" support where we could forward such pages to the backing
+device (applicable only when zram was used as swap disk).
+
+It is not yet configurable through sysfs but may be exported in future,
+along with threshold for average compression ratio.
+
+Signed-off-by: Nitin Gupta <ngupta@vflare.org>
+---
+ drivers/staging/zram/zram_drv.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/drivers/staging/zram/zram_drv.h b/drivers/staging/zram/zram_drv.h
+index 65e512d..bcc51ea 100644
+--- a/drivers/staging/zram/zram_drv.h
++++ b/drivers/staging/zram/zram_drv.h
+@@ -47,7 +47,7 @@ static const unsigned default_disksize_perc_ram = 25;
+  * Pages that compress to size greater than this are stored
+  * uncompressed in memory.
+  */
+-static const unsigned max_zpage_size = PAGE_SIZE / 4 * 3;
++static const unsigned max_zpage_size = PAGE_SIZE / 8 * 7;
+ 
+ /*
+  * NOTE: max_zpage_size must be less than or equal to:
+-- 
+1.7.2.1
+

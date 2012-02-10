@@ -1,0 +1,88 @@
+From b6d7fba3c7bff47a58c0c548ec08df934f749cbe Mon Sep 17 00:00:00 2001
+From: Nitin Gupta <ngupta@vflare.org>
+Date: Sat, 5 Jun 2010 12:08:20 +0530
+Subject: [PATCH 0/4] zram: generic RAM based compressed R/W block devices (v2)
+
+* Changelog v1 vs v2
+ - Split file rename and code rename patches
+ - Removed useless swap related includes from zram_drv.c
+ - Various cleanups suggested by Minchan:
+   - Documented rzs->lock mutex in ramzswap_drv.h (see patch 1)
+     (this file is renamed to zram_drv.h in patch 2)
+   - remove useless 'index' argument in handle_zero_page()
+   - Edited comments/messages mentioning 'swap'
+   - Removed redundant return from void zram_slot_free_notify()
+
+Creates RAM based block devices: /dev/zramX (X = 0, 1, ...).
+Pages written to these disks are compressed and stored in memory
+itself. These disks allow very fast I/O and compression provides
+good amounts of memory savings.
+
+This is enhancement over existing ramzswap driver which creates
+virtual block devices (/dev/ramzswapX) which could be used only
+as swap disks.
+
+Now, with the ability to handle any kind of I/O request, zram
+devices have lot more use cases:
+ - /tmp storage
+ - various caches under /var
+ - swap disks
+ - CacheFiles storage
+ - maybe even more! :)
+
+Performance numbers can be found at:
+http://code.google.com/p/compcache/wiki/zramperf
+
+Stress testing results:
+http://code.google.com/p/compcache/wiki/zramIOzone
+
+Patch 1 makes core changes to support handling generic I/O
+requests. Subsequent patches rename ramzswap* files to zram*
+and similar changes in code and documentation.
+
+Nitin Gupta (4):
+  Support generic I/O requests
+  Rename ramzswap files to zram
+  Rename ramzswap to zram in code
+  Rename ramzswap to zram in documentation
+
+ drivers/staging/Kconfig                   |    2 +-
+ drivers/staging/Makefile                  |    2 +-
+ drivers/staging/ramzswap/Kconfig          |   21 -
+ drivers/staging/ramzswap/Makefile         |    3 -
+ drivers/staging/ramzswap/ramzswap.txt     |   51 --
+ drivers/staging/ramzswap/ramzswap_drv.c   |  837 -----------------------------
+ drivers/staging/ramzswap/ramzswap_drv.h   |  167 ------
+ drivers/staging/ramzswap/ramzswap_ioctl.h |   42 --
+ drivers/staging/ramzswap/xvmalloc.c       |  507 -----------------
+ drivers/staging/ramzswap/xvmalloc.h       |   30 -
+ drivers/staging/ramzswap/xvmalloc_int.h   |   86 ---
+ drivers/staging/zram/Kconfig              |   28 +
+ drivers/staging/zram/Makefile             |    3 +
+ drivers/staging/zram/xvmalloc.c           |  507 +++++++++++++++++
+ drivers/staging/zram/xvmalloc.h           |   30 +
+ drivers/staging/zram/xvmalloc_int.h       |   86 +++
+ drivers/staging/zram/zram.txt             |   62 +++
+ drivers/staging/zram/zram_drv.c           |  804 +++++++++++++++++++++++++++
+ drivers/staging/zram/zram_drv.h           |  164 ++++++
+ drivers/staging/zram/zram_ioctl.h         |   41 ++
+ 20 files changed, 1727 insertions(+), 1746 deletions(-)
+ delete mode 100644 drivers/staging/ramzswap/Kconfig
+ delete mode 100644 drivers/staging/ramzswap/Makefile
+ delete mode 100644 drivers/staging/ramzswap/ramzswap.txt
+ delete mode 100644 drivers/staging/ramzswap/ramzswap_drv.c
+ delete mode 100644 drivers/staging/ramzswap/ramzswap_drv.h
+ delete mode 100644 drivers/staging/ramzswap/ramzswap_ioctl.h
+ delete mode 100644 drivers/staging/ramzswap/xvmalloc.c
+ delete mode 100644 drivers/staging/ramzswap/xvmalloc.h
+ delete mode 100644 drivers/staging/ramzswap/xvmalloc_int.h
+ create mode 100644 drivers/staging/zram/Kconfig
+ create mode 100644 drivers/staging/zram/Makefile
+ create mode 100644 drivers/staging/zram/xvmalloc.c
+ create mode 100644 drivers/staging/zram/xvmalloc.h
+ create mode 100644 drivers/staging/zram/xvmalloc_int.h
+ create mode 100644 drivers/staging/zram/zram.txt
+ create mode 100644 drivers/staging/zram/zram_drv.c
+ create mode 100644 drivers/staging/zram/zram_drv.h
+ create mode 100644 drivers/staging/zram/zram_ioctl.h
+

@@ -1,0 +1,17 @@
+syntax: glob
+
+.tmp_versions
+*.o
+*.ko
+*.cmd
+*.order
+*.mod*
+*.so*
+*.swp
+*.orig
+sub-projects/zramconfig/zramconfig
+Module.symvers
+Module.markers
+cscope.*
+.ctags*
+tags

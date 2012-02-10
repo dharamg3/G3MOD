@@ -1,0 +1,84 @@
+From f82e2c76e7fde8324a2ccc437edac868f5044404 Mon Sep 17 00:00:00 2001
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Date: Mon, 21 Jun 2010 16:21:10 -0700
+Subject: [PATCH 11/16] Cleancache: btrfs hooks for cleancache
+
+[PATCH V3 6/8] Cleancache: btrfs hooks for cleancache
+
+Filesystems must explicitly enable cleancache by calling
+cleancache_init_fs anytime a instance of the filesystem
+is mounted and must save the returned poolid.  Btrfs
+uses its own readpage which must be hooked, but all other
+cleancache hooks are in the VFS layer including
+the matching cleancache_flush_fs hook which must be
+called on unmount.
+
+Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+Signed-off-by: Chris Mason <chris.mason@oracle.com>
+
+Diffstat:
+ extent_io.c                              |    9 +++++++++
+ super.c                                  |    2 ++
+ 2 files changed, 11 insertions(+)
+---
+ fs/btrfs/extent_io.c |    9 +++++++++
+ fs/btrfs/super.c     |    2 ++
+ 2 files changed, 11 insertions(+), 0 deletions(-)
+
+diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+index d74e6af..096f8f6 100644
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -10,6 +10,7 @@
+ #include <linux/swap.h>
+ #include <linux/writeback.h>
+ #include <linux/pagevec.h>
++#include <linux/cleancache.h>
+ #include "extent_io.h"
+ #include "extent_map.h"
+ #include "compat.h"
+@@ -2027,6 +2028,13 @@ static int __extent_read_full_page(struct extent_io_tree *tree,
+ 
+ 	set_page_extent_mapped(page);
+ 
++	if (!PageUptodate(page)) {
++		if (cleancache_get_page(page) == 0) {
++			BUG_ON(blocksize != PAGE_SIZE);
++			goto out;
++		}
++	}
++
+ 	end = page_end;
+ 	while (1) {
+ 		lock_extent(tree, start, end, GFP_NOFS);
+@@ -2151,6 +2159,7 @@ static int __extent_read_full_page(struct extent_io_tree *tree,
+ 		cur = cur + iosize;
+ 		page_offset += iosize;
+ 	}
++out:
+ 	if (!nr) {
+ 		if (!PageError(page))
+ 			SetPageUptodate(page);
+diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
+index f2393b3..01650ba 100644
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -39,6 +39,7 @@
+ #include <linux/miscdevice.h>
+ #include <linux/magic.h>
+ #include <linux/slab.h>
++#include <linux/cleancache.h>
+ #include "compat.h"
+ #include "ctree.h"
+ #include "disk-io.h"
+@@ -479,6 +480,7 @@ static int btrfs_fill_super(struct super_block *sb,
+ 	sb->s_root = root_dentry;
+ 
+ 	save_mount_options(sb, data);
++	sb->cleancache_poolid = cleancache_init_fs(PAGE_SIZE);
+ 	return 0;
+ 
+ fail_close:
+-- 
+1.7.1.1
+

@@ -1,0 +1,320 @@
+ Makefile.target   |    3 +-
+ hw/pci.h          |    1 +
+ hw/virtio-pci.c   |   20 ++++++++
+ hw/virtio-vswap.c |  130 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ hw/virtio-vswap.h |   44 ++++++++++++++++++
+ hw/virtio.h       |    1 +
+ vl.c              |   31 +++++++++++++
+ 7 files changed, 229 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile.target b/Makefile.target
+index 6037fed..047789d 100644
+--- a/Makefile.target
++++ b/Makefile.target
+@@ -166,7 +166,8 @@ ifdef CONFIG_SOFTMMU
+ obj-y = vl.o async.o monitor.o pci.o pci_host.o pcie_host.o machine.o gdbstub.o
+ # virtio has to be here due to weird dependency between PCI and virtio-net.
+ # need to fix this properly
+-obj-y += virtio-blk.o virtio-balloon.o virtio-net.o virtio-console.o virtio-pci.o
++obj-y += virtio-blk.o virtio-balloon.o virtio-net.o virtio-console.o \
++         virtio-vswap.o virtio-pci.o
+ obj-$(CONFIG_KVM) += kvm.o kvm-all.o
+ # MSI-X depends on kvm for interrupt injection,
+ # so moved it from Makefile.hw to Makefile.target for now
+diff --git a/hw/pci.h b/hw/pci.h
+index 5d82cce..96c8d1b 100644
+--- a/hw/pci.h
++++ b/hw/pci.h
+@@ -75,6 +75,7 @@ extern target_phys_addr_t pci_mem_base;
+ #define PCI_DEVICE_ID_VIRTIO_BLOCK       0x1001
+ #define PCI_DEVICE_ID_VIRTIO_BALLOON     0x1002
+ #define PCI_DEVICE_ID_VIRTIO_CONSOLE     0x1003
++#define PCI_DEVICE_ID_VIRTIO_VSWAP       0x1010
+ 
+ typedef uint64_t pcibus_t;
+ #define FMT_PCIBUS                      PRIx64
+diff --git a/hw/virtio-pci.c b/hw/virtio-pci.c
+index 62b46bd..20e6d83 100644
+--- a/hw/virtio-pci.c
++++ b/hw/virtio-pci.c
+@@ -543,6 +543,20 @@ static int virtio_balloon_init_pci(PCIDevice *pci_dev)
+     return 0;
+ }
+ 
++static int virtio_vswap_init_pci(PCIDevice *pci_dev)
++{
++    VirtIOPCIProxy *proxy = DO_UPCAST(VirtIOPCIProxy, pci_dev, pci_dev);
++    VirtIODevice *vdev;
++
++    vdev = virtio_vswap_init(&pci_dev->qdev);
++    virtio_init_pci(proxy, vdev,
++                    PCI_VENDOR_ID_REDHAT_QUMRANET,
++                    PCI_DEVICE_ID_VIRTIO_VSWAP,
++                    PCI_CLASS_MEMORY_RAM,
++                    0x00);
++    return 0;
++}
++
+ static PCIDeviceInfo virtio_info[] = {
+     {
+         .qdev.name = "virtio-blk-pci",
+@@ -585,6 +599,12 @@ static PCIDeviceInfo virtio_info[] = {
+         .exit      = virtio_exit_pci,
+         .qdev.reset = virtio_pci_reset,
+     },{
++        .qdev.name = "virtio-vswap-pci",
++        .qdev.size = sizeof(VirtIOPCIProxy),
++        .init      = virtio_vswap_init_pci,
++        .exit      = virtio_exit_pci,
++        .qdev.reset = virtio_pci_reset,
++    },{
+         /* end of list */
+     }
+ };
+diff --git a/hw/virtio-vswap.c b/hw/virtio-vswap.c
+new file mode 100644
+index 0000000..4f491fb
+--- /dev/null
++++ b/hw/virtio-vswap.c
+@@ -0,0 +1,130 @@
++/*
++ * Virtio VSwap Device
++ *
++ * Authors:
++ *  Nitin Gupta   <ngupta@vflare.org>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ */
++
++#include "qemu-common.h"
++#include "virtio.h"
++#include "pc.h"
++#include "sysemu.h"
++#include "cpu.h"
++#include "virtio-vswap.h"
++#include "kvm.h"
++#include "qemu-kvm.h"
++
++typedef struct VirtIOVSwap
++{
++	VirtIODevice vdev;
++	VirtQueue *vq;
++	uint32_t test1;
++	uint32_t test2;
++} VirtIOVSwap;
++
++typedef struct VirtIOVSwapReq
++{
++	struct virtio_vswap_inhdr *in;
++	struct virtio_vswap_outhdr *out;
++} VirtIOVSwapReq;
++
++static VirtIOVSwap *to_virtio_vswap(VirtIODevice *vdev)
++{
++    return (VirtIOVSwap *)vdev;
++}
++
++static uint32_t virtio_vswap_get_features(VirtIODevice *vdev)
++{
++    return 0;
++}
++
++static void virtio_vswap_handle_output(VirtIODevice *vdev, VirtQueue *vq)
++{
++	VirtQueueElement elem;
++	VirtIOVSwapReq req;
++
++	while (virtqueue_pop(vq, &elem)) {
++		req.out = (void *)elem.out_sg[0].iov_base;
++		req.in = (void *)elem.in_sg[elem.in_num - 1].iov_base;
++
++		switch (req.out->type) {
++		case VIRTIO_VSWAP_T_OUT:
++			printf("W %lu\n", req.out->sector);
++			break;
++		case VIRTIO_VSWAP_T_IN:
++			printf("R %lu\n", req.out->sector);
++			break;
++		default:
++			printf("Unknown request type");
++		};
++
++		virtqueue_push(vq, &elem, 0);
++		virtio_notify(vdev, vq);
++	}
++
++}
++
++static void virtio_vswap_get_config(VirtIODevice *vdev, uint8_t *config_data)
++{
++    VirtIOVSwap *dev = to_virtio_vswap(vdev);
++    struct virtio_vswap_config config;
++
++    config.test1 = cpu_to_le32(dev->test1);
++    config.test2 = cpu_to_le32(dev->test2);
++
++    memcpy(config_data, &config, 8);
++}
++
++static void virtio_vswap_set_config(VirtIODevice *vdev,
++                                    const uint8_t *config_data)
++{
++    VirtIOVSwap *dev = to_virtio_vswap(vdev);
++    struct virtio_vswap_config config;
++    memcpy(&config, config_data, 8);
++    dev->test2 = config.test2;
++}
++
++static void virtio_vswap_save(QEMUFile *f, void *opaque)
++{
++    VirtIOVSwap *s = opaque;
++
++    virtio_save(&s->vdev, f);
++
++    qemu_put_be32(f, s->test1);
++    qemu_put_be32(f, s->test2);
++}
++
++static int virtio_vswap_load(QEMUFile *f, void *opaque, int version_id)
++{
++    VirtIOVSwap *s = opaque;
++
++    virtio_load(&s->vdev, f);
++
++    s->test1 = qemu_get_be32(f);
++    s->test2 = qemu_get_be32(f);
++
++    return 0;
++}
++
++VirtIODevice *virtio_vswap_init(DeviceState *dev)
++{
++    VirtIOVSwap *s;
++
++    s = (VirtIOVSwap *)virtio_common_init("virtio-vswap",
++                                            VIRTIO_ID_VSWAP,
++                                            0, sizeof(VirtIOVSwap));
++
++    s->vdev.get_config = virtio_vswap_get_config;
++    s->vdev.set_config = virtio_vswap_set_config;
++    s->vdev.get_features = virtio_vswap_get_features;
++
++    s->vq = virtio_add_queue(&s->vdev, 128, virtio_vswap_handle_output);
++
++    register_savevm("virtio-vswap", -1, 1, virtio_vswap_save, virtio_vswap_load, s);
++
++    return &s->vdev;
++}
+diff --git a/hw/virtio-vswap.h b/hw/virtio-vswap.h
+new file mode 100644
+index 0000000..7ee5b9b
+--- /dev/null
++++ b/hw/virtio-vswap.h
+@@ -0,0 +1,44 @@
++/*
++ * Virtio Support
++ *
++ * Authors:
++ *  Nitin Gupta   <ngupta@vflare.org>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ */
++
++#ifndef _QEMU_VIRTIO_VSWAP_H
++#define _QEMU_VIRTIO_VSWAP_H
++
++#include "virtio.h"
++#include "pci.h"
++
++#define VIRTIO_ID_VSWAP		10
++
++/* These two define direction */
++#define VIRTIO_VSWAP_T_IN	0
++#define VIRTIO_VSWAP_T_OUT	1
++
++struct virtio_vswap_config
++{
++	uint32_t test1;
++	uint32_t test2;
++};
++
++/* This is the first element of the read scatter-gather list */
++struct virtio_vswap_outhdr
++{
++	/* VIRTIO_VSWAP_T* */
++	uint32_t type;
++	/* Sector (i.e. 512 byte offset) */
++	uint64_t sector;
++};
++
++struct virtio_vswap_inhdr
++{
++	uint8_t status;
++};
++
++#endif
+diff --git a/hw/virtio.h b/hw/virtio.h
+index 35532a6..6e7795a 100644
+--- a/hw/virtio.h
++++ b/hw/virtio.h
+@@ -173,6 +173,7 @@ VirtIODevice *virtio_blk_init(DeviceState *dev, DriveInfo *dinfo);
+ VirtIODevice *virtio_net_init(DeviceState *dev, NICConf *conf);
+ VirtIODevice *virtio_console_init(DeviceState *dev);
+ VirtIODevice *virtio_balloon_init(DeviceState *dev);
++VirtIODevice *virtio_vswap_init(DeviceState *dev);
+ 
+ void virtio_net_exit(VirtIODevice *vdev);
+ 
+diff --git a/vl.c b/vl.c
+index 9edea10..91d7552 100644
+--- a/vl.c
++++ b/vl.c
+@@ -4533,6 +4533,31 @@ static int balloon_parse(const char *arg)
+ }
+ #endif
+ 
++static int vswap_parse(const char *arg)
++{
++    QemuOpts *opts;
++
++    if (strcmp(arg, "none") == 0) {
++        return 0;
++    }
++
++    if (!strncmp(arg, "virtio", 6)) {
++        if (arg[6] == ',') {
++            /* have params -> parse them */
++            opts = qemu_opts_parse(&qemu_device_opts, arg+7, NULL);
++            if (!opts)
++                return  -1;
++        } else {
++            /* create empty opts */
++            opts = qemu_opts_create(&qemu_device_opts, NULL, 0);
++        }
++        qemu_opt_set(opts, "driver", "virtio-vswap-pci");
++        return 0;
++    }
++
++    return -1;
++}
++
+ #ifdef _WIN32
+ static BOOL WINAPI qemu_ctrl_handler(DWORD type)
+ {
+@@ -5579,6 +5604,12 @@ int main(int argc, char **argv, char **envp)
+                 }
+                 break;
+ #endif
++            case QEMU_OPTION_vswap:
++                if (vswap_parse(optarg) < 0) {
++                    fprintf(stderr, "Unknown -vswap argument %s\n", optarg);
++                    exit(1);
++                }
++                break;
+             case QEMU_OPTION_no_reboot:
+                 no_reboot = 1;
+                 break;

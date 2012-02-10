@@ -636,16 +636,9 @@ struct sysfs_dirent *sysfs_find_dirent(struct sysfs_dirent *parent_sd,
 {
 	struct sysfs_dirent *sd;
 
-	for (sd = parent_sd->s_dir.children; sd; sd = sd->s_sibling) {
-
-		if(!sd->s_name) {
-			printk("sysfs_find_dirent->s_name Error \n");	
-			continue;
-		}
-
+	for (sd = parent_sd->s_dir.children; sd; sd = sd->s_sibling)
 		if (!strcmp(sd->s_name, name))
 			return sd;
-	}
 	return NULL;
 }
 

@@ -1,0 +1,45 @@
+From 82f78da7679e15c1d6618832bbb8a40887c554f2 Mon Sep 17 00:00:00 2001
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Date: Thu, 24 Jun 2010 00:04:38 +0000
+Subject: [PATCH 15/16] net: u64_stats_sync improvements
+
+- Add a comment about interrupts:
+
+6) If counter might be written by an interrupt, readers should block
+interrupts.
+
+- Fix a typo in sample of use.
+
+Signed-off-by: Eric Dumazet <eric.dumazet@gmail.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ include/linux/u64_stats_sync.h |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
+
+diff --git a/include/linux/u64_stats_sync.h b/include/linux/u64_stats_sync.h
+index d050515..b38e3a5 100644
+--- a/include/linux/u64_stats_sync.h
++++ b/include/linux/u64_stats_sync.h
+@@ -23,6 +23,10 @@
+  *    pure reads. But if they have to fetch many values, it's better to not allow
+  *    preemptions/interruptions to avoid many retries.
+  *
++ * 6) If counter might be written by an interrupt, readers should block interrupts.
++ *    (On UP, there is no seqcount_t protection, a reader allowing interrupts could
++ *     read partial values)
++ *
+  * Usage :
+  *
+  * Stats producer (writer) should use following template granted it already got
+@@ -46,7 +50,7 @@
+  *         start = u64_stats_fetch_begin(&stats->syncp);
+  *         tbytes = stats->bytes64; // non atomic operation
+  *         tpackets = stats->packets64; // non atomic operation
+- * } while (u64_stats_fetch_retry(&stats->lock, syncp));
++ * } while (u64_stats_fetch_retry(&stats->syncp, start));
+  *
+  *
+  * Example of use in drivers/net/loopback.c, using per_cpu containers,
+-- 
+1.7.1.1
+

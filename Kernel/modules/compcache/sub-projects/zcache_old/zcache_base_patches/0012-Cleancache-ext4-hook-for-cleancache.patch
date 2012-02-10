@@ -1,0 +1,47 @@
+From 73f672b125607aaa25a588c770d7a49ef44b9966 Mon Sep 17 00:00:00 2001
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Date: Mon, 21 Jun 2010 16:21:40 -0700
+Subject: [PATCH 12/16] Cleancache: ext4 hook for cleancache
+
+[PATCH V3 7/8] Cleancache: ext4 hook for cleancache
+
+Filesystems must explicitly enable cleancache by calling
+cleancache_init_fs anytime a instance of the filesystem
+is mounted and must save the returned poolid.  For ext4,
+all other cleancache hooks are in the VFS layer including
+the matching cleancache_flush_fs hook which must be
+called on unmount.
+
+Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
+
+Diffstat:
+ super.c                                  |    2 ++
+ 1 file changed, 2 insertions(+)
+---
+ fs/ext4/super.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4e8983a..e7c2c07 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -39,6 +39,7 @@
+ #include <linux/ctype.h>
+ #include <linux/log2.h>
+ #include <linux/crc16.h>
++#include <linux/cleancache.h>
+ #include <asm/uaccess.h>
+ 
+ #include "ext4.h"
+@@ -1789,6 +1790,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 			EXT4_INODES_PER_GROUP(sb),
+ 			sbi->s_mount_opt);
+ 
++	sb->cleancache_poolid = cleancache_init_fs(PAGE_SIZE);
+ 	return res;
+ }
+ 
+-- 
+1.7.1.1
+

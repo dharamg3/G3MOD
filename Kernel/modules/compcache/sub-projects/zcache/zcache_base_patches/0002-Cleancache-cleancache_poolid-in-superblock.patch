@@ -1,0 +1,38 @@
+From 6e3c82a3c48705ad2264057e1779ce56c0a6896b Mon Sep 17 00:00:00 2001
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Date: Fri, 3 Sep 2010 13:02:13 -0700
+Subject: [PATCH 2/8] Cleancache: cleancache_poolid in superblock
+
+[PATCH V5 2/8] Cleancache: cleancache_poolid in superblock
+
+Add cleancache_poolid to superblock structure... not tied
+to CONFIG_CLEANCACHE so as to avoid unnecessary clutter.
+
+Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+
+Diffstat:
+ fs.h                                     |    5 +++++
+ 1 file changed, 5 insertions(+)
+---
+ include/linux/fs.h |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 32b38cd..973ce6d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1426,6 +1426,11 @@ struct super_block {
+ 	 */
+ 	char __rcu *s_options;
+ 	const struct dentry_operations *s_d_op; /* default d_op for dentries */
++
++	/*
++	 * Saved pool identifier for cleancache (-1 means none)
++	 */
++	int cleancache_poolid;
+ };
+ 
+ extern struct timespec current_fs_time(struct super_block *sb);
+-- 
+1.7.3.5
+

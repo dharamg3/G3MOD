@@ -577,6 +577,7 @@ static int swap_entry_free(struct swap_info_struct *p,
 	count = p->swap_map[offset];
 	/* free if no reference */
 	if (!count) {
+		struct gendisk *disk = p->bdev->bd_disk;
 		if (offset < p->lowest_bit)
 			p->lowest_bit = offset;
 		if (offset > p->highest_bit)

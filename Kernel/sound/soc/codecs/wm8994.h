@@ -33,6 +33,7 @@ enum fmradio_mix_path   { FMR_MIX_OFF, FMR_MIX_HP, FMR_MIX_SPK, FMR_MIX_DUAL};
 enum power_state        { CODEC_OFF, CODEC_ON };
 enum recognition        {REC_OFF, REC_ON};
 enum state{OFF, ON};
+enum input_source_state	{DEFAULT, RECOGNITION, CAMCORDER, VOICE_COMMUNICATION};
 
 #define DEACTIVE                                0x00
 #define PLAYBACK_ACTIVE         0x01
@@ -90,6 +91,7 @@ struct wm8994_priv {
         enum power_state power_state;
         enum state recognition_active;          // for control gain to voice recognition.
         enum state ringtone_active;
+        enum input_source_state input_source;
         select_route *universal_playback_path;
         select_route *universal_voicecall_path;
         select_mic_route *universal_mic_path;

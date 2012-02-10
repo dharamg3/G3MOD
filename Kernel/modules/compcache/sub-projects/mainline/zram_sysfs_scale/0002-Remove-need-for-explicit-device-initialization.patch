@@ -1,0 +1,205 @@
+From 74fe8910ee7d0be2be81aeefa90212a1fa6a935b Mon Sep 17 00:00:00 2001
+From: Nitin Gupta <ngupta@vflare.org>
+Date: Mon, 9 Aug 2010 18:12:06 +0530
+Subject: [PATCH 02/10] Remove need for explicit device initialization
+
+Currently, the user has to explicitly write a positive value to
+initstate sysfs node before the device can be used. This event
+triggers allocation of per-device metadata like memory pool,
+table array and so on.
+
+We do not pre-initialize all zram devices since the 'table' array,
+mapping disk blocks to compressed chunks, takes considerable amount
+of memory (8 bytes per page). So, pre-initializing all devices will
+be quite wasteful if only few or none of the devices are actually
+used.
+
+This explicit device initialization from user is an odd requirement and
+can be easily avoided. We now initialize the device when first write is
+done to the device.
+
+Signed-off-by: Nitin Gupta <ngupta@vflare.org>
+---
+ drivers/staging/zram/zram_drv.c   |   35 +++++++++++++++++++++++------------
+ drivers/staging/zram/zram_drv.h   |    2 ++
+ drivers/staging/zram/zram_sysfs.c |   26 ++++----------------------
+ 3 files changed, 29 insertions(+), 34 deletions(-)
+
+diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
+index 3f698a5..c5f84ee 100644
+--- a/drivers/staging/zram/zram_drv.c
++++ b/drivers/staging/zram/zram_drv.c
+@@ -207,9 +207,15 @@ static int zram_read(struct zram *zram, struct bio *bio)
+ 	u32 index;
+ 	struct bio_vec *bvec;
+ 
+-	zram_stat64_inc(zram, &zram->stats.num_reads);
++	if (unlikely(!zram->init_done)) {
++		set_bit(BIO_UPTODATE, &bio->bi_flags);
++		bio_endio(bio, 0);
++		return 0;
++	}
+ 
++	zram_stat64_inc(zram, &zram->stats.num_reads);
+ 	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
++
+ 	bio_for_each_segment(bvec, bio, i) {
+ 		int ret;
+ 		size_t clen;
+@@ -275,16 +281,20 @@ out:
+ 
+ static int zram_write(struct zram *zram, struct bio *bio)
+ {
+-	int i;
++	int i, ret;
+ 	u32 index;
+ 	struct bio_vec *bvec;
+ 
+-	zram_stat64_inc(zram, &zram->stats.num_writes);
++	if (unlikely(!zram->init_done)) {
++		ret = zram_init_device(zram);
++		if (ret)
++			goto out;
++	}
+ 
++	zram_stat64_inc(zram, &zram->stats.num_writes);
+ 	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
+ 
+ 	bio_for_each_segment(bvec, bio, i) {
+-		int ret;
+ 		u32 offset;
+ 		size_t clen;
+ 		struct zobj_header *zheader;
+@@ -425,11 +435,6 @@ static int zram_make_request(struct request_queue *queue, struct bio *bio)
+ 	int ret = 0;
+ 	struct zram *zram = queue->queuedata;
+ 
+-	if (unlikely(!zram->init_done)) {
+-		bio_io_error(bio);
+-		return 0;
+-	}
+-
+ 	if (!valid_io_request(zram, bio)) {
+ 		zram_stat64_inc(zram, &zram->stats.invalid_io);
+ 		bio_io_error(bio);
+@@ -453,7 +458,7 @@ void zram_reset_device(struct zram *zram)
+ {
+ 	size_t index;
+ 
+-	/* Do not accept any new I/O request */
++	mutex_lock(&zram->init_lock);
+ 	zram->init_done = 0;
+ 
+ 	/* Free various per-device buffers */
+@@ -490,6 +495,7 @@ void zram_reset_device(struct zram *zram)
+ 	memset(&zram->stats, 0, sizeof(zram->stats));
+ 
+ 	zram->disksize = 0;
++	mutex_unlock(&zram->init_lock);
+ }
+ 
+ int zram_init_device(struct zram *zram)
+@@ -497,9 +503,11 @@ int zram_init_device(struct zram *zram)
+ 	int ret;
+ 	size_t num_pages;
+ 
++	mutex_lock(&zram->init_lock);
++
+ 	if (zram->init_done) {
+-		pr_info("Device already initialized!\n");
+-		return -EBUSY;
++		mutex_unlock(&zram->init_lock);
++		return 0;
+ 	}
+ 
+ 	zram_set_disksize(zram, totalram_pages << PAGE_SHIFT);
+@@ -542,11 +550,13 @@ int zram_init_device(struct zram *zram)
+ 	}
+ 
+ 	zram->init_done = 1;
++	mutex_unlock(&zram->init_lock);
+ 
+ 	pr_debug("Initialization done!\n");
+ 	return 0;
+ 
+ fail:
++	mutex_unlock(&zram->init_lock);
+ 	zram_reset_device(zram);
+ 
+ 	pr_err("Initialization failed: err=%d\n", ret);
+@@ -572,6 +582,7 @@ static int create_device(struct zram *zram, int device_id)
+ 	int ret = 0;
+ 
+ 	mutex_init(&zram->lock);
++	mutex_init(&zram->init_lock);
+ 	spin_lock_init(&zram->stat64_lock);
+ 
+ 	zram->queue = blk_alloc_queue(GFP_KERNEL);
+diff --git a/drivers/staging/zram/zram_drv.h b/drivers/staging/zram/zram_drv.h
+index 2ef93cc..a481551 100644
+--- a/drivers/staging/zram/zram_drv.h
++++ b/drivers/staging/zram/zram_drv.h
+@@ -108,6 +108,8 @@ struct zram {
+ 	struct request_queue *queue;
+ 	struct gendisk *disk;
+ 	int init_done;
++	/* Prevent concurrent execution of device init and reset */
++	struct mutex init_lock;
+ 	/*
+ 	 * This is the limit on amount of *uncompressed* worth of data
+ 	 * we can store in a disk.
+diff --git a/drivers/staging/zram/zram_sysfs.c b/drivers/staging/zram/zram_sysfs.c
+index b8dbaee..6c574a9 100644
+--- a/drivers/staging/zram/zram_sysfs.c
++++ b/drivers/staging/zram/zram_sysfs.c
+@@ -58,8 +58,10 @@ static ssize_t disksize_store(struct device *dev,
+ 	int ret;
+ 	struct zram *zram = dev_to_zram(dev);
+ 
+-	if (zram->init_done)
++	if (zram->init_done) {
++		pr_info("Cannot change disksize for initialized device\n");
+ 		return -EBUSY;
++	}
+ 
+ 	ret = strict_strtoull(buf, 10, &zram->disksize);
+ 	if (ret)
+@@ -79,25 +81,6 @@ static ssize_t initstate_show(struct device *dev,
+ 	return sprintf(buf, "%u\n", zram->init_done);
+ }
+ 
+-static ssize_t initstate_store(struct device *dev,
+-		struct device_attribute *attr, const char *buf, size_t len)
+-{
+-	int ret;
+-	unsigned long do_init;
+-	struct zram *zram = dev_to_zram(dev);
+-
+-	ret = strict_strtoul(buf, 10, &do_init);
+-	if (ret)
+-		return ret;
+-
+-	if (!do_init)
+-		return -EINVAL;
+-
+-	zram_init_device(zram);
+-
+-	return len;
+-}
+-
+ static ssize_t reset_store(struct device *dev,
+ 		struct device_attribute *attr, const char *buf, size_t len)
+ {
+@@ -208,8 +191,7 @@ static ssize_t mem_used_total_show(struct device *dev,
+ 
+ static DEVICE_ATTR(disksize, S_IRUGO | S_IWUGO,
+ 		disksize_show, disksize_store);
+-static DEVICE_ATTR(initstate, S_IRUGO | S_IWUGO,
+-		initstate_show, initstate_store);
++static DEVICE_ATTR(initstate, S_IRUGO, initstate_show, NULL);
+ static DEVICE_ATTR(reset, S_IWUGO, NULL, reset_store);
+ static DEVICE_ATTR(num_reads, S_IRUGO, num_reads_show, NULL);
+ static DEVICE_ATTR(num_writes, S_IRUGO, num_writes_show, NULL);
+-- 
+1.7.2.1
+

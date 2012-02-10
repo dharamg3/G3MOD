@@ -84,6 +84,7 @@ static char userspace_governor[CPUFREQ_NAME_LEN] = "userspace";
 
 static void early_suspend(struct work_struct *work)
 {
+	printk("---> early suspend!!!!!\n");
 	struct early_suspend *pos;
 	unsigned long irqflags;
 	int abort = 0;

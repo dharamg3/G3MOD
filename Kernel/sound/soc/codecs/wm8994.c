@@ -436,7 +436,6 @@ static const char *mic_path[] = { "Main Mic", "Hands Free Mic","Mic Off" };
 static const char *codec_tuning_control[] = { "Off", "On" };
 static const char *idle_mode[] = { "Off", "ON" };
 
-
 static int set_registers(struct snd_soc_codec *codec, int mode)
 {
         struct wm8994_priv *wm8994 = codec->private_data;
@@ -605,9 +604,9 @@ static int wm8994_set_voice_path(struct snd_kcontrol *kcontrol,
 	 struct soc_enum *mc =
                 (struct soc_enum *)kcontrol->private_value;
 	int i=ucontrol->value.integer.value[0];	
-	printk("ucontrol is %d\n", ucontrol->value.integer.value[0]);
+//	printk("ucontrol is %d\n", ucontrol->value.integer.value[0]);
 
-	printk("controls are %s %s %s\n",mc->texts[0],mc->texts[1],mc->texts[2]);
+//	printk("controls are %s %s %s\n",mc->texts[0],mc->texts[1],mc->texts[2]);
 	
 	if(strcmp( mc->texts[i],voicecall_path[i]) )
 	{		
@@ -1403,7 +1402,7 @@ static int fm_out_enable_store(struct device *dev, struct device_attribute *attr
 {
 	unsigned long value = simple_strtoul(buf, NULL, 10);
 
-	printk("%s : value = %d\n", value);
+//	printk("%s : value = %d\n", value);
 	fm_enable_val = (int) value;
 	
 	if(value)
@@ -1547,7 +1546,7 @@ static int sw_mute_store(struct device *dev, struct device_attribute *attr, cons
 {
 	unsigned long value = simple_strtoul(buf, NULL, 10);
 
-	printk("%s : value = %d\n", __func__, value);
+//	printk("%s : value = %d\n", __func__, value);
 	sw_mute_val = (int) value;
 	
 	wm8994_set_sw_mute(value, hp_spk_out_mute);
@@ -1653,7 +1652,7 @@ static int fm_input_mute_store(struct device *dev, struct device_attribute *attr
 {
 	unsigned long value = simple_strtoul(buf, NULL, 10);
 
-	printk("%s : value = %d\n", __func__, value);
+//	printk("%s : value = %d\n", __func__, value);
 	fm_input_mute_val = (int) value;
 	
 	wm8994_set_fm_input_mute(value);
@@ -1791,8 +1790,9 @@ static int wm8994_suspend(struct platform_device *pdev,pm_message_t msg )
 
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
     struct snd_soc_codec *codec = socdev->card->codec;
-    struct wm8994_priv *wm8994 = codec->private_data;
 #if 0
+    struct wm8994_priv *wm8994 = codec->private_data;
+
     wm8994_disable_playback_path(codec, wm8994_curr_path);
     wm8994_disable_rec_path(codec, wm8994_curr_path);
 #else

@@ -1,0 +1,51 @@
+From 07de679a8a9b2e1a4dff9b3913fa5877fdb69c75 Mon Sep 17 00:00:00 2001
+From: Randy Dunlap <randy.dunlap@oracle.com>
+Date: Wed, 23 Jun 2010 20:27:09 -0700
+Subject: [PATCH 05/16] zram: fix build errors, depends on BLOCK
+
+Fix 49 zram build errors in one swoop.  Examples:
+
+drivers/staging/zram/zram_drv.c:225: error: dereferencing pointer to incomplete type
+drivers/staging/zram/zram_drv.c:226: error: implicit declaration of function 'bio_for_each_segment'
+drivers/staging/zram/zram_drv.c:226: error: expected ';' before '{' token
+drivers/staging/zram/zram_drv.c:281: error: implicit declaration of function 'bio_endio'
+drivers/staging/zram/zram_drv.c:285: error: implicit declaration of function 'bio_io_error'
+drivers/staging/zram/zram_drv.c:545: error: implicit declaration of function 'set_capacity'
+drivers/staging/zram/zram_drv.c:548: error: implicit declaration of function 'queue_flag_set_unlocked'
+drivers/staging/zram/zram_drv.c:548: error: 'QUEUE_FLAG_NONROT' undeclared (first use in this function)
+drivers/staging/zram/zram_drv.c:548: error: dereferencing pointer to incomplete type
+
+Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
+Cc:	devel@driverdev.osuosl.org
+Cc:	Nitin Gupta <ngupta@vflare.org>
+---
+ drivers/staging/zram/Kconfig    |    1 +
+ drivers/staging/zram/zram_drv.c |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/drivers/staging/zram/Kconfig b/drivers/staging/zram/Kconfig
+index 5bcfe16..4654ae2 100644
+--- a/drivers/staging/zram/Kconfig
++++ b/drivers/staging/zram/Kconfig
+@@ -1,5 +1,6 @@
+ config ZRAM
+ 	tristate "Compressed RAM block device support"
++	depends on BLOCK
+ 	select LZO_COMPRESS
+ 	select LZO_DECOMPRESS
+ 	default n
+diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
+index 3f77843..77d4d71 100644
+--- a/drivers/staging/zram/zram_drv.c
++++ b/drivers/staging/zram/zram_drv.c
+@@ -17,6 +17,7 @@
+ 
+ #include <linux/module.h>
+ #include <linux/kernel.h>
++#include <linux/bio.h>
+ #include <linux/bitops.h>
+ #include <linux/blkdev.h>
+ #include <linux/buffer_head.h>
+-- 
+1.7.1.1
+

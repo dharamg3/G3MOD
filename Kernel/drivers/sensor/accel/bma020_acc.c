@@ -378,6 +378,27 @@ static ssize_t poll_delay_store(struct device *dev,struct device_attribute *attr
 	return size;
 }
 
+void bma020_set_delay(short delay)
+{
+	int64_t new_delay;
+	int err;
+
+	// ms to ns
+	new_delay = delay * 1000000;
+
+//	printk("------> BMA020 from AKM : new delay = %lldns, old delay = %lldns\n",
+//		    new_delay, ktime_to_ns(bma020.acc_poll_delay));
+	mutex_lock(&bma020.power_lock);
+	if (new_delay != ktime_to_ns(bma020.acc_poll_delay)) {
+		bma_acc_disable();
+		bma020.acc_poll_delay = ns_to_ktime(new_delay);
+                bma020.state |= ACC_ENABLED;
+		bma_acc_enable();
+	}
+	mutex_unlock(&bma020.power_lock);
+	return;
+}
+
 static ssize_t acc_enable_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", (bma020.state & ACC_ENABLED) ? 1 : 0);

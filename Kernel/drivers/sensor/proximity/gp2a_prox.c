@@ -215,10 +215,13 @@ int get_gp2a_proximity_value(void)
 	if((ret=gp2a_i2c_read(&prox_value))<0)
 	{
 		error("gp2a_i2c_read failed");
-		return -1;
+	//	return -1;
 	}
-	else
-		return (!prox_value);
+	else {
+		printk("---> prox_value : %d\n", prox_value);		
+	//	return (!prox_value);
+	}
+        printk("---> gpio_get_value : %d\n", gpio_get_value(GPIO_PS_OUT));
 #else	
 	return gpio_get_value(GPIO_PS_OUT);
 #endif

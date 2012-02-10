@@ -1,0 +1,47 @@
+From ea7103714b23a99096717e7e5f90b53089b34671 Mon Sep 17 00:00:00 2001
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Date: Fri, 3 Sep 2010 13:03:43 -0700
+Subject: [PATCH 5/8] Cleancache: ext3 hook for cleancache
+
+[PATCH V5 5/8] Cleancache: ext3 hook for cleancache
+
+Filesystems must explicitly enable cleancache by calling
+cleancache_init_fs anytime a instance of the filesystem
+is mounted and must save the returned poolid.  For ext3,
+all other cleancache hooks are in the VFS layer including
+the matching cleancache_flush_fs hook which must be
+called on unmount.
+
+Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
+
+Diffstat:
+ super.c                                  |    2 ++
+ 1 file changed, 2 insertions(+)
+---
+ fs/ext3/super.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 7aa767d..dd2567a 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -36,6 +36,7 @@
+ #include <linux/quotaops.h>
+ #include <linux/seq_file.h>
+ #include <linux/log2.h>
++#include <linux/cleancache.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -1367,6 +1368,7 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
+ 	} else {
+ 		ext3_msg(sb, KERN_INFO, "using internal journal");
+ 	}
++	cleancache_init_fs(sb);
+ 	return res;
+ }
+ 
+-- 
+1.7.3.5
+

@@ -141,24 +141,22 @@ static inline void account_system_vtime(struct task_struct *tsk)
 #if defined(CONFIG_NO_HZ)
 #if defined(CONFIG_TINY_RCU)
 extern void rcu_enter_nohz(void);
-
 extern void rcu_exit_nohz(void);
 
 static inline void rcu_irq_enter(void)
 {
-
- rcu_exit_nohz();
-	
+       rcu_exit_nohz();
 }
 
 static inline void rcu_irq_exit(void)
 {
-  rcu_enter_nohz();
+       rcu_enter_nohz();
 }
 
 static inline void rcu_nmi_enter(void)
 {
 }
+
 static inline void rcu_nmi_exit(void)
 {
 }

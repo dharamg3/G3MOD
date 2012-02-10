@@ -66,6 +66,7 @@ int set_task_ioprio(struct task_struct *task, int ioprio)
 
 	if (!err) {
 		ioc->ioprio = ioprio;
+//		ioc->ioprio_changed = 1;
 		/* make sure schedulers see the new ioprio value */
 		wmb();
 		for (i = 0; i < IOC_IOPRIO_CHANGED_BITS; i++)

@@ -1,0 +1,6131 @@
+ .../ABI/testing/sysfs-kernel-mm-cleancache         |   11 +
+ Documentation/ABI/testing/sysfs-kernel-mm-zcache   |   53 +
+ Documentation/vm/cleancache.txt                    |  194 +++
+ drivers/staging/Kconfig                            |    2 +-
+ drivers/staging/Makefile                           |    4 +-
+ drivers/staging/ramzswap/Kconfig                   |   21 -
+ drivers/staging/ramzswap/Makefile                  |    3 -
+ drivers/staging/ramzswap/ramzswap.txt              |   51 -
+ drivers/staging/ramzswap/ramzswap_drv.c            |  837 -------------
+ drivers/staging/ramzswap/ramzswap_drv.h            |  167 ---
+ drivers/staging/ramzswap/ramzswap_ioctl.h          |   42 -
+ drivers/staging/ramzswap/xvmalloc.c                |  507 --------
+ drivers/staging/ramzswap/xvmalloc.h                |   30 -
+ drivers/staging/ramzswap/xvmalloc_int.h            |   86 --
+ drivers/staging/zram/Kconfig                       |   51 +
+ drivers/staging/zram/Makefile                      |    6 +
+ drivers/staging/zram/xvmalloc.c                    |  515 ++++++++
+ drivers/staging/zram/xvmalloc.h                    |   30 +
+ drivers/staging/zram/xvmalloc_int.h                |   86 ++
+ drivers/staging/zram/zcache_drv.c                  | 1312 ++++++++++++++++++++
+ drivers/staging/zram/zcache_drv.h                  |   90 ++
+ drivers/staging/zram/zram.txt                      |   62 +
+ drivers/staging/zram/zram_drv.c                    |  805 ++++++++++++
+ drivers/staging/zram/zram_drv.h                    |  164 +++
+ drivers/staging/zram/zram_ioctl.h                  |   41 +
+ fs/btrfs/extent_io.c                               |    9 +
+ fs/btrfs/super.c                                   |    2 +
+ fs/buffer.c                                        |    5 +
+ fs/ext3/super.c                                    |    2 +
+ fs/ext4/super.c                                    |    2 +
+ fs/mpage.c                                         |    7 +
+ fs/ocfs2/super.c                                   |    3 +
+ fs/super.c                                         |    7 +
+ include/linux/cleancache.h                         |   88 ++
+ include/linux/fs.h                                 |    5 +
+ include/linux/u64_stats_sync.h                     |  140 +++
+ mm/Kconfig                                         |   22 +
+ mm/Makefile                                        |    1 +
+ mm/cleancache.c                                    |  169 +++
+ mm/filemap.c                                       |   11 +
+ mm/truncate.c                                      |   10 +
+ 41 files changed, 3907 insertions(+), 1746 deletions(-)
+
+diff --git a/Documentation/ABI/testing/sysfs-kernel-mm-cleancache b/Documentation/ABI/testing/sysfs-kernel-mm-cleancache
+new file mode 100644
+index 0000000..98654c8
+--- /dev/null
++++ b/Documentation/ABI/testing/sysfs-kernel-mm-cleancache
+@@ -0,0 +1,11 @@
++What:		/sys/kernel/mm/cleancache/
++Date:		June 2010
++Contact:	Dan Magenheimer <dan.magenheimer@oracle.com>
++Description:
++		/sys/kernel/mm/cleancache/ contains a number of files which
++		record a count of various cleancache operations
++		(sum across all filesystems):
++			succ_gets
++			failed_gets
++			puts
++			flushes
+diff --git a/Documentation/ABI/testing/sysfs-kernel-mm-zcache b/Documentation/ABI/testing/sysfs-kernel-mm-zcache
+new file mode 100644
+index 0000000..7ee3f31
+--- /dev/null
++++ b/Documentation/ABI/testing/sysfs-kernel-mm-zcache
+@@ -0,0 +1,53 @@
++What:		/sys/kernel/mm/zcache
++Date:		July 2010
++Contact:	Nitin Gupta <ngupta@vflare.org>
++Description:
++		/sys/kernel/mm/zcache directory contains compressed cache
++		statistics for each pool. A separate pool is created for
++		every mount instance of cleancache-aware filesystems.
++
++What:		/sys/kernel/mm/zcache/pool<id>/zero_pages
++Date:		July 2010
++Contact:	Nitin Gupta <ngupta@vflare.org>
++Description:
++		The zero_pages file is read-only and specifies number of zero
++		filled pages found in this pool.
++
++What:		/sys/kernel/mm/zcache/pool<id>/orig_data_size
++Date:		July 2010
++Contact:	Nitin Gupta <ngupta@vflare.org>
++Description:
++		The orig_data_size file is read-only and specifies uncompressed
++		size of data stored in this pool. This excludes zero-filled
++		pages (zero_pages) since no memory is allocated for them.
++		Unit: bytes
++
++What:		/sys/kernel/mm/zcache/pool<id>/compr_data_size
++Date:		July 2010
++Contact:	Nitin Gupta <ngupta@vflare.org>
++Description:
++		The compr_data_size file is read-only and specifies compressed
++		size of data stored in this pool. So, compression ratio can be
++		calculated using orig_data_size and this statistic.
++		Unit: bytes
++
++What:		/sys/kernel/mm/zcache/pool<id>/mem_used_total
++Date:		July 2010
++Contact:	Nitin Gupta <ngupta@vflare.org>
++Description:
++		The mem_used_total file is read-only and specifies the amount
++		of memory, including allocator fragmentation and metadata
++		overhead, allocated for this pool. So, allocator space
++		efficiency can be calculated using compr_data_size and this
++		statistic.
++		Unit: bytes
++
++What:		/sys/kernel/mm/zcache/pool<id>/memlimit
++Date:		July 2010
++Contact:	Nitin Gupta <ngupta@vflare.org>
++Description:
++		The memlimit file is read-write and specifies upper bound on
++		the compressed data size (compr_data_dize) stored in this pool.
++		The value specified is rounded down to nearest multiple of
++		PAGE_SIZE.
++		Unit: bytes
+\ No newline at end of file
+diff --git a/Documentation/vm/cleancache.txt b/Documentation/vm/cleancache.txt
+new file mode 100644
+index 0000000..4e4e831
+--- /dev/null
++++ b/Documentation/vm/cleancache.txt
+@@ -0,0 +1,194 @@
++MOTIVATION
++
++Cleancache can be thought of as a page-granularity victim cache for clean
++pages that the kernel's pageframe replacement algorithm (PFRA) would like
++to keep around, but can't since there isn't enough memory.  So when the
++PFRA "evicts" a page, it first attempts to put it into a synchronous
++concurrency-safe page-oriented "pseudo-RAM" device (such as Xen's Transcendent
++Memory, aka "tmem", or in-kernel compressed memory, aka "zmem", or other
++RAM-like devices) which is not directly accessible or addressable by the
++kernel and is of unknown and possibly time-varying size.  And when a
++cleancache-enabled filesystem wishes to access a page in a file on disk,
++it first checks cleancache to see if it already contains it; if it does,
++the page is copied into the kernel and a disk access is avoided.
++
++A FAQ is included below:
++
++IMPLEMENTATION OVERVIEW
++
++A cleancache "backend" that interfaces to this pseudo-RAM links itself
++to the kernel's cleancache "frontend" by setting the cleancache_ops funcs
++appropriately and the functions it provides must conform to certain
++semantics as follows:
++
++Most important, cleancache is "ephemeral".  Pages which are copied into
++cleancache have an indefinite lifetime which is completely unknowable
++by the kernel and so may or may not still be in cleancache at any later time.
++Thus, as its name implies, cleancache is not suitable for dirty pages.
++Cleancache has complete discretion over what pages to preserve and what
++pages to discard and when.
++
++Mounting a cleancache-enabled filesystem should call "init_fs" to obtain a
++pool id which, if positive, must be saved in the filesystem's superblock;
++a negative return value indicates failure.  A "put_page" will copy a
++(presumably about-to-be-evicted) page into cleancache and associate it with
++the pool id, the file inode, and a page index into the file.  (The combination
++of a pool id, an inode, and an index is sometimes called a "handle".)
++A "get_page" will copy the page, if found, from cleancache into kernel memory.
++A "flush_page" will ensure the page no longer is present in cleancache;
++a "flush_inode" will flush all pages associated with the specified inode;
++and, when a filesystem is unmounted, a "flush_fs" will flush all pages in
++all inodes specified by the given pool id and also surrender the pool id.
++
++A "init_shared_fs", like init, obtains a pool id but tells cleancache
++to treat the pool as shared using a 128-bit UUID as a key.  On systems
++that may run multiple kernels (such as hard partitioned or virtualized
++systems) that may share a clustered filesystem, and where cleancache
++may be shared among those kernels, calls to init_shared_fs that specify the
++same UUID will receive the same pool id, thus allowing the pages to
++be shared.  Note that any security requirements must be imposed outside
++of the kernel (e.g. by "tools" that control cleancache).  Or a
++cleancache implementation can simply disable shared_init by always
++returning a negative value.
++
++If a get_page is successful on a non-shared pool, the page is flushed (thus
++making cleancache an "exclusive" cache).  On a shared pool, the page
++is NOT flushed on a successful get_page so that it remains accessible to
++other sharers.  The kernel is responsible for ensuring coherency between
++cleancache (shared or not), the page cache, and the filesystem, using
++cleancache flush operations as required.
++
++Note that cleancache must enforce put-put-get coherency and get-get
++coherency.  For the former, if two puts are made to the same handle but
++with different data, say AAA by the first put and BBB by the second, a
++subsequent get can never return the stale data (AAA).  For get-get coherency,
++if a get for a given handle fails, subsequent gets for that handle will
++never succeed unless preceded by a successful put with that handle.
++
++Last, cleancache provides no SMP serialization guarantees; if two
++different Linux threads are simultaneously putting and flushing a page
++with the same handle, the results are indeterminate.
++
++CLEANCACHE PERFORMANCE METRICS
++
++Cleancache monitoring is done by sysfs files in the
++/sys/kernel/mm/cleancache directory.  The effectiveness of cleancache
++can be measured (across all filesystems) with:
++
++succ_gets	- number of gets that were successful
++failed_gets	- number of gets that failed
++puts		- number of puts attempted (all "succeed")
++flushes		- number of flushes attempted
++
++A backend implementatation may provide additional metrics.
++
++FAQ
++
++1) Where's the value? (Andrew Morton)
++
++Cleancache (and its sister code "frontswap") provide interfaces for
++a new pseudo-RAM memory type that conceptually lies between fast
++kernel-directly-addressable RAM and slower DMA/asynchronous devices.
++Disallowing direct kernel or userland reads/writes to this pseudo-RAM
++is ideal when data is transformed to a different form and size (such
++as wiht compression) or secretly moved (as might be useful for write-
++balancing for some RAM-like devices).  Evicted page-cache pages (and
++swap pages) are a great use for this kind of slower-than-RAM-but-much-
++faster-than-disk pseudo-RAM and the cleancache (and frontswap)
++"page-object-oriented" specification provides a nice way to read and
++write -- and indirectly "name" -- the pages.
++
++In the virtual case, the whole point of virtualization is to statistically
++multiplex physical resources across the varying demands of multiple
++virtual machines.  This is really hard to do with RAM and efforts to
++do it well with no kernel change have essentially failed (except in some
++well-publicized special-case workloads).  Cleancache -- and frontswap --
++with a fairly small impact on the kernel, provide a huge amount
++of flexibility for more dynamic, flexible RAM multiplexing.
++Specifically, the Xen Transcendent Memory backend allows otherwise
++"fallow" hypervisor-owned RAM to not only be "time-shared" between multiple
++virtual machines, but the pages can be compressed and deduplicated to
++optimize RAM utilization.  And when guest OS's are induced to surrender
++underutilized RAM (e.g. with "self-ballooning"), page cache pages
++are the first to go, and cleancache allows those pages to be
++saved and reclaimed if overall host system memory conditions allow.
++
++2) Why does cleancache have its sticky fingers so deep inside the
++   filesystems and VFS? (Andrew Morton and Christophe Hellwig)
++
++The core hooks for cleancache in VFS are in most cases a single line
++and the minimum set are placed precisely where needed to maintain
++coherency (via cleancache_flush operatings) between cleancache,
++the page cache, and disk.  All hooks compile into nothingness if
++cleancache is config'ed off and turn into a function-pointer-
++compare-to-NULL if config'ed on but no backend claims the ops
++functions, or to a compare-struct-element-to-negative if a
++backend claims the ops functions but a filesystem doesn't enable
++cleancache.
++
++Some filesystems are built entirely on top of VFS and the hooks
++in VFS are sufficient, so don't require a "init_fs" hook; the
++initial implementation of cleancache didn't provide this hook.
++But for some filesystems (such as btrfs), the VFS hooks are
++incomplete and one or more hooks in fs-specific code are required.
++And for some other filesystems, such as tmpfs, cleancache may
++be counterproductive.  So it seemed prudent to require a filesystem
++to "opt in" to use cleancache, which requires adding a hook in
++each filesystem.  Not all filesystems are supported by cleancache
++only because they haven't been tested.  The existing set should
++be sufficient to validate the concept, the opt-in approach means
++that untested filesystems are not affected, and the hooks in the
++existing filesystems should make it very easy to add more
++filesystems in the future.
++
++3) Why not make cleancache asynchronous and batched so it can
++   more easily interface with real devices with DMA instead
++   of copying each individual page? (Minchan Kim)
++
++The one-page-at-a-time copy semantics simplifies the implementation
++on both the frontend and backend and also allows the backend to
++do fancy things on-the-fly like page compression and
++page deduplication.  And since the data is "gone" (copied into/out
++of the pageframe) before the cleancache get/put call returns,
++a great deal of race conditions and potential coherency issues
++are avoided.  While the interface seems odd for a "real device"
++or for real kernel-addressible RAM, it makes perfect sense for
++pseudo-RAM.
++
++4) Why is non-shared cleancache "exclusive"?  And where is the
++   page "flushed" after a "get"? (Minchan Kim)
++
++The main reason is to free up memory in pseudo-RAM and to avoid
++unnecessary cleancache_flush calls.  If you want inclusive,
++the page can be "put" immediately following the "get".  If
++put-after-get for inclusive becomes common, the interface could
++be easily extended to add a "get_no_flush" call.
++
++The flush is done by the cleancache backend implementation.
++
++5) What's the performance impact?
++
++Performance analysis has been presented at OLS'09 and LCA'10.
++Briefly, performance gains can be significant on most workloads,
++especially when memory pressure is high (e.g. when RAM is
++overcommitted in a virtual workload); and because the hooks are
++invoked primarily in place of or in addition to a disk read/write,
++overhead is negligible even in worst case workloads.  Basically
++cleancache replaces I/O with memory-copy-CPU-overhead; on older
++single-core systems with slow memory-copy speeds, cleancache
++has little value, but in newer multicore machines, especially
++consolidated/virtualized machines, it has great value.
++
++6) Does cleanache work with KVM?
++
++The memory model of KVM is sufficiently different that a cleancache
++backend may have little value for KVM.  This remains to be tested,
++especially in an overcommitted system.
++
++7) Does cleancache work in userspace?  It sounds useful for
++   memory hungry caches like web browsers.  (Jamie Lokier)
++
++No plans yet, though we agree it sounds useful, at least for
++apps that bypass the page cache (e.g. O_DIRECT).
++
++Last updated: Dan Magenheimer, June 21 2010
+diff --git a/drivers/staging/Kconfig b/drivers/staging/Kconfig
+index 984a754..9f59d7b 100644
+--- a/drivers/staging/Kconfig
++++ b/drivers/staging/Kconfig
+@@ -117,7 +117,7 @@ source "drivers/staging/sep/Kconfig"
+ 
+ source "drivers/staging/iio/Kconfig"
+ 
+-source "drivers/staging/ramzswap/Kconfig"
++source "drivers/staging/zram/Kconfig"
+ 
+ source "drivers/staging/wlags49_h2/Kconfig"
+ 
+diff --git a/drivers/staging/Makefile b/drivers/staging/Makefile
+index 9fa2513..3c1d91b 100644
+--- a/drivers/staging/Makefile
++++ b/drivers/staging/Makefile
+@@ -39,7 +39,9 @@ obj-$(CONFIG_RAR_REGISTER)	+= rar_register/
+ obj-$(CONFIG_MRST_RAR_HANDLER)	+= memrar/
+ obj-$(CONFIG_DX_SEP)		+= sep/
+ obj-$(CONFIG_IIO)		+= iio/
+-obj-$(CONFIG_RAMZSWAP)		+= ramzswap/
++obj-$(CONFIG_ZRAM)		+= zram/
++obj-$(CONFIG_ZCACHE)		+= zram/
++obj-$(CONFIG_XVMALLOC)		+= zram/
+ obj-$(CONFIG_WLAGS49_H2)	+= wlags49_h2/
+ obj-$(CONFIG_WLAGS49_H25)	+= wlags49_h25/
+ obj-$(CONFIG_BATMAN_ADV)	+= batman-adv/
+diff --git a/drivers/staging/ramzswap/Kconfig b/drivers/staging/ramzswap/Kconfig
+deleted file mode 100644
+index 127b3c6..0000000
+--- a/drivers/staging/ramzswap/Kconfig
++++ /dev/null
+@@ -1,21 +0,0 @@
+-config RAMZSWAP
+-	tristate "Compressed in-memory swap device (ramzswap)"
+-	depends on SWAP
+-	select LZO_COMPRESS
+-	select LZO_DECOMPRESS
+-	default n
+-	help
+-	  Creates virtual block devices which can (only) be used as swap
+-	  disks. Pages swapped to these disks are compressed and stored in
+-	  memory itself.
+-
+-	  See ramzswap.txt for more information.
+-	  Project home: http://compcache.googlecode.com/
+-
+-config RAMZSWAP_STATS
+-	bool "Enable ramzswap stats"
+-	depends on RAMZSWAP
+-	default y
+-	help
+-	  Enable statistics collection for ramzswap. This adds only a minimal
+-	  overhead. In unsure, say Y.
+diff --git a/drivers/staging/ramzswap/Makefile b/drivers/staging/ramzswap/Makefile
+deleted file mode 100644
+index 507d7dc..0000000
+--- a/drivers/staging/ramzswap/Makefile
++++ /dev/null
+@@ -1,3 +0,0 @@
+-ramzswap-objs	:=	ramzswap_drv.o xvmalloc.o
+-
+-obj-$(CONFIG_RAMZSWAP)	+=	ramzswap.o
+diff --git a/drivers/staging/ramzswap/ramzswap.txt b/drivers/staging/ramzswap/ramzswap.txt
+deleted file mode 100644
+index 9694acf..0000000
+--- a/drivers/staging/ramzswap/ramzswap.txt
++++ /dev/null
+@@ -1,51 +0,0 @@
+-ramzswap: Compressed RAM based swap device
+--------------------------------------------
+-
+-Project home: http://compcache.googlecode.com/
+-
+-* Introduction
+-
+-The ramzswap module creates RAM based block devices which can (only) be used as
+-swap disks. Pages swapped to these devices are compressed and stored in memory
+-itself. See project home for use cases, performance numbers and a lot more.
+-
+-Individual ramzswap devices are configured and initialized using rzscontrol
+-userspace utility as shown in examples below. See rzscontrol man page for more
+-details.
+-
+-* Usage
+-
+-Following shows a typical sequence of steps for using ramzswap.
+-
+-1) Load Modules:
+-	modprobe ramzswap num_devices=4
+-	This creates 4 (uninitialized) devices: /dev/ramzswap{0,1,2,3}
+-	(num_devices parameter is optional. Default: 1)
+-
+-2) Initialize:
+-	Use rzscontrol utility to configure and initialize individual
+-	ramzswap devices. Example:
+-	rzscontrol /dev/ramzswap2 --init # uses default value of disksize_kb
+-
+-	*See rzscontrol man page for more details and examples*
+-
+-3) Activate:
+-	swapon /dev/ramzswap2 # or any other initialized ramzswap device
+-
+-4) Stats:
+-	rzscontrol /dev/ramzswap2 --stats
+-
+-5) Deactivate:
+-	swapoff /dev/ramzswap2
+-
+-6) Reset:
+-	rzscontrol /dev/ramzswap2 --reset
+-	(This frees all the memory allocated for this device).
+-
+-
+-Please report any problems at:
+- - Mailing list: linux-mm-cc at laptop dot org
+- - Issue tracker: http://code.google.com/p/compcache/issues/list
+-
+-Nitin Gupta
+-ngupta@vflare.org
+diff --git a/drivers/staging/ramzswap/ramzswap_drv.c b/drivers/staging/ramzswap/ramzswap_drv.c
+deleted file mode 100644
+index d14bf91..0000000
+--- a/drivers/staging/ramzswap/ramzswap_drv.c
++++ /dev/null
+@@ -1,837 +0,0 @@
+-/*
+- * Compressed RAM based swap device
+- *
+- * Copyright (C) 2008, 2009, 2010  Nitin Gupta
+- *
+- * This code is released using a dual license strategy: BSD/GPL
+- * You can choose the licence that better fits your requirements.
+- *
+- * Released under the terms of 3-clause BSD License
+- * Released under the terms of GNU General Public License Version 2.0
+- *
+- * Project home: http://compcache.googlecode.com
+- */
+-
+-#define KMSG_COMPONENT "ramzswap"
+-#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
+-
+-#include <linux/module.h>
+-#include <linux/kernel.h>
+-#include <linux/bitops.h>
+-#include <linux/blkdev.h>
+-#include <linux/buffer_head.h>
+-#include <linux/device.h>
+-#include <linux/genhd.h>
+-#include <linux/highmem.h>
+-#include <linux/slab.h>
+-#include <linux/lzo.h>
+-#include <linux/string.h>
+-#include <linux/swap.h>
+-#include <linux/swapops.h>
+-#include <linux/vmalloc.h>
+-
+-#include "ramzswap_drv.h"
+-
+-/* Globals */
+-static int ramzswap_major;
+-static struct ramzswap *devices;
+-
+-/* Module params (documentation at end) */
+-static unsigned int num_devices;
+-
+-static int rzs_test_flag(struct ramzswap *rzs, u32 index,
+-			enum rzs_pageflags flag)
+-{
+-	return rzs->table[index].flags & BIT(flag);
+-}
+-
+-static void rzs_set_flag(struct ramzswap *rzs, u32 index,
+-			enum rzs_pageflags flag)
+-{
+-	rzs->table[index].flags |= BIT(flag);
+-}
+-
+-static void rzs_clear_flag(struct ramzswap *rzs, u32 index,
+-			enum rzs_pageflags flag)
+-{
+-	rzs->table[index].flags &= ~BIT(flag);
+-}
+-
+-static int page_zero_filled(void *ptr)
+-{
+-	unsigned int pos;
+-	unsigned long *page;
+-
+-	page = (unsigned long *)ptr;
+-
+-	for (pos = 0; pos != PAGE_SIZE / sizeof(*page); pos++) {
+-		if (page[pos])
+-			return 0;
+-	}
+-
+-	return 1;
+-}
+-
+-static void ramzswap_set_disksize(struct ramzswap *rzs, size_t totalram_bytes)
+-{
+-	if (!rzs->disksize) {
+-		pr_info(
+-		"disk size not provided. You can use disksize_kb module "
+-		"param to specify size.\nUsing default: (%u%% of RAM).\n",
+-		default_disksize_perc_ram
+-		);
+-		rzs->disksize = default_disksize_perc_ram *
+-					(totalram_bytes / 100);
+-	}
+-
+-	if (rzs->disksize > 2 * (totalram_bytes)) {
+-		pr_info(
+-		"There is little point creating a ramzswap of greater than "
+-		"twice the size of memory since we expect a 2:1 compression "
+-		"ratio. Note that ramzswap uses about 0.1%% of the size of "
+-		"the swap device when not in use so a huge ramzswap is "
+-		"wasteful.\n"
+-		"\tMemory Size: %zu kB\n"
+-		"\tSize you selected: %zu kB\n"
+-		"Continuing anyway ...\n",
+-		totalram_bytes >> 10, rzs->disksize
+-		);
+-	}
+-
+-	rzs->disksize &= PAGE_MASK;
+-}
+-
+-/*
+- * Swap header (1st page of swap device) contains information
+- * about a swap file/partition. Prepare such a header for the
+- * given ramzswap device so that swapon can identify it as a
+- * swap partition.
+- */
+-static void setup_swap_header(struct ramzswap *rzs, union swap_header *s)
+-{
+-	s->info.version = 1;
+-	s->info.last_page = (rzs->disksize >> PAGE_SHIFT) - 1;
+-	s->info.nr_badpages = 0;
+-	memcpy(s->magic.magic, "SWAPSPACE2", 10);
+-}
+-
+-static void ramzswap_ioctl_get_stats(struct ramzswap *rzs,
+-			struct ramzswap_ioctl_stats *s)
+-{
+-	s->disksize = rzs->disksize;
+-
+-#if defined(CONFIG_RAMZSWAP_STATS)
+-	{
+-	struct ramzswap_stats *rs = &rzs->stats;
+-	size_t succ_writes, mem_used;
+-	unsigned int good_compress_perc = 0, no_compress_perc = 0;
+-
+-	mem_used = xv_get_total_size_bytes(rzs->mem_pool)
+-			+ (rs->pages_expand << PAGE_SHIFT);
+-	succ_writes = rzs_stat64_read(rzs, &rs->num_writes) -
+-			rzs_stat64_read(rzs, &rs->failed_writes);
+-
+-	if (succ_writes && rs->pages_stored) {
+-		good_compress_perc = rs->good_compress * 100
+-					/ rs->pages_stored;
+-		no_compress_perc = rs->pages_expand * 100
+-					/ rs->pages_stored;
+-	}
+-
+-	s->num_reads = rzs_stat64_read(rzs, &rs->num_reads);
+-	s->num_writes = rzs_stat64_read(rzs, &rs->num_writes);
+-	s->failed_reads = rzs_stat64_read(rzs, &rs->failed_reads);
+-	s->failed_writes = rzs_stat64_read(rzs, &rs->failed_writes);
+-	s->invalid_io = rzs_stat64_read(rzs, &rs->invalid_io);
+-	s->notify_free = rzs_stat64_read(rzs, &rs->notify_free);
+-	s->pages_zero = rs->pages_zero;
+-
+-	s->good_compress_pct = good_compress_perc;
+-	s->pages_expand_pct = no_compress_perc;
+-
+-	s->pages_stored = rs->pages_stored;
+-	s->pages_used = mem_used >> PAGE_SHIFT;
+-	s->orig_data_size = rs->pages_stored << PAGE_SHIFT;
+-	s->compr_data_size = rs->compr_size;
+-	s->mem_used_total = mem_used;
+-	}
+-#endif /* CONFIG_RAMZSWAP_STATS */
+-}
+-
+-static void ramzswap_free_page(struct ramzswap *rzs, size_t index)
+-{
+-	u32 clen;
+-	void *obj;
+-
+-	struct page *page = rzs->table[index].page;
+-	u32 offset = rzs->table[index].offset;
+-
+-	if (unlikely(!page)) {
+-		/*
+-		 * No memory is allocated for zero filled pages.
+-		 * Simply clear zero page flag.
+-		 */
+-		if (rzs_test_flag(rzs, index, RZS_ZERO)) {
+-			rzs_clear_flag(rzs, index, RZS_ZERO);
+-			rzs_stat_dec(&rzs->stats.pages_zero);
+-		}
+-		return;
+-	}
+-
+-	if (unlikely(rzs_test_flag(rzs, index, RZS_UNCOMPRESSED))) {
+-		clen = PAGE_SIZE;
+-		__free_page(page);
+-		rzs_clear_flag(rzs, index, RZS_UNCOMPRESSED);
+-		rzs_stat_dec(&rzs->stats.pages_expand);
+-		goto out;
+-	}
+-
+-	obj = kmap_atomic(page, KM_USER0) + offset;
+-	clen = xv_get_object_size(obj) - sizeof(struct zobj_header);
+-	kunmap_atomic(obj, KM_USER0);
+-
+-	xv_free(rzs->mem_pool, page, offset);
+-	if (clen <= PAGE_SIZE / 2)
+-		rzs_stat_dec(&rzs->stats.good_compress);
+-
+-out:
+-	rzs->stats.compr_size -= clen;
+-	rzs_stat_dec(&rzs->stats.pages_stored);
+-
+-	rzs->table[index].page = NULL;
+-	rzs->table[index].offset = 0;
+-}
+-
+-static int handle_zero_page(struct bio *bio)
+-{
+-	void *user_mem;
+-	struct page *page = bio->bi_io_vec[0].bv_page;
+-
+-	user_mem = kmap_atomic(page, KM_USER0);
+-	memset(user_mem, 0, PAGE_SIZE);
+-	kunmap_atomic(user_mem, KM_USER0);
+-
+-	flush_dcache_page(page);
+-
+-	set_bit(BIO_UPTODATE, &bio->bi_flags);
+-	bio_endio(bio, 0);
+-	return 0;
+-}
+-
+-static int handle_uncompressed_page(struct ramzswap *rzs, struct bio *bio)
+-{
+-	u32 index;
+-	struct page *page;
+-	unsigned char *user_mem, *cmem;
+-
+-	page = bio->bi_io_vec[0].bv_page;
+-	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
+-
+-	user_mem = kmap_atomic(page, KM_USER0);
+-	cmem = kmap_atomic(rzs->table[index].page, KM_USER1) +
+-			rzs->table[index].offset;
+-
+-	memcpy(user_mem, cmem, PAGE_SIZE);
+-	kunmap_atomic(user_mem, KM_USER0);
+-	kunmap_atomic(cmem, KM_USER1);
+-
+-	flush_dcache_page(page);
+-
+-	set_bit(BIO_UPTODATE, &bio->bi_flags);
+-	bio_endio(bio, 0);
+-	return 0;
+-}
+-
+-/*
+- * Called when request page is not present in ramzswap.
+- * This is an attempt to read before any previous write
+- * to this location - this happens due to readahead when
+- * swap device is read from user-space (e.g. during swapon)
+- */
+-static int handle_ramzswap_fault(struct ramzswap *rzs, struct bio *bio)
+-{
+-	pr_debug("Read before write on swap device: "
+-		"sector=%lu, size=%u, offset=%u\n",
+-		(ulong)(bio->bi_sector), bio->bi_size,
+-		bio->bi_io_vec[0].bv_offset);
+-
+-	/* Do nothing. Just return success */
+-	set_bit(BIO_UPTODATE, &bio->bi_flags);
+-	bio_endio(bio, 0);
+-	return 0;
+-}
+-
+-static int ramzswap_read(struct ramzswap *rzs, struct bio *bio)
+-{
+-	int ret;
+-	u32 index;
+-	size_t clen;
+-	struct page *page;
+-	struct zobj_header *zheader;
+-	unsigned char *user_mem, *cmem;
+-
+-	rzs_stat64_inc(rzs, &rzs->stats.num_reads);
+-
+-	page = bio->bi_io_vec[0].bv_page;
+-	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
+-
+-	if (rzs_test_flag(rzs, index, RZS_ZERO))
+-		return handle_zero_page(bio);
+-
+-	/* Requested page is not present in compressed area */
+-	if (!rzs->table[index].page)
+-		return handle_ramzswap_fault(rzs, bio);
+-
+-	/* Page is stored uncompressed since it's incompressible */
+-	if (unlikely(rzs_test_flag(rzs, index, RZS_UNCOMPRESSED)))
+-		return handle_uncompressed_page(rzs, bio);
+-
+-	user_mem = kmap_atomic(page, KM_USER0);
+-	clen = PAGE_SIZE;
+-
+-	cmem = kmap_atomic(rzs->table[index].page, KM_USER1) +
+-			rzs->table[index].offset;
+-
+-	ret = lzo1x_decompress_safe(
+-		cmem + sizeof(*zheader),
+-		xv_get_object_size(cmem) - sizeof(*zheader),
+-		user_mem, &clen);
+-
+-	kunmap_atomic(user_mem, KM_USER0);
+-	kunmap_atomic(cmem, KM_USER1);
+-
+-	/* should NEVER happen */
+-	if (unlikely(ret != LZO_E_OK)) {
+-		pr_err("Decompression failed! err=%d, page=%u\n",
+-			ret, index);
+-		rzs_stat64_inc(rzs, &rzs->stats.failed_reads);
+-		goto out;
+-	}
+-
+-	flush_dcache_page(page);
+-
+-	set_bit(BIO_UPTODATE, &bio->bi_flags);
+-	bio_endio(bio, 0);
+-	return 0;
+-
+-out:
+-	bio_io_error(bio);
+-	return 0;
+-}
+-
+-static int ramzswap_write(struct ramzswap *rzs, struct bio *bio)
+-{
+-	int ret;
+-	u32 offset, index;
+-	size_t clen;
+-	struct zobj_header *zheader;
+-	struct page *page, *page_store;
+-	unsigned char *user_mem, *cmem, *src;
+-
+-	rzs_stat64_inc(rzs, &rzs->stats.num_writes);
+-
+-	page = bio->bi_io_vec[0].bv_page;
+-	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
+-
+-	src = rzs->compress_buffer;
+-
+-	mutex_lock(&rzs->lock);
+-
+-	user_mem = kmap_atomic(page, KM_USER0);
+-	if (page_zero_filled(user_mem)) {
+-		kunmap_atomic(user_mem, KM_USER0);
+-		mutex_unlock(&rzs->lock);
+-		rzs_stat_inc(&rzs->stats.pages_zero);
+-		rzs_set_flag(rzs, index, RZS_ZERO);
+-
+-		set_bit(BIO_UPTODATE, &bio->bi_flags);
+-		bio_endio(bio, 0);
+-		return 0;
+-	}
+-
+-	ret = lzo1x_1_compress(user_mem, PAGE_SIZE, src, &clen,
+-				rzs->compress_workmem);
+-
+-	kunmap_atomic(user_mem, KM_USER0);
+-
+-	if (unlikely(ret != LZO_E_OK)) {
+-		mutex_unlock(&rzs->lock);
+-		pr_err("Compression failed! err=%d\n", ret);
+-		rzs_stat64_inc(rzs, &rzs->stats.failed_writes);
+-		goto out;
+-	}
+-
+-	/*
+-	 * Page is incompressible. Store it as-is (uncompressed)
+-	 * since we do not want to return too many swap write
+-	 * errors which has side effect of hanging the system.
+-	 */
+-	if (unlikely(clen > max_zpage_size)) {
+-		clen = PAGE_SIZE;
+-		page_store = alloc_page(GFP_NOIO | __GFP_HIGHMEM);
+-		if (unlikely(!page_store)) {
+-			mutex_unlock(&rzs->lock);
+-			pr_info("Error allocating memory for incompressible "
+-				"page: %u\n", index);
+-			rzs_stat64_inc(rzs, &rzs->stats.failed_writes);
+-			goto out;
+-		}
+-
+-		offset = 0;
+-		rzs_set_flag(rzs, index, RZS_UNCOMPRESSED);
+-		rzs_stat_inc(&rzs->stats.pages_expand);
+-		rzs->table[index].page = page_store;
+-		src = kmap_atomic(page, KM_USER0);
+-		goto memstore;
+-	}
+-
+-	if (xv_malloc(rzs->mem_pool, clen + sizeof(*zheader),
+-			&rzs->table[index].page, &offset,
+-			GFP_NOIO | __GFP_HIGHMEM)) {
+-		mutex_unlock(&rzs->lock);
+-		pr_info("Error allocating memory for compressed "
+-			"page: %u, size=%zu\n", index, clen);
+-		rzs_stat64_inc(rzs, &rzs->stats.failed_writes);
+-		goto out;
+-	}
+-
+-memstore:
+-	rzs->table[index].offset = offset;
+-
+-	cmem = kmap_atomic(rzs->table[index].page, KM_USER1) +
+-			rzs->table[index].offset;
+-
+-#if 0
+-	/* Back-reference needed for memory defragmentation */
+-	if (!rzs_test_flag(rzs, index, RZS_UNCOMPRESSED)) {
+-		zheader = (struct zobj_header *)cmem;
+-		zheader->table_idx = index;
+-		cmem += sizeof(*zheader);
+-	}
+-#endif
+-
+-	memcpy(cmem, src, clen);
+-
+-	kunmap_atomic(cmem, KM_USER1);
+-	if (unlikely(rzs_test_flag(rzs, index, RZS_UNCOMPRESSED)))
+-		kunmap_atomic(src, KM_USER0);
+-
+-	/* Update stats */
+-	rzs->stats.compr_size += clen;
+-	rzs_stat_inc(&rzs->stats.pages_stored);
+-	if (clen <= PAGE_SIZE / 2)
+-		rzs_stat_inc(&rzs->stats.good_compress);
+-
+-	mutex_unlock(&rzs->lock);
+-
+-	set_bit(BIO_UPTODATE, &bio->bi_flags);
+-	bio_endio(bio, 0);
+-	return 0;
+-
+-out:
+-	bio_io_error(bio);
+-	return 0;
+-}
+-
+-/*
+- * Check if request is within bounds and page aligned.
+- */
+-static inline int valid_swap_request(struct ramzswap *rzs, struct bio *bio)
+-{
+-	if (unlikely(
+-		(bio->bi_sector >= (rzs->disksize >> SECTOR_SHIFT)) ||
+-		(bio->bi_sector & (SECTORS_PER_PAGE - 1)) ||
+-		(bio->bi_vcnt != 1) ||
+-		(bio->bi_size != PAGE_SIZE) ||
+-		(bio->bi_io_vec[0].bv_offset != 0))) {
+-
+-		return 0;
+-	}
+-
+-	/* swap request is valid */
+-	return 1;
+-}
+-
+-/*
+- * Handler function for all ramzswap I/O requests.
+- */
+-static int ramzswap_make_request(struct request_queue *queue, struct bio *bio)
+-{
+-	int ret = 0;
+-	struct ramzswap *rzs = queue->queuedata;
+-
+-	if (unlikely(!rzs->init_done)) {
+-		bio_io_error(bio);
+-		return 0;
+-	}
+-
+-	if (!valid_swap_request(rzs, bio)) {
+-		rzs_stat64_inc(rzs, &rzs->stats.invalid_io);
+-		bio_io_error(bio);
+-		return 0;
+-	}
+-
+-	switch (bio_data_dir(bio)) {
+-	case READ:
+-		ret = ramzswap_read(rzs, bio);
+-		break;
+-
+-	case WRITE:
+-		ret = ramzswap_write(rzs, bio);
+-		break;
+-	}
+-
+-	return ret;
+-}
+-
+-static void reset_device(struct ramzswap *rzs)
+-{
+-	size_t index;
+-
+-	/* Do not accept any new I/O request */
+-	rzs->init_done = 0;
+-
+-	/* Free various per-device buffers */
+-	kfree(rzs->compress_workmem);
+-	free_pages((unsigned long)rzs->compress_buffer, 1);
+-
+-	rzs->compress_workmem = NULL;
+-	rzs->compress_buffer = NULL;
+-
+-	/* Free all pages that are still in this ramzswap device */
+-	for (index = 0; index < rzs->disksize >> PAGE_SHIFT; index++) {
+-		struct page *page;
+-		u16 offset;
+-
+-		page = rzs->table[index].page;
+-		offset = rzs->table[index].offset;
+-
+-		if (!page)
+-			continue;
+-
+-		if (unlikely(rzs_test_flag(rzs, index, RZS_UNCOMPRESSED)))
+-			__free_page(page);
+-		else
+-			xv_free(rzs->mem_pool, page, offset);
+-	}
+-
+-	vfree(rzs->table);
+-	rzs->table = NULL;
+-
+-	xv_destroy_pool(rzs->mem_pool);
+-	rzs->mem_pool = NULL;
+-
+-	/* Reset stats */
+-	memset(&rzs->stats, 0, sizeof(rzs->stats));
+-
+-	rzs->disksize = 0;
+-}
+-
+-static int ramzswap_ioctl_init_device(struct ramzswap *rzs)
+-{
+-	int ret;
+-	size_t num_pages;
+-	struct page *page;
+-	union swap_header *swap_header;
+-
+-	if (rzs->init_done) {
+-		pr_info("Device already initialized!\n");
+-		return -EBUSY;
+-	}
+-
+-	ramzswap_set_disksize(rzs, totalram_pages << PAGE_SHIFT);
+-
+-	rzs->compress_workmem = kzalloc(LZO1X_MEM_COMPRESS, GFP_KERNEL);
+-	if (!rzs->compress_workmem) {
+-		pr_err("Error allocating compressor working memory!\n");
+-		ret = -ENOMEM;
+-		goto fail;
+-	}
+-
+-	rzs->compress_buffer = (void *)__get_free_pages(__GFP_ZERO, 1);
+-	if (!rzs->compress_buffer) {
+-		pr_err("Error allocating compressor buffer space\n");
+-		ret = -ENOMEM;
+-		goto fail;
+-	}
+-
+-	num_pages = rzs->disksize >> PAGE_SHIFT;
+-	rzs->table = vmalloc(num_pages * sizeof(*rzs->table));
+-	if (!rzs->table) {
+-		pr_err("Error allocating ramzswap address table\n");
+-		/* To prevent accessing table entries during cleanup */
+-		rzs->disksize = 0;
+-		ret = -ENOMEM;
+-		goto fail;
+-	}
+-	memset(rzs->table, 0, num_pages * sizeof(*rzs->table));
+-
+-	page = alloc_page(__GFP_ZERO);
+-	if (!page) {
+-		pr_err("Error allocating swap header page\n");
+-		ret = -ENOMEM;
+-		goto fail;
+-	}
+-	rzs->table[0].page = page;
+-	rzs_set_flag(rzs, 0, RZS_UNCOMPRESSED);
+-
+-	swap_header = kmap(page);
+-	setup_swap_header(rzs, swap_header);
+-	kunmap(page);
+-
+-	set_capacity(rzs->disk, rzs->disksize >> SECTOR_SHIFT);
+-
+-	/* ramzswap devices sort of resembles non-rotational disks */
+-	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, rzs->disk->queue);
+-
+-	rzs->mem_pool = xv_create_pool();
+-	if (!rzs->mem_pool) {
+-		pr_err("Error creating memory pool\n");
+-		ret = -ENOMEM;
+-		goto fail;
+-	}
+-
+-	rzs->init_done = 1;
+-
+-	pr_debug("Initialization done!\n");
+-	return 0;
+-
+-fail:
+-	reset_device(rzs);
+-
+-	pr_err("Initialization failed: err=%d\n", ret);
+-	return ret;
+-}
+-
+-static int ramzswap_ioctl_reset_device(struct ramzswap *rzs)
+-{
+-	if (rzs->init_done)
+-		reset_device(rzs);
+-
+-	return 0;
+-}
+-
+-static int ramzswap_ioctl(struct block_device *bdev, fmode_t mode,
+-			unsigned int cmd, unsigned long arg)
+-{
+-	int ret = 0;
+-	size_t disksize_kb;
+-
+-	struct ramzswap *rzs = bdev->bd_disk->private_data;
+-
+-	switch (cmd) {
+-	case RZSIO_SET_DISKSIZE_KB:
+-		if (rzs->init_done) {
+-			ret = -EBUSY;
+-			goto out;
+-		}
+-		if (copy_from_user(&disksize_kb, (void *)arg,
+-						_IOC_SIZE(cmd))) {
+-			ret = -EFAULT;
+-			goto out;
+-		}
+-		rzs->disksize = disksize_kb << 10;
+-		pr_info("Disk size set to %zu kB\n", disksize_kb);
+-		break;
+-
+-	case RZSIO_GET_STATS:
+-	{
+-		struct ramzswap_ioctl_stats *stats;
+-		if (!rzs->init_done) {
+-			ret = -ENOTTY;
+-			goto out;
+-		}
+-		stats = kzalloc(sizeof(*stats), GFP_KERNEL);
+-		if (!stats) {
+-			ret = -ENOMEM;
+-			goto out;
+-		}
+-		ramzswap_ioctl_get_stats(rzs, stats);
+-		if (copy_to_user((void *)arg, stats, sizeof(*stats))) {
+-			kfree(stats);
+-			ret = -EFAULT;
+-			goto out;
+-		}
+-		kfree(stats);
+-		break;
+-	}
+-	case RZSIO_INIT:
+-		ret = ramzswap_ioctl_init_device(rzs);
+-		break;
+-
+-	case RZSIO_RESET:
+-		/* Do not reset an active device! */
+-		if (bdev->bd_holders) {
+-			ret = -EBUSY;
+-			goto out;
+-		}
+-
+-		/* Make sure all pending I/O is finished */
+-		if (bdev)
+-			fsync_bdev(bdev);
+-
+-		ret = ramzswap_ioctl_reset_device(rzs);
+-		break;
+-
+-	default:
+-		pr_info("Invalid ioctl %u\n", cmd);
+-		ret = -ENOTTY;
+-	}
+-
+-out:
+-	return ret;
+-}
+-
+-void ramzswap_slot_free_notify(struct block_device *bdev, unsigned long index)
+-{
+-	struct ramzswap *rzs;
+-
+-	rzs = bdev->bd_disk->private_data;
+-	ramzswap_free_page(rzs, index);
+-	rzs_stat64_inc(rzs, &rzs->stats.notify_free);
+-
+-	return;
+-}
+-
+-static struct block_device_operations ramzswap_devops = {
+-	.ioctl = ramzswap_ioctl,
+-	.swap_slot_free_notify = ramzswap_slot_free_notify,
+-	.owner = THIS_MODULE
+-};
+-
+-static int create_device(struct ramzswap *rzs, int device_id)
+-{
+-	int ret = 0;
+-
+-	mutex_init(&rzs->lock);
+-	spin_lock_init(&rzs->stat64_lock);
+-
+-	rzs->queue = blk_alloc_queue(GFP_KERNEL);
+-	if (!rzs->queue) {
+-		pr_err("Error allocating disk queue for device %d\n",
+-			device_id);
+-		ret = -ENOMEM;
+-		goto out;
+-	}
+-
+-	blk_queue_make_request(rzs->queue, ramzswap_make_request);
+-	rzs->queue->queuedata = rzs;
+-
+-	 /* gendisk structure */
+-	rzs->disk = alloc_disk(1);
+-	if (!rzs->disk) {
+-		blk_cleanup_queue(rzs->queue);
+-		pr_warning("Error allocating disk structure for device %d\n",
+-			device_id);
+-		ret = -ENOMEM;
+-		goto out;
+-	}
+-
+-	rzs->disk->major = ramzswap_major;
+-	rzs->disk->first_minor = device_id;
+-	rzs->disk->fops = &ramzswap_devops;
+-	rzs->disk->queue = rzs->queue;
+-	rzs->disk->private_data = rzs;
+-	snprintf(rzs->disk->disk_name, 16, "ramzswap%d", device_id);
+-
+-	/* Actual capacity set using RZSIO_SET_DISKSIZE_KB ioctl */
+-	set_capacity(rzs->disk, 0);
+-
+-	blk_queue_physical_block_size(rzs->disk->queue, PAGE_SIZE);
+-	blk_queue_logical_block_size(rzs->disk->queue, PAGE_SIZE);
+-
+-	add_disk(rzs->disk);
+-
+-	rzs->init_done = 0;
+-
+-out:
+-	return ret;
+-}
+-
+-static void destroy_device(struct ramzswap *rzs)
+-{
+-	if (rzs->disk) {
+-		del_gendisk(rzs->disk);
+-		put_disk(rzs->disk);
+-	}
+-
+-	if (rzs->queue)
+-		blk_cleanup_queue(rzs->queue);
+-}
+-
+-static int __init ramzswap_init(void)
+-{
+-	int ret, dev_id;
+-
+-	if (num_devices > max_num_devices) {
+-		pr_warning("Invalid value for num_devices: %u\n",
+-				num_devices);
+-		ret = -EINVAL;
+-		goto out;
+-	}
+-
+-	ramzswap_major = register_blkdev(0, "ramzswap");
+-	if (ramzswap_major <= 0) {
+-		pr_warning("Unable to get major number\n");
+-		ret = -EBUSY;
+-		goto out;
+-	}
+-
+-	if (!num_devices) {
+-		pr_info("num_devices not specified. Using default: 1\n");
+-		num_devices = 1;
+-	}
+-
+-	/* Allocate the device array and initialize each one */
+-	pr_info("Creating %u devices ...\n", num_devices);
+-	devices = kzalloc(num_devices * sizeof(struct ramzswap), GFP_KERNEL);
+-	if (!devices) {
+-		ret = -ENOMEM;
+-		goto unregister;
+-	}
+-
+-	for (dev_id = 0; dev_id < num_devices; dev_id++) {
+-		ret = create_device(&devices[dev_id], dev_id);
+-		if (ret)
+-			goto free_devices;
+-	}
+-
+-	return 0;
+-
+-free_devices:
+-	while (dev_id)
+-		destroy_device(&devices[--dev_id]);
+-unregister:
+-	unregister_blkdev(ramzswap_major, "ramzswap");
+-out:
+-	return ret;
+-}
+-
+-static void __exit ramzswap_exit(void)
+-{
+-	int i;
+-	struct ramzswap *rzs;
+-
+-	for (i = 0; i < num_devices; i++) {
+-		rzs = &devices[i];
+-
+-		destroy_device(rzs);
+-		if (rzs->init_done)
+-			reset_device(rzs);
+-	}
+-
+-	unregister_blkdev(ramzswap_major, "ramzswap");
+-
+-	kfree(devices);
+-	pr_debug("Cleanup done!\n");
+-}
+-
+-module_param(num_devices, uint, 0);
+-MODULE_PARM_DESC(num_devices, "Number of ramzswap devices");
+-
+-module_init(ramzswap_init);
+-module_exit(ramzswap_exit);
+-
+-MODULE_LICENSE("Dual BSD/GPL");
+-MODULE_AUTHOR("Nitin Gupta <ngupta@vflare.org>");
+-MODULE_DESCRIPTION("Compressed RAM Based Swap Device");
+diff --git a/drivers/staging/ramzswap/ramzswap_drv.h b/drivers/staging/ramzswap/ramzswap_drv.h
+deleted file mode 100644
+index 63c3042..0000000
+--- a/drivers/staging/ramzswap/ramzswap_drv.h
++++ /dev/null
+@@ -1,167 +0,0 @@
+-/*
+- * Compressed RAM based swap device
+- *
+- * Copyright (C) 2008, 2009, 2010  Nitin Gupta
+- *
+- * This code is released using a dual license strategy: BSD/GPL
+- * You can choose the licence that better fits your requirements.
+- *
+- * Released under the terms of 3-clause BSD License
+- * Released under the terms of GNU General Public License Version 2.0
+- *
+- * Project home: http://compcache.googlecode.com
+- */
+-
+-#ifndef _RAMZSWAP_DRV_H_
+-#define _RAMZSWAP_DRV_H_
+-
+-#include <linux/spinlock.h>
+-#include <linux/mutex.h>
+-
+-#include "ramzswap_ioctl.h"
+-#include "xvmalloc.h"
+-
+-/*
+- * Some arbitrary value. This is just to catch
+- * invalid value for num_devices module parameter.
+- */
+-static const unsigned max_num_devices = 32;
+-
+-/*
+- * Stored at beginning of each compressed object.
+- *
+- * It stores back-reference to table entry which points to this
+- * object. This is required to support memory defragmentation.
+- */
+-struct zobj_header {
+-#if 0
+-	u32 table_idx;
+-#endif
+-};
+-
+-/*-- Configurable parameters */
+-
+-/* Default ramzswap disk size: 25% of total RAM */
+-static const unsigned default_disksize_perc_ram = 25;
+-
+-/*
+- * Pages that compress to size greater than this are stored
+- * uncompressed in memory.
+- */
+-static const unsigned max_zpage_size = PAGE_SIZE / 4 * 3;
+-
+-/*
+- * NOTE: max_zpage_size must be less than or equal to:
+- *   XV_MAX_ALLOC_SIZE - sizeof(struct zobj_header)
+- * otherwise, xv_malloc() would always return failure.
+- */
+-
+-/*-- End of configurable params */
+-
+-#define SECTOR_SHIFT		9
+-#define SECTOR_SIZE		(1 << SECTOR_SHIFT)
+-#define SECTORS_PER_PAGE_SHIFT	(PAGE_SHIFT - SECTOR_SHIFT)
+-#define SECTORS_PER_PAGE	(1 << SECTORS_PER_PAGE_SHIFT)
+-
+-/* Flags for ramzswap pages (table[page_no].flags) */
+-enum rzs_pageflags {
+-	/* Page is stored uncompressed */
+-	RZS_UNCOMPRESSED,
+-
+-	/* Page consists entirely of zeros */
+-	RZS_ZERO,
+-
+-	__NR_RZS_PAGEFLAGS,
+-};
+-
+-/*-- Data structures */
+-
+-/*
+- * Allocated for each swap slot, indexed by page no.
+- * These table entries must fit exactly in a page.
+- */
+-struct table {
+-	struct page *page;
+-	u16 offset;
+-	u8 count;	/* object ref count (not yet used) */
+-	u8 flags;
+-} __attribute__((aligned(4)));
+-
+-struct ramzswap_stats {
+-	/* basic stats */
+-	size_t compr_size;	/* compressed size of pages stored -
+-				 * needed to enforce memlimit */
+-	/* more stats */
+-#if defined(CONFIG_RAMZSWAP_STATS)
+-	u64 num_reads;		/* failed + successful */
+-	u64 num_writes;		/* --do-- */
+-	u64 failed_reads;	/* should NEVER! happen */
+-	u64 failed_writes;	/* can happen when memory is too low */
+-	u64 invalid_io;		/* non-swap I/O requests */
+-	u64 notify_free;	/* no. of swap slot free notifications */
+-	u32 pages_zero;		/* no. of zero filled pages */
+-	u32 pages_stored;	/* no. of pages currently stored */
+-	u32 good_compress;	/* % of pages with compression ratio<=50% */
+-	u32 pages_expand;	/* % of incompressible pages */
+-#endif
+-};
+-
+-struct ramzswap {
+-	struct xv_pool *mem_pool;
+-	void *compress_workmem;
+-	void *compress_buffer;
+-	struct table *table;
+-	spinlock_t stat64_lock;	/* protect 64-bit stats */
+-	struct mutex lock;
+-	struct request_queue *queue;
+-	struct gendisk *disk;
+-	int init_done;
+-	/*
+-	 * This is limit on amount of *uncompressed* worth of data
+-	 * we can hold. When backing swap device is provided, it is
+-	 * set equal to device size.
+-	 */
+-	size_t disksize;	/* bytes */
+-
+-	struct ramzswap_stats stats;
+-};
+-
+-/*-- */
+-
+-/* Debugging and Stats */
+-#if defined(CONFIG_RAMZSWAP_STATS)
+-static void rzs_stat_inc(u32 *v)
+-{
+-	*v = *v + 1;
+-}
+-
+-static void rzs_stat_dec(u32 *v)
+-{
+-	*v = *v - 1;
+-}
+-
+-static void rzs_stat64_inc(struct ramzswap *rzs, u64 *v)
+-{
+-	spin_lock(&rzs->stat64_lock);
+-	*v = *v + 1;
+-	spin_unlock(&rzs->stat64_lock);
+-}
+-
+-static u64 rzs_stat64_read(struct ramzswap *rzs, u64 *v)
+-{
+-	u64 val;
+-
+-	spin_lock(&rzs->stat64_lock);
+-	val = *v;
+-	spin_unlock(&rzs->stat64_lock);
+-
+-	return val;
+-}
+-#else
+-#define rzs_stat_inc(v)
+-#define rzs_stat_dec(v)
+-#define rzs_stat64_inc(r, v)
+-#define rzs_stat64_read(r, v)
+-#endif /* CONFIG_RAMZSWAP_STATS */
+-
+-#endif
+diff --git a/drivers/staging/ramzswap/ramzswap_ioctl.h b/drivers/staging/ramzswap/ramzswap_ioctl.h
+deleted file mode 100644
+index db94bcb..0000000
+--- a/drivers/staging/ramzswap/ramzswap_ioctl.h
++++ /dev/null
+@@ -1,42 +0,0 @@
+-/*
+- * Compressed RAM based swap device
+- *
+- * Copyright (C) 2008, 2009, 2010  Nitin Gupta
+- *
+- * This code is released using a dual license strategy: BSD/GPL
+- * You can choose the licence that better fits your requirements.
+- *
+- * Released under the terms of 3-clause BSD License
+- * Released under the terms of GNU General Public License Version 2.0
+- *
+- * Project home: http://compcache.googlecode.com
+- */
+-
+-#ifndef _RAMZSWAP_IOCTL_H_
+-#define _RAMZSWAP_IOCTL_H_
+-
+-struct ramzswap_ioctl_stats {
+-	u64 disksize;		/* user specified or equal to backing swap
+-				 * size (if present) */
+-	u64 num_reads;		/* failed + successful */
+-	u64 num_writes;		/* --do-- */
+-	u64 failed_reads;	/* should NEVER! happen */
+-	u64 failed_writes;	/* can happen when memory is too low */
+-	u64 invalid_io;		/* non-swap I/O requests */
+-	u64 notify_free;	/* no. of swap slot free notifications */
+-	u32 pages_zero;		/* no. of zero filled pages */
+-	u32 good_compress_pct;	/* no. of pages with compression ratio<=50% */
+-	u32 pages_expand_pct;	/* no. of incompressible pages */
+-	u32 pages_stored;
+-	u32 pages_used;
+-	u64 orig_data_size;
+-	u64 compr_data_size;
+-	u64 mem_used_total;
+-} __attribute__ ((packed, aligned(4)));
+-
+-#define RZSIO_SET_DISKSIZE_KB	_IOW('z', 0, size_t)
+-#define RZSIO_GET_STATS		_IOR('z', 1, struct ramzswap_ioctl_stats)
+-#define RZSIO_INIT		_IO('z', 2)
+-#define RZSIO_RESET		_IO('z', 3)
+-
+-#endif
+diff --git a/drivers/staging/ramzswap/xvmalloc.c b/drivers/staging/ramzswap/xvmalloc.c
+deleted file mode 100644
+index 3fdbb8a..0000000
+--- a/drivers/staging/ramzswap/xvmalloc.c
++++ /dev/null
+@@ -1,507 +0,0 @@
+-/*
+- * xvmalloc memory allocator
+- *
+- * Copyright (C) 2008, 2009, 2010  Nitin Gupta
+- *
+- * This code is released using a dual license strategy: BSD/GPL
+- * You can choose the licence that better fits your requirements.
+- *
+- * Released under the terms of 3-clause BSD License
+- * Released under the terms of GNU General Public License Version 2.0
+- */
+-
+-#include <linux/bitops.h>
+-#include <linux/errno.h>
+-#include <linux/highmem.h>
+-#include <linux/init.h>
+-#include <linux/string.h>
+-#include <linux/slab.h>
+-
+-#include "xvmalloc.h"
+-#include "xvmalloc_int.h"
+-
+-static void stat_inc(u64 *value)
+-{
+-	*value = *value + 1;
+-}
+-
+-static void stat_dec(u64 *value)
+-{
+-	*value = *value - 1;
+-}
+-
+-static int test_flag(struct block_header *block, enum blockflags flag)
+-{
+-	return block->prev & BIT(flag);
+-}
+-
+-static void set_flag(struct block_header *block, enum blockflags flag)
+-{
+-	block->prev |= BIT(flag);
+-}
+-
+-static void clear_flag(struct block_header *block, enum blockflags flag)
+-{
+-	block->prev &= ~BIT(flag);
+-}
+-
+-/*
+- * Given <page, offset> pair, provide a derefrencable pointer.
+- * This is called from xv_malloc/xv_free path, so it
+- * needs to be fast.
+- */
+-static void *get_ptr_atomic(struct page *page, u16 offset, enum km_type type)
+-{
+-	unsigned char *base;
+-
+-	base = kmap_atomic(page, type);
+-	return base + offset;
+-}
+-
+-static void put_ptr_atomic(void *ptr, enum km_type type)
+-{
+-	kunmap_atomic(ptr, type);
+-}
+-
+-static u32 get_blockprev(struct block_header *block)
+-{
+-	return block->prev & PREV_MASK;
+-}
+-
+-static void set_blockprev(struct block_header *block, u16 new_offset)
+-{
+-	block->prev = new_offset | (block->prev & FLAGS_MASK);
+-}
+-
+-static struct block_header *BLOCK_NEXT(struct block_header *block)
+-{
+-	return (struct block_header *)
+-		((char *)block + block->size + XV_ALIGN);
+-}
+-
+-/*
+- * Get index of free list containing blocks of maximum size
+- * which is less than or equal to given size.
+- */
+-static u32 get_index_for_insert(u32 size)
+-{
+-	if (unlikely(size > XV_MAX_ALLOC_SIZE))
+-		size = XV_MAX_ALLOC_SIZE;
+-	size &= ~FL_DELTA_MASK;
+-	return (size - XV_MIN_ALLOC_SIZE) >> FL_DELTA_SHIFT;
+-}
+-
+-/*
+- * Get index of free list having blocks of size greater than
+- * or equal to requested size.
+- */
+-static u32 get_index(u32 size)
+-{
+-	if (unlikely(size < XV_MIN_ALLOC_SIZE))
+-		size = XV_MIN_ALLOC_SIZE;
+-	size = ALIGN(size, FL_DELTA);
+-	return (size - XV_MIN_ALLOC_SIZE) >> FL_DELTA_SHIFT;
+-}
+-
+-/**
+- * find_block - find block of at least given size
+- * @pool: memory pool to search from
+- * @size: size of block required
+- * @page: page containing required block
+- * @offset: offset within the page where block is located.
+- *
+- * Searches two level bitmap to locate block of at least
+- * the given size. If such a block is found, it provides
+- * <page, offset> to identify this block and returns index
+- * in freelist where we found this block.
+- * Otherwise, returns 0 and <page, offset> params are not touched.
+- */
+-static u32 find_block(struct xv_pool *pool, u32 size,
+-			struct page **page, u32 *offset)
+-{
+-	ulong flbitmap, slbitmap;
+-	u32 flindex, slindex, slbitstart;
+-
+-	/* There are no free blocks in this pool */
+-	if (!pool->flbitmap)
+-		return 0;
+-
+-	/* Get freelist index correspoding to this size */
+-	slindex = get_index(size);
+-	slbitmap = pool->slbitmap[slindex / BITS_PER_LONG];
+-	slbitstart = slindex % BITS_PER_LONG;
+-
+-	/*
+-	 * If freelist is not empty at this index, we found the
+-	 * block - head of this list. This is approximate best-fit match.
+-	 */
+-	if (test_bit(slbitstart, &slbitmap)) {
+-		*page = pool->freelist[slindex].page;
+-		*offset = pool->freelist[slindex].offset;
+-		return slindex;
+-	}
+-
+-	/*
+-	 * No best-fit found. Search a bit further in bitmap for a free block.
+-	 * Second level bitmap consists of series of 32-bit chunks. Search
+-	 * further in the chunk where we expected a best-fit, starting from
+-	 * index location found above.
+-	 */
+-	slbitstart++;
+-	slbitmap >>= slbitstart;
+-
+-	/* Skip this search if we were already at end of this bitmap chunk */
+-	if ((slbitstart != BITS_PER_LONG) && slbitmap) {
+-		slindex += __ffs(slbitmap) + 1;
+-		*page = pool->freelist[slindex].page;
+-		*offset = pool->freelist[slindex].offset;
+-		return slindex;
+-	}
+-
+-	/* Now do a full two-level bitmap search to find next nearest fit */
+-	flindex = slindex / BITS_PER_LONG;
+-
+-	flbitmap = (pool->flbitmap) >> (flindex + 1);
+-	if (!flbitmap)
+-		return 0;
+-
+-	flindex += __ffs(flbitmap) + 1;
+-	slbitmap = pool->slbitmap[flindex];
+-	slindex = (flindex * BITS_PER_LONG) + __ffs(slbitmap);
+-	*page = pool->freelist[slindex].page;
+-	*offset = pool->freelist[slindex].offset;
+-
+-	return slindex;
+-}
+-
+-/*
+- * Insert block at <page, offset> in freelist of given pool.
+- * freelist used depends on block size.
+- */
+-static void insert_block(struct xv_pool *pool, struct page *page, u32 offset,
+-			struct block_header *block)
+-{
+-	u32 flindex, slindex;
+-	struct block_header *nextblock;
+-
+-	slindex = get_index_for_insert(block->size);
+-	flindex = slindex / BITS_PER_LONG;
+-
+-	block->link.prev_page = 0;
+-	block->link.prev_offset = 0;
+-	block->link.next_page = pool->freelist[slindex].page;
+-	block->link.next_offset = pool->freelist[slindex].offset;
+-	pool->freelist[slindex].page = page;
+-	pool->freelist[slindex].offset = offset;
+-
+-	if (block->link.next_page) {
+-		nextblock = get_ptr_atomic(block->link.next_page,
+-					block->link.next_offset, KM_USER1);
+-		nextblock->link.prev_page = page;
+-		nextblock->link.prev_offset = offset;
+-		put_ptr_atomic(nextblock, KM_USER1);
+-	}
+-
+-	__set_bit(slindex % BITS_PER_LONG, &pool->slbitmap[flindex]);
+-	__set_bit(flindex, &pool->flbitmap);
+-}
+-
+-/*
+- * Remove block from head of freelist. Index 'slindex' identifies the freelist.
+- */
+-static void remove_block_head(struct xv_pool *pool,
+-			struct block_header *block, u32 slindex)
+-{
+-	struct block_header *tmpblock;
+-	u32 flindex = slindex / BITS_PER_LONG;
+-
+-	pool->freelist[slindex].page = block->link.next_page;
+-	pool->freelist[slindex].offset = block->link.next_offset;
+-	block->link.prev_page = 0;
+-	block->link.prev_offset = 0;
+-
+-	if (!pool->freelist[slindex].page) {
+-		__clear_bit(slindex % BITS_PER_LONG, &pool->slbitmap[flindex]);
+-		if (!pool->slbitmap[flindex])
+-			__clear_bit(flindex, &pool->flbitmap);
+-	} else {
+-		/*
+-		 * DEBUG ONLY: We need not reinitialize freelist head previous
+-		 * pointer to 0 - we never depend on its value. But just for
+-		 * sanity, lets do it.
+-		 */
+-		tmpblock = get_ptr_atomic(pool->freelist[slindex].page,
+-				pool->freelist[slindex].offset, KM_USER1);
+-		tmpblock->link.prev_page = 0;
+-		tmpblock->link.prev_offset = 0;
+-		put_ptr_atomic(tmpblock, KM_USER1);
+-	}
+-}
+-
+-/*
+- * Remove block from freelist. Index 'slindex' identifies the freelist.
+- */
+-static void remove_block(struct xv_pool *pool, struct page *page, u32 offset,
+-			struct block_header *block, u32 slindex)
+-{
+-	u32 flindex;
+-	struct block_header *tmpblock;
+-
+-	if (pool->freelist[slindex].page == page
+-	   && pool->freelist[slindex].offset == offset) {
+-		remove_block_head(pool, block, slindex);
+-		return;
+-	}
+-
+-	flindex = slindex / BITS_PER_LONG;
+-
+-	if (block->link.prev_page) {
+-		tmpblock = get_ptr_atomic(block->link.prev_page,
+-				block->link.prev_offset, KM_USER1);
+-		tmpblock->link.next_page = block->link.next_page;
+-		tmpblock->link.next_offset = block->link.next_offset;
+-		put_ptr_atomic(tmpblock, KM_USER1);
+-	}
+-
+-	if (block->link.next_page) {
+-		tmpblock = get_ptr_atomic(block->link.next_page,
+-				block->link.next_offset, KM_USER1);
+-		tmpblock->link.prev_page = block->link.prev_page;
+-		tmpblock->link.prev_offset = block->link.prev_offset;
+-		put_ptr_atomic(tmpblock, KM_USER1);
+-	}
+-}
+-
+-/*
+- * Allocate a page and add it to freelist of given pool.
+- */
+-static int grow_pool(struct xv_pool *pool, gfp_t flags)
+-{
+-	struct page *page;
+-	struct block_header *block;
+-
+-	page = alloc_page(flags);
+-	if (unlikely(!page))
+-		return -ENOMEM;
+-
+-	stat_inc(&pool->total_pages);
+-
+-	spin_lock(&pool->lock);
+-	block = get_ptr_atomic(page, 0, KM_USER0);
+-
+-	block->size = PAGE_SIZE - XV_ALIGN;
+-	set_flag(block, BLOCK_FREE);
+-	clear_flag(block, PREV_FREE);
+-	set_blockprev(block, 0);
+-
+-	insert_block(pool, page, 0, block);
+-
+-	put_ptr_atomic(block, KM_USER0);
+-	spin_unlock(&pool->lock);
+-
+-	return 0;
+-}
+-
+-/*
+- * Create a memory pool. Allocates freelist, bitmaps and other
+- * per-pool metadata.
+- */
+-struct xv_pool *xv_create_pool(void)
+-{
+-	u32 ovhd_size;
+-	struct xv_pool *pool;
+-
+-	ovhd_size = roundup(sizeof(*pool), PAGE_SIZE);
+-	pool = kzalloc(ovhd_size, GFP_KERNEL);
+-	if (!pool)
+-		return NULL;
+-
+-	spin_lock_init(&pool->lock);
+-
+-	return pool;
+-}
+-
+-void xv_destroy_pool(struct xv_pool *pool)
+-{
+-	kfree(pool);
+-}
+-
+-/**
+- * xv_malloc - Allocate block of given size from pool.
+- * @pool: pool to allocate from
+- * @size: size of block to allocate
+- * @page: page no. that holds the object
+- * @offset: location of object within page
+- *
+- * On success, <page, offset> identifies block allocated
+- * and 0 is returned. On failure, <page, offset> is set to
+- * 0 and -ENOMEM is returned.
+- *
+- * Allocation requests with size > XV_MAX_ALLOC_SIZE will fail.
+- */
+-int xv_malloc(struct xv_pool *pool, u32 size, struct page **page,
+-		u32 *offset, gfp_t flags)
+-{
+-	int error;
+-	u32 index, tmpsize, origsize, tmpoffset;
+-	struct block_header *block, *tmpblock;
+-
+-	*page = NULL;
+-	*offset = 0;
+-	origsize = size;
+-
+-	if (unlikely(!size || size > XV_MAX_ALLOC_SIZE))
+-		return -ENOMEM;
+-
+-	size = ALIGN(size, XV_ALIGN);
+-
+-	spin_lock(&pool->lock);
+-
+-	index = find_block(pool, size, page, offset);
+-
+-	if (!*page) {
+-		spin_unlock(&pool->lock);
+-		if (flags & GFP_NOWAIT)
+-			return -ENOMEM;
+-		error = grow_pool(pool, flags);
+-		if (unlikely(error))
+-			return error;
+-
+-		spin_lock(&pool->lock);
+-		index = find_block(pool, size, page, offset);
+-	}
+-
+-	if (!*page) {
+-		spin_unlock(&pool->lock);
+-		return -ENOMEM;
+-	}
+-
+-	block = get_ptr_atomic(*page, *offset, KM_USER0);
+-
+-	remove_block_head(pool, block, index);
+-
+-	/* Split the block if required */
+-	tmpoffset = *offset + size + XV_ALIGN;
+-	tmpsize = block->size - size;
+-	tmpblock = (struct block_header *)((char *)block + size + XV_ALIGN);
+-	if (tmpsize) {
+-		tmpblock->size = tmpsize - XV_ALIGN;
+-		set_flag(tmpblock, BLOCK_FREE);
+-		clear_flag(tmpblock, PREV_FREE);
+-
+-		set_blockprev(tmpblock, *offset);
+-		if (tmpblock->size >= XV_MIN_ALLOC_SIZE)
+-			insert_block(pool, *page, tmpoffset, tmpblock);
+-
+-		if (tmpoffset + XV_ALIGN + tmpblock->size != PAGE_SIZE) {
+-			tmpblock = BLOCK_NEXT(tmpblock);
+-			set_blockprev(tmpblock, tmpoffset);
+-		}
+-	} else {
+-		/* This block is exact fit */
+-		if (tmpoffset != PAGE_SIZE)
+-			clear_flag(tmpblock, PREV_FREE);
+-	}
+-
+-	block->size = origsize;
+-	clear_flag(block, BLOCK_FREE);
+-
+-	put_ptr_atomic(block, KM_USER0);
+-	spin_unlock(&pool->lock);
+-
+-	*offset += XV_ALIGN;
+-
+-	return 0;
+-}
+-
+-/*
+- * Free block identified with <page, offset>
+- */
+-void xv_free(struct xv_pool *pool, struct page *page, u32 offset)
+-{
+-	void *page_start;
+-	struct block_header *block, *tmpblock;
+-
+-	offset -= XV_ALIGN;
+-
+-	spin_lock(&pool->lock);
+-
+-	page_start = get_ptr_atomic(page, 0, KM_USER0);
+-	block = (struct block_header *)((char *)page_start + offset);
+-
+-	/* Catch double free bugs */
+-	BUG_ON(test_flag(block, BLOCK_FREE));
+-
+-	block->size = ALIGN(block->size, XV_ALIGN);
+-
+-	tmpblock = BLOCK_NEXT(block);
+-	if (offset + block->size + XV_ALIGN == PAGE_SIZE)
+-		tmpblock = NULL;
+-
+-	/* Merge next block if its free */
+-	if (tmpblock && test_flag(tmpblock, BLOCK_FREE)) {
+-		/*
+-		 * Blocks smaller than XV_MIN_ALLOC_SIZE
+-		 * are not inserted in any free list.
+-		 */
+-		if (tmpblock->size >= XV_MIN_ALLOC_SIZE) {
+-			remove_block(pool, page,
+-				    offset + block->size + XV_ALIGN, tmpblock,
+-				    get_index_for_insert(tmpblock->size));
+-		}
+-		block->size += tmpblock->size + XV_ALIGN;
+-	}
+-
+-	/* Merge previous block if its free */
+-	if (test_flag(block, PREV_FREE)) {
+-		tmpblock = (struct block_header *)((char *)(page_start) +
+-						get_blockprev(block));
+-		offset = offset - tmpblock->size - XV_ALIGN;
+-
+-		if (tmpblock->size >= XV_MIN_ALLOC_SIZE)
+-			remove_block(pool, page, offset, tmpblock,
+-				    get_index_for_insert(tmpblock->size));
+-
+-		tmpblock->size += block->size + XV_ALIGN;
+-		block = tmpblock;
+-	}
+-
+-	/* No used objects in this page. Free it. */
+-	if (block->size == PAGE_SIZE - XV_ALIGN) {
+-		put_ptr_atomic(page_start, KM_USER0);
+-		spin_unlock(&pool->lock);
+-
+-		__free_page(page);
+-		stat_dec(&pool->total_pages);
+-		return;
+-	}
+-
+-	set_flag(block, BLOCK_FREE);
+-	if (block->size >= XV_MIN_ALLOC_SIZE)
+-		insert_block(pool, page, offset, block);
+-
+-	if (offset + block->size + XV_ALIGN != PAGE_SIZE) {
+-		tmpblock = BLOCK_NEXT(block);
+-		set_flag(tmpblock, PREV_FREE);
+-		set_blockprev(tmpblock, offset);
+-	}
+-
+-	put_ptr_atomic(page_start, KM_USER0);
+-	spin_unlock(&pool->lock);
+-}
+-
+-u32 xv_get_object_size(void *obj)
+-{
+-	struct block_header *blk;
+-
+-	blk = (struct block_header *)((char *)(obj) - XV_ALIGN);
+-	return blk->size;
+-}
+-
+-/*
+- * Returns total memory used by allocator (userdata + metadata)
+- */
+-u64 xv_get_total_size_bytes(struct xv_pool *pool)
+-{
+-	return pool->total_pages << PAGE_SHIFT;
+-}
+diff --git a/drivers/staging/ramzswap/xvmalloc.h b/drivers/staging/ramzswap/xvmalloc.h
+deleted file mode 100644
+index 5b1a81a..0000000
+--- a/drivers/staging/ramzswap/xvmalloc.h
++++ /dev/null
+@@ -1,30 +0,0 @@
+-/*
+- * xvmalloc memory allocator
+- *
+- * Copyright (C) 2008, 2009, 2010  Nitin Gupta
+- *
+- * This code is released using a dual license strategy: BSD/GPL
+- * You can choose the licence that better fits your requirements.
+- *
+- * Released under the terms of 3-clause BSD License
+- * Released under the terms of GNU General Public License Version 2.0
+- */
+-
+-#ifndef _XV_MALLOC_H_
+-#define _XV_MALLOC_H_
+-
+-#include <linux/types.h>
+-
+-struct xv_pool;
+-
+-struct xv_pool *xv_create_pool(void);
+-void xv_destroy_pool(struct xv_pool *pool);
+-
+-int xv_malloc(struct xv_pool *pool, u32 size, struct page **page,
+-			u32 *offset, gfp_t flags);
+-void xv_free(struct xv_pool *pool, struct page *page, u32 offset);
+-
+-u32 xv_get_object_size(void *obj);
+-u64 xv_get_total_size_bytes(struct xv_pool *pool);
+-
+-#endif
+diff --git a/drivers/staging/ramzswap/xvmalloc_int.h b/drivers/staging/ramzswap/xvmalloc_int.h
+deleted file mode 100644
+index e23ed5c..0000000
+--- a/drivers/staging/ramzswap/xvmalloc_int.h
++++ /dev/null
+@@ -1,86 +0,0 @@
+-/*
+- * xvmalloc memory allocator
+- *
+- * Copyright (C) 2008, 2009, 2010  Nitin Gupta
+- *
+- * This code is released using a dual license strategy: BSD/GPL
+- * You can choose the licence that better fits your requirements.
+- *
+- * Released under the terms of 3-clause BSD License
+- * Released under the terms of GNU General Public License Version 2.0
+- */
+-
+-#ifndef _XV_MALLOC_INT_H_
+-#define _XV_MALLOC_INT_H_
+-
+-#include <linux/kernel.h>
+-#include <linux/types.h>
+-
+-/* User configurable params */
+-
+-/* Must be power of two */
+-#define XV_ALIGN_SHIFT	2
+-#define XV_ALIGN	(1 << XV_ALIGN_SHIFT)
+-#define XV_ALIGN_MASK	(XV_ALIGN - 1)
+-
+-/* This must be greater than sizeof(link_free) */
+-#define XV_MIN_ALLOC_SIZE	32
+-#define XV_MAX_ALLOC_SIZE	(PAGE_SIZE - XV_ALIGN)
+-
+-/* Free lists are separated by FL_DELTA bytes */
+-#define FL_DELTA_SHIFT	3
+-#define FL_DELTA	(1 << FL_DELTA_SHIFT)
+-#define FL_DELTA_MASK	(FL_DELTA - 1)
+-#define NUM_FREE_LISTS	((XV_MAX_ALLOC_SIZE - XV_MIN_ALLOC_SIZE) \
+-				/ FL_DELTA + 1)
+-
+-#define MAX_FLI		DIV_ROUND_UP(NUM_FREE_LISTS, BITS_PER_LONG)
+-
+-/* End of user params */
+-
+-enum blockflags {
+-	BLOCK_FREE,
+-	PREV_FREE,
+-	__NR_BLOCKFLAGS,
+-};
+-
+-#define FLAGS_MASK	XV_ALIGN_MASK
+-#define PREV_MASK	(~FLAGS_MASK)
+-
+-struct freelist_entry {
+-	struct page *page;
+-	u16 offset;
+-	u16 pad;
+-};
+-
+-struct link_free {
+-	struct page *prev_page;
+-	struct page *next_page;
+-	u16 prev_offset;
+-	u16 next_offset;
+-};
+-
+-struct block_header {
+-	union {
+-		/* This common header must be XV_ALIGN bytes */
+-		u8 common[XV_ALIGN];
+-		struct {
+-			u16 size;
+-			u16 prev;
+-		};
+-	};
+-	struct link_free link;
+-};
+-
+-struct xv_pool {
+-	ulong flbitmap;
+-	ulong slbitmap[MAX_FLI];
+-	spinlock_t lock;
+-
+-	struct freelist_entry freelist[NUM_FREE_LISTS];
+-
+-	/* stats */
+-	u64 total_pages;
+-};
+-
+-#endif
+diff --git a/drivers/staging/zram/Kconfig b/drivers/staging/zram/Kconfig
+new file mode 100644
+index 0000000..f9c8224
+--- /dev/null
++++ b/drivers/staging/zram/Kconfig
+@@ -0,0 +1,51 @@
++config XVMALLOC
++	bool
++	default n
++
++config ZRAM
++	tristate "Compressed RAM block device support"
++	depends on BLOCK
++	select XVMALLOC
++	select LZO_COMPRESS
++	select LZO_DECOMPRESS
++	default n
++	help
++	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
++	  Pages written to these disks are compressed and stored in memory
++	  itself. These disks allow very fast I/O and compression provides
++	  good amounts of memory savings.
++
++	  It has several use cases, for example: /tmp storage, use as swap
++	  disks and maybe many more.
++
++	  See zram.txt for more information.
++	  Project home: http://compcache.googlecode.com/
++
++config ZRAM_STATS
++	bool "Enable statistics for compressed RAM disks"
++	depends on ZRAM
++	default y
++	help
++	  Enable statistics collection for compressed RAM devices. Statistics
++	  are exported through ioctl interface, so you have to use zramconfig
++	  program to get them. This adds only a minimal overhead.
++
++	  If unsure, say Y.
++
++config ZCACHE
++	bool "Page cache compression support"
++	depends on CLEANCACHE
++	select XVMALLOC
++	select LZO_COMPRESS
++	select LZO_DECOMPRESS
++	default n
++	help
++	  Compresses relatively unused page cache pages and stores them in
++	  memory itself. This increases effective memory size and can help
++	  reduce access to backing store device(s) which is typically much
++	  slower than access to main memory.
++
++	  Statistics are expoted through sysfs interface:
++	  /sys/kernel/mm/zcache/
++
++	  Project home: http://compcache.googlecode.com/
+diff --git a/drivers/staging/zram/Makefile b/drivers/staging/zram/Makefile
+new file mode 100644
+index 0000000..ef05ee5
+--- /dev/null
++++ b/drivers/staging/zram/Makefile
+@@ -0,0 +1,6 @@
++zram-objs	:=	zram_drv.o
++zcache-objs	:=	zcache_drv.o
++
++obj-$(CONFIG_ZRAM)	+=	zram.o
++obj-$(CONFIG_ZCACHE)	+=	zcache.o
++obj-$(CONFIG_XVMALLOC)	+=	xvmalloc.o
+diff --git a/drivers/staging/zram/xvmalloc.c b/drivers/staging/zram/xvmalloc.c
+new file mode 100644
+index 0000000..3f94ef5
+--- /dev/null
++++ b/drivers/staging/zram/xvmalloc.c
+@@ -0,0 +1,515 @@
++/*
++ * xvmalloc memory allocator
++ *
++ * Copyright (C) 2008, 2009, 2010  Nitin Gupta
++ *
++ * This code is released using a dual license strategy: BSD/GPL
++ * You can choose the licence that better fits your requirements.
++ *
++ * Released under the terms of 3-clause BSD License
++ * Released under the terms of GNU General Public License Version 2.0
++ */
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/bitops.h>
++#include <linux/errno.h>
++#include <linux/highmem.h>
++#include <linux/init.h>
++#include <linux/string.h>
++#include <linux/slab.h>
++
++#include "xvmalloc.h"
++#include "xvmalloc_int.h"
++
++static void stat_inc(u64 *value)
++{
++	*value = *value + 1;
++}
++
++static void stat_dec(u64 *value)
++{
++	*value = *value - 1;
++}
++
++static int test_flag(struct block_header *block, enum blockflags flag)
++{
++	return block->prev & BIT(flag);
++}
++
++static void set_flag(struct block_header *block, enum blockflags flag)
++{
++	block->prev |= BIT(flag);
++}
++
++static void clear_flag(struct block_header *block, enum blockflags flag)
++{
++	block->prev &= ~BIT(flag);
++}
++
++/*
++ * Given <page, offset> pair, provide a derefrencable pointer.
++ * This is called from xv_malloc/xv_free path, so it
++ * needs to be fast.
++ */
++static void *get_ptr_atomic(struct page *page, u16 offset, enum km_type type)
++{
++	unsigned char *base;
++
++	base = kmap_atomic(page, type);
++	return base + offset;
++}
++
++static void put_ptr_atomic(void *ptr, enum km_type type)
++{
++	kunmap_atomic(ptr, type);
++}
++
++static u32 get_blockprev(struct block_header *block)
++{
++	return block->prev & PREV_MASK;
++}
++
++static void set_blockprev(struct block_header *block, u16 new_offset)
++{
++	block->prev = new_offset | (block->prev & FLAGS_MASK);
++}
++
++static struct block_header *BLOCK_NEXT(struct block_header *block)
++{
++	return (struct block_header *)
++		((char *)block + block->size + XV_ALIGN);
++}
++
++/*
++ * Get index of free list containing blocks of maximum size
++ * which is less than or equal to given size.
++ */
++static u32 get_index_for_insert(u32 size)
++{
++	if (unlikely(size > XV_MAX_ALLOC_SIZE))
++		size = XV_MAX_ALLOC_SIZE;
++	size &= ~FL_DELTA_MASK;
++	return (size - XV_MIN_ALLOC_SIZE) >> FL_DELTA_SHIFT;
++}
++
++/*
++ * Get index of free list having blocks of size greater than
++ * or equal to requested size.
++ */
++static u32 get_index(u32 size)
++{
++	if (unlikely(size < XV_MIN_ALLOC_SIZE))
++		size = XV_MIN_ALLOC_SIZE;
++	size = ALIGN(size, FL_DELTA);
++	return (size - XV_MIN_ALLOC_SIZE) >> FL_DELTA_SHIFT;
++}
++
++/**
++ * find_block - find block of at least given size
++ * @pool: memory pool to search from
++ * @size: size of block required
++ * @page: page containing required block
++ * @offset: offset within the page where block is located.
++ *
++ * Searches two level bitmap to locate block of at least
++ * the given size. If such a block is found, it provides
++ * <page, offset> to identify this block and returns index
++ * in freelist where we found this block.
++ * Otherwise, returns 0 and <page, offset> params are not touched.
++ */
++static u32 find_block(struct xv_pool *pool, u32 size,
++			struct page **page, u32 *offset)
++{
++	ulong flbitmap, slbitmap;
++	u32 flindex, slindex, slbitstart;
++
++	/* There are no free blocks in this pool */
++	if (!pool->flbitmap)
++		return 0;
++
++	/* Get freelist index correspoding to this size */
++	slindex = get_index(size);
++	slbitmap = pool->slbitmap[slindex / BITS_PER_LONG];
++	slbitstart = slindex % BITS_PER_LONG;
++
++	/*
++	 * If freelist is not empty at this index, we found the
++	 * block - head of this list. This is approximate best-fit match.
++	 */
++	if (test_bit(slbitstart, &slbitmap)) {
++		*page = pool->freelist[slindex].page;
++		*offset = pool->freelist[slindex].offset;
++		return slindex;
++	}
++
++	/*
++	 * No best-fit found. Search a bit further in bitmap for a free block.
++	 * Second level bitmap consists of series of 32-bit chunks. Search
++	 * further in the chunk where we expected a best-fit, starting from
++	 * index location found above.
++	 */
++	slbitstart++;
++	slbitmap >>= slbitstart;
++
++	/* Skip this search if we were already at end of this bitmap chunk */
++	if ((slbitstart != BITS_PER_LONG) && slbitmap) {
++		slindex += __ffs(slbitmap) + 1;
++		*page = pool->freelist[slindex].page;
++		*offset = pool->freelist[slindex].offset;
++		return slindex;
++	}
++
++	/* Now do a full two-level bitmap search to find next nearest fit */
++	flindex = slindex / BITS_PER_LONG;
++
++	flbitmap = (pool->flbitmap) >> (flindex + 1);
++	if (!flbitmap)
++		return 0;
++
++	flindex += __ffs(flbitmap) + 1;
++	slbitmap = pool->slbitmap[flindex];
++	slindex = (flindex * BITS_PER_LONG) + __ffs(slbitmap);
++	*page = pool->freelist[slindex].page;
++	*offset = pool->freelist[slindex].offset;
++
++	return slindex;
++}
++
++/*
++ * Insert block at <page, offset> in freelist of given pool.
++ * freelist used depends on block size.
++ */
++static void insert_block(struct xv_pool *pool, struct page *page, u32 offset,
++			struct block_header *block)
++{
++	u32 flindex, slindex;
++	struct block_header *nextblock;
++
++	slindex = get_index_for_insert(block->size);
++	flindex = slindex / BITS_PER_LONG;
++
++	block->link.prev_page = 0;
++	block->link.prev_offset = 0;
++	block->link.next_page = pool->freelist[slindex].page;
++	block->link.next_offset = pool->freelist[slindex].offset;
++	pool->freelist[slindex].page = page;
++	pool->freelist[slindex].offset = offset;
++
++	if (block->link.next_page) {
++		nextblock = get_ptr_atomic(block->link.next_page,
++					block->link.next_offset, KM_USER1);
++		nextblock->link.prev_page = page;
++		nextblock->link.prev_offset = offset;
++		put_ptr_atomic(nextblock, KM_USER1);
++	}
++
++	__set_bit(slindex % BITS_PER_LONG, &pool->slbitmap[flindex]);
++	__set_bit(flindex, &pool->flbitmap);
++}
++
++/*
++ * Remove block from head of freelist. Index 'slindex' identifies the freelist.
++ */
++static void remove_block_head(struct xv_pool *pool,
++			struct block_header *block, u32 slindex)
++{
++	struct block_header *tmpblock;
++	u32 flindex = slindex / BITS_PER_LONG;
++
++	pool->freelist[slindex].page = block->link.next_page;
++	pool->freelist[slindex].offset = block->link.next_offset;
++	block->link.prev_page = 0;
++	block->link.prev_offset = 0;
++
++	if (!pool->freelist[slindex].page) {
++		__clear_bit(slindex % BITS_PER_LONG, &pool->slbitmap[flindex]);
++		if (!pool->slbitmap[flindex])
++			__clear_bit(flindex, &pool->flbitmap);
++	} else {
++		/*
++		 * DEBUG ONLY: We need not reinitialize freelist head previous
++		 * pointer to 0 - we never depend on its value. But just for
++		 * sanity, lets do it.
++		 */
++		tmpblock = get_ptr_atomic(pool->freelist[slindex].page,
++				pool->freelist[slindex].offset, KM_USER1);
++		tmpblock->link.prev_page = 0;
++		tmpblock->link.prev_offset = 0;
++		put_ptr_atomic(tmpblock, KM_USER1);
++	}
++}
++
++/*
++ * Remove block from freelist. Index 'slindex' identifies the freelist.
++ */
++static void remove_block(struct xv_pool *pool, struct page *page, u32 offset,
++			struct block_header *block, u32 slindex)
++{
++	u32 flindex;
++	struct block_header *tmpblock;
++
++	if (pool->freelist[slindex].page == page
++	   && pool->freelist[slindex].offset == offset) {
++		remove_block_head(pool, block, slindex);
++		return;
++	}
++
++	flindex = slindex / BITS_PER_LONG;
++
++	if (block->link.prev_page) {
++		tmpblock = get_ptr_atomic(block->link.prev_page,
++				block->link.prev_offset, KM_USER1);
++		tmpblock->link.next_page = block->link.next_page;
++		tmpblock->link.next_offset = block->link.next_offset;
++		put_ptr_atomic(tmpblock, KM_USER1);
++	}
++
++	if (block->link.next_page) {
++		tmpblock = get_ptr_atomic(block->link.next_page,
++				block->link.next_offset, KM_USER1);
++		tmpblock->link.prev_page = block->link.prev_page;
++		tmpblock->link.prev_offset = block->link.prev_offset;
++		put_ptr_atomic(tmpblock, KM_USER1);
++	}
++}
++
++/*
++ * Allocate a page and add it to freelist of given pool.
++ */
++static int grow_pool(struct xv_pool *pool, gfp_t flags)
++{
++	struct page *page;
++	struct block_header *block;
++
++	page = alloc_page(flags);
++	if (unlikely(!page))
++		return -ENOMEM;
++
++	stat_inc(&pool->total_pages);
++
++	spin_lock(&pool->lock);
++	block = get_ptr_atomic(page, 0, KM_USER0);
++
++	block->size = PAGE_SIZE - XV_ALIGN;
++	set_flag(block, BLOCK_FREE);
++	clear_flag(block, PREV_FREE);
++	set_blockprev(block, 0);
++
++	insert_block(pool, page, 0, block);
++
++	put_ptr_atomic(block, KM_USER0);
++	spin_unlock(&pool->lock);
++
++	return 0;
++}
++
++/*
++ * Create a memory pool. Allocates freelist, bitmaps and other
++ * per-pool metadata.
++ */
++struct xv_pool *xv_create_pool(void)
++{
++	u32 ovhd_size;
++	struct xv_pool *pool;
++
++	ovhd_size = roundup(sizeof(*pool), PAGE_SIZE);
++	pool = kzalloc(ovhd_size, GFP_KERNEL);
++	if (!pool)
++		return NULL;
++
++	spin_lock_init(&pool->lock);
++
++	return pool;
++}
++EXPORT_SYMBOL_GPL(xv_create_pool);
++
++void xv_destroy_pool(struct xv_pool *pool)
++{
++	kfree(pool);
++}
++EXPORT_SYMBOL_GPL(xv_destroy_pool);
++
++/**
++ * xv_malloc - Allocate block of given size from pool.
++ * @pool: pool to allocate from
++ * @size: size of block to allocate
++ * @page: page no. that holds the object
++ * @offset: location of object within page
++ *
++ * On success, <page, offset> identifies block allocated
++ * and 0 is returned. On failure, <page, offset> is set to
++ * 0 and -ENOMEM is returned.
++ *
++ * Allocation requests with size > XV_MAX_ALLOC_SIZE will fail.
++ */
++int xv_malloc(struct xv_pool *pool, u32 size, struct page **page,
++		u32 *offset, gfp_t flags)
++{
++	int error;
++	u32 index, tmpsize, origsize, tmpoffset;
++	struct block_header *block, *tmpblock;
++
++	*page = NULL;
++	*offset = 0;
++	origsize = size;
++
++	if (unlikely(!size || size > XV_MAX_ALLOC_SIZE))
++		return -ENOMEM;
++
++	size = ALIGN(size, XV_ALIGN);
++
++	spin_lock(&pool->lock);
++
++	index = find_block(pool, size, page, offset);
++
++	if (!*page) {
++		spin_unlock(&pool->lock);
++		if (flags & GFP_NOWAIT)
++			return -ENOMEM;
++		error = grow_pool(pool, flags);
++		if (unlikely(error))
++			return error;
++
++		spin_lock(&pool->lock);
++		index = find_block(pool, size, page, offset);
++	}
++
++	if (!*page) {
++		spin_unlock(&pool->lock);
++		return -ENOMEM;
++	}
++
++	block = get_ptr_atomic(*page, *offset, KM_USER0);
++
++	remove_block_head(pool, block, index);
++
++	/* Split the block if required */
++	tmpoffset = *offset + size + XV_ALIGN;
++	tmpsize = block->size - size;
++	tmpblock = (struct block_header *)((char *)block + size + XV_ALIGN);
++	if (tmpsize) {
++		tmpblock->size = tmpsize - XV_ALIGN;
++		set_flag(tmpblock, BLOCK_FREE);
++		clear_flag(tmpblock, PREV_FREE);
++
++		set_blockprev(tmpblock, *offset);
++		if (tmpblock->size >= XV_MIN_ALLOC_SIZE)
++			insert_block(pool, *page, tmpoffset, tmpblock);
++
++		if (tmpoffset + XV_ALIGN + tmpblock->size != PAGE_SIZE) {
++			tmpblock = BLOCK_NEXT(tmpblock);
++			set_blockprev(tmpblock, tmpoffset);
++		}
++	} else {
++		/* This block is exact fit */
++		if (tmpoffset != PAGE_SIZE)
++			clear_flag(tmpblock, PREV_FREE);
++	}
++
++	block->size = origsize;
++	clear_flag(block, BLOCK_FREE);
++
++	put_ptr_atomic(block, KM_USER0);
++	spin_unlock(&pool->lock);
++
++	*offset += XV_ALIGN;
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(xv_malloc);
++
++/*
++ * Free block identified with <page, offset>
++ */
++void xv_free(struct xv_pool *pool, struct page *page, u32 offset)
++{
++	void *page_start;
++	struct block_header *block, *tmpblock;
++
++	offset -= XV_ALIGN;
++
++	spin_lock(&pool->lock);
++
++	page_start = get_ptr_atomic(page, 0, KM_USER0);
++	block = (struct block_header *)((char *)page_start + offset);
++
++	/* Catch double free bugs */
++	BUG_ON(test_flag(block, BLOCK_FREE));
++
++	block->size = ALIGN(block->size, XV_ALIGN);
++
++	tmpblock = BLOCK_NEXT(block);
++	if (offset + block->size + XV_ALIGN == PAGE_SIZE)
++		tmpblock = NULL;
++
++	/* Merge next block if its free */
++	if (tmpblock && test_flag(tmpblock, BLOCK_FREE)) {
++		/*
++		 * Blocks smaller than XV_MIN_ALLOC_SIZE
++		 * are not inserted in any free list.
++		 */
++		if (tmpblock->size >= XV_MIN_ALLOC_SIZE) {
++			remove_block(pool, page,
++				    offset + block->size + XV_ALIGN, tmpblock,
++				    get_index_for_insert(tmpblock->size));
++		}
++		block->size += tmpblock->size + XV_ALIGN;
++	}
++
++	/* Merge previous block if its free */
++	if (test_flag(block, PREV_FREE)) {
++		tmpblock = (struct block_header *)((char *)(page_start) +
++						get_blockprev(block));
++		offset = offset - tmpblock->size - XV_ALIGN;
++
++		if (tmpblock->size >= XV_MIN_ALLOC_SIZE)
++			remove_block(pool, page, offset, tmpblock,
++				    get_index_for_insert(tmpblock->size));
++
++		tmpblock->size += block->size + XV_ALIGN;
++		block = tmpblock;
++	}
++
++	/* No used objects in this page. Free it. */
++	if (block->size == PAGE_SIZE - XV_ALIGN) {
++		put_ptr_atomic(page_start, KM_USER0);
++		spin_unlock(&pool->lock);
++
++		__free_page(page);
++		stat_dec(&pool->total_pages);
++		return;
++	}
++
++	set_flag(block, BLOCK_FREE);
++	if (block->size >= XV_MIN_ALLOC_SIZE)
++		insert_block(pool, page, offset, block);
++
++	if (offset + block->size + XV_ALIGN != PAGE_SIZE) {
++		tmpblock = BLOCK_NEXT(block);
++		set_flag(tmpblock, PREV_FREE);
++		set_blockprev(tmpblock, offset);
++	}
++
++	put_ptr_atomic(page_start, KM_USER0);
++	spin_unlock(&pool->lock);
++}
++EXPORT_SYMBOL_GPL(xv_free);
++
++u32 xv_get_object_size(void *obj)
++{
++	struct block_header *blk;
++
++	blk = (struct block_header *)((char *)(obj) - XV_ALIGN);
++	return blk->size;
++}
++EXPORT_SYMBOL_GPL(xv_get_object_size);
++
++/*
++ * Returns total memory used by allocator (userdata + metadata)
++ */
++u64 xv_get_total_size_bytes(struct xv_pool *pool)
++{
++	return pool->total_pages << PAGE_SHIFT;
++}
++EXPORT_SYMBOL_GPL(xv_get_total_size_bytes);
+diff --git a/drivers/staging/zram/xvmalloc.h b/drivers/staging/zram/xvmalloc.h
+new file mode 100644
+index 0000000..5b1a81a
+--- /dev/null
++++ b/drivers/staging/zram/xvmalloc.h
+@@ -0,0 +1,30 @@
++/*
++ * xvmalloc memory allocator
++ *
++ * Copyright (C) 2008, 2009, 2010  Nitin Gupta
++ *
++ * This code is released using a dual license strategy: BSD/GPL
++ * You can choose the licence that better fits your requirements.
++ *
++ * Released under the terms of 3-clause BSD License
++ * Released under the terms of GNU General Public License Version 2.0
++ */
++
++#ifndef _XV_MALLOC_H_
++#define _XV_MALLOC_H_
++
++#include <linux/types.h>
++
++struct xv_pool;
++
++struct xv_pool *xv_create_pool(void);
++void xv_destroy_pool(struct xv_pool *pool);
++
++int xv_malloc(struct xv_pool *pool, u32 size, struct page **page,
++			u32 *offset, gfp_t flags);
++void xv_free(struct xv_pool *pool, struct page *page, u32 offset);
++
++u32 xv_get_object_size(void *obj);
++u64 xv_get_total_size_bytes(struct xv_pool *pool);
++
++#endif
+diff --git a/drivers/staging/zram/xvmalloc_int.h b/drivers/staging/zram/xvmalloc_int.h
+new file mode 100644
+index 0000000..e23ed5c
+--- /dev/null
++++ b/drivers/staging/zram/xvmalloc_int.h
+@@ -0,0 +1,86 @@
++/*
++ * xvmalloc memory allocator
++ *
++ * Copyright (C) 2008, 2009, 2010  Nitin Gupta
++ *
++ * This code is released using a dual license strategy: BSD/GPL
++ * You can choose the licence that better fits your requirements.
++ *
++ * Released under the terms of 3-clause BSD License
++ * Released under the terms of GNU General Public License Version 2.0
++ */
++
++#ifndef _XV_MALLOC_INT_H_
++#define _XV_MALLOC_INT_H_
++
++#include <linux/kernel.h>
++#include <linux/types.h>
++
++/* User configurable params */
++
++/* Must be power of two */
++#define XV_ALIGN_SHIFT	2
++#define XV_ALIGN	(1 << XV_ALIGN_SHIFT)
++#define XV_ALIGN_MASK	(XV_ALIGN - 1)
++
++/* This must be greater than sizeof(link_free) */
++#define XV_MIN_ALLOC_SIZE	32
++#define XV_MAX_ALLOC_SIZE	(PAGE_SIZE - XV_ALIGN)
++
++/* Free lists are separated by FL_DELTA bytes */
++#define FL_DELTA_SHIFT	3
++#define FL_DELTA	(1 << FL_DELTA_SHIFT)
++#define FL_DELTA_MASK	(FL_DELTA - 1)
++#define NUM_FREE_LISTS	((XV_MAX_ALLOC_SIZE - XV_MIN_ALLOC_SIZE) \
++				/ FL_DELTA + 1)
++
++#define MAX_FLI		DIV_ROUND_UP(NUM_FREE_LISTS, BITS_PER_LONG)
++
++/* End of user params */
++
++enum blockflags {
++	BLOCK_FREE,
++	PREV_FREE,
++	__NR_BLOCKFLAGS,
++};
++
++#define FLAGS_MASK	XV_ALIGN_MASK
++#define PREV_MASK	(~FLAGS_MASK)
++
++struct freelist_entry {
++	struct page *page;
++	u16 offset;
++	u16 pad;
++};
++
++struct link_free {
++	struct page *prev_page;
++	struct page *next_page;
++	u16 prev_offset;
++	u16 next_offset;
++};
++
++struct block_header {
++	union {
++		/* This common header must be XV_ALIGN bytes */
++		u8 common[XV_ALIGN];
++		struct {
++			u16 size;
++			u16 prev;
++		};
++	};
++	struct link_free link;
++};
++
++struct xv_pool {
++	ulong flbitmap;
++	ulong slbitmap[MAX_FLI];
++	spinlock_t lock;
++
++	struct freelist_entry freelist[NUM_FREE_LISTS];
++
++	/* stats */
++	u64 total_pages;
++};
++
++#endif
+diff --git a/drivers/staging/zram/zcache_drv.c b/drivers/staging/zram/zcache_drv.c
+new file mode 100644
+index 0000000..71ca48a
+--- /dev/null
++++ b/drivers/staging/zram/zcache_drv.c
+@@ -0,0 +1,1312 @@
++/*
++ * Page cache compression support
++ *
++ * Copyright (C) 2010  Nitin Gupta
++ * Released under the terms of GNU General Public License Version 2.0
++ *
++ * Project home: http://compcache.googlecode.com/
++ *
++ * Design:
++ * zcache is implemented using 'cleancache' which provides callbacks
++ * (cleancache_ops) for events such as when a page is evicted from the
++ * (uncompressed) page cache (cleancache_ops.put_page), when it is
++ * needed again (cleancache_ops.get_page), when it needs to be freed
++ * (cleancache_ops.flush_page) and so on.
++ *
++ * A page in zcache is identified with tuple <pool_id, inode_no, index>
++ *  - pool_id: For every cleancache aware filesystem mounted, zcache
++ * creates a separate pool (struct zcache_pool). This is container for
++ * all metadata/data structures needed to locate pages cached for this
++ * instance of mounted filesystem.
++ *  - inode_no: This represents a file/inode within this filesystem. An
++ * inode is represented using struct zcache_inode_rb within zcache which
++ * are arranged in a red-black tree indexed using inode_no.
++ *  - index: This represents page/index within an inode. Pages within an
++ * inode are arranged in a radix tree. So, each node of red-black tree
++ * above refers to a separate radix tree.
++ *
++ * Locking order:
++ * 1. zcache_inode_rb->tree_lock	(spin_lock)
++ * 2. zcache_pool->tree_lock		(rwlock_t: write)
++ *
++ * Nodes in an inode tree are reference counted and are freed when they
++ * do not any pages i.e. corresponding radix tree, maintaining list of
++ * pages associated with this inode, is empty.
++ */
++
++#define KMSG_COMPONENT "zcache"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/cleancache.h>
++#include <linux/cpu.h>
++#include <linux/highmem.h>
++#include <linux/lzo.h>
++#include <linux/sched.h>
++#include <linux/slab.h>
++#include <linux/u64_stats_sync.h>
++
++#include "xvmalloc.h"
++#include "zcache_drv.h"
++
++static DEFINE_PER_CPU(unsigned char *, compress_buffer);
++static DEFINE_PER_CPU(unsigned char *, compress_workmem);
++
++/*
++ * For zero-filled pages, we directly insert 'index' value
++ * in corresponding radix node. These defines make sure we
++ * do not try to store NULL value in radix node (index can
++ * be 0) and that we do not use the lowest bit (which radix
++ * tree uses for its own purpose).
++ */
++#define ZCACHE_ZERO_PAGE_INDEX_SHIFT	2
++#define ZCACHE_ZERO_PAGE_MARK_BIT	(1 << 1)
++
++struct zcache *zcache;
++
++/*
++ * Individual percpu values can go negative but the sum across all CPUs
++ * must always be positive (we store various counts). So, return sum as
++ * unsigned value.
++ */
++static u64 zcache_get_stat(struct zcache_pool *zpool,
++		enum zcache_pool_stats_index idx)
++{
++	int cpu;
++	s64 val = 0;
++
++	for_each_possible_cpu(cpu) {
++		unsigned int start;
++		struct zcache_pool_stats_cpu *stats;
++
++		stats = per_cpu_ptr(zpool->stats, cpu);
++		do {
++			start = u64_stats_fetch_begin(&stats->syncp);
++			val += stats->count[idx];
++		} while (u64_stats_fetch_retry(&stats->syncp, start));
++	}
++
++	BUG_ON(val < 0);
++	return val;
++}
++
++static void zcache_add_stat(struct zcache_pool *zpool,
++		enum zcache_pool_stats_index idx, s64 val)
++{
++	struct zcache_pool_stats_cpu *stats;
++
++	preempt_disable();
++	stats = __this_cpu_ptr(zpool->stats);
++	u64_stats_update_begin(&stats->syncp);
++	stats->count[idx] += val;
++	u64_stats_update_end(&stats->syncp);
++	preempt_enable();
++}
++
++static void zcache_inc_stat(struct zcache_pool *zpool,
++		enum zcache_pool_stats_index idx)
++{
++	zcache_add_stat(zpool, idx, 1);
++}
++
++static void zcache_dec_stat(struct zcache_pool *zpool,
++		enum zcache_pool_stats_index idx)
++{
++	zcache_add_stat(zpool, idx, -1);
++}
++
++static void zcache_dec_pages(struct zcache_pool *zpool, int is_zero)
++{
++	enum zcache_pool_stats_index idx;
++
++	if (is_zero)
++		idx = ZPOOL_STAT_PAGES_ZERO;
++	else
++		idx = ZPOOL_STAT_PAGES_STORED;
++
++	zcache_dec_stat(zpool, idx);
++}
++
++static u64 zcache_get_memlimit(struct zcache_pool *zpool)
++{
++	u64 memlimit;
++	unsigned int start;
++
++	do {
++		start = read_seqbegin(&zpool->memlimit_lock);
++		memlimit = zpool->memlimit;
++	} while (read_seqretry(&zpool->memlimit_lock, start));
++
++	return memlimit;
++}
++
++static void zcache_set_memlimit(struct zcache_pool *zpool, u64 memlimit)
++{
++	write_seqlock(&zpool->memlimit_lock);
++	zpool->memlimit = memlimit;
++	write_sequnlock(&zpool->memlimit_lock);
++}
++
++static void zcache_dump_stats(struct zcache_pool *zpool)
++{
++	enum zcache_pool_stats_index idx;
++
++	pr_debug("Dumping statistics for pool: %p\n", zpool);
++	pr_debug("%llu ", zpool->memlimit);
++	for (idx = 0; idx < ZPOOL_STAT_NSTATS; idx++)
++		pr_debug("%llu ", zcache_get_stat(zpool, idx));
++	pr_debug("\n");
++}
++
++static void zcache_destroy_pool(struct zcache_pool *zpool)
++{
++	int i;
++
++	if (!zpool)
++		return;
++
++	spin_lock(&zcache->pool_lock);
++	zcache->num_pools--;
++	for (i = 0; i < MAX_ZCACHE_POOLS; i++)
++		if (zcache->pools[i] == zpool)
++			break;
++	zcache->pools[i] = NULL;
++	spin_unlock(&zcache->pool_lock);
++
++	if (!RB_EMPTY_ROOT(&zpool->inode_tree)) {
++		pr_warn("Memory leak detected. Freeing non-empty pool!\n");
++		zcache_dump_stats(zpool);
++	}
++
++	free_percpu(zpool->stats);
++	xv_destroy_pool(zpool->xv_pool);
++	kfree(zpool);
++}
++
++/*
++ * Allocate a new zcache pool and set default memlimit.
++ *
++ * Returns pool_id on success, negative error code otherwise.
++ */
++int zcache_create_pool(void)
++{
++	int ret;
++	u64 memlimit;
++	struct zcache_pool *zpool = NULL;
++
++	spin_lock(&zcache->pool_lock);
++	if (zcache->num_pools == MAX_ZCACHE_POOLS) {
++		spin_unlock(&zcache->pool_lock);
++		pr_info("Cannot create new pool (limit: %u)\n",
++					MAX_ZCACHE_POOLS);
++		ret = -EPERM;
++		goto out;
++	}
++	zcache->num_pools++;
++	spin_unlock(&zcache->pool_lock);
++
++	zpool = kzalloc(sizeof(*zpool), GFP_KERNEL);
++	if (!zpool) {
++		spin_lock(&zcache->pool_lock);
++		zcache->num_pools--;
++		spin_unlock(&zcache->pool_lock);
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	zpool->stats = alloc_percpu(struct zcache_pool_stats_cpu);
++	if (!zpool->stats) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	zpool->xv_pool = xv_create_pool();
++	if (!zpool->xv_pool) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	rwlock_init(&zpool->tree_lock);
++	seqlock_init(&zpool->memlimit_lock);
++	zpool->inode_tree = RB_ROOT;
++
++	memlimit = zcache_pool_default_memlimit_perc_ram *
++				((totalram_pages << PAGE_SHIFT) / 100);
++	memlimit &= PAGE_MASK;
++	zcache_set_memlimit(zpool, memlimit);
++
++	/* Add to pool list */
++	spin_lock(&zcache->pool_lock);
++	for (ret = 0; ret < MAX_ZCACHE_POOLS; ret++)
++		if (!zcache->pools[ret])
++			break;
++	zcache->pools[ret] = zpool;
++	spin_unlock(&zcache->pool_lock);
++
++out:
++	if (ret < 0)
++		zcache_destroy_pool(zpool);
++
++	return ret;
++}
++
++/*
++ * Allocate a new zcache node and insert it in given pool's
++ * inode_tree at location 'inode_no'.
++ *
++ * On success, returns newly allocated node and increments
++ * its refcount for caller. Returns NULL on failure.
++ */
++static struct zcache_inode_rb *zcache_inode_create(int pool_id,
++						ino_t inode_no)
++{
++	unsigned long flags;
++	struct rb_node *parent, **link;
++	struct zcache_inode_rb *new_znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	/*
++	 * We can end up allocating multiple nodes due to racing
++	 * zcache_put_page(). But only one will be added to zpool
++	 * inode tree and rest will be freed.
++	 *
++	 * To avoid this possibility of redundant allocation, we
++	 * could do it inside zpool tree lock. However, that seems
++	 * more wasteful.
++	 */
++	new_znode = kzalloc(sizeof(*new_znode), GFP_NOWAIT);
++	if (unlikely(!new_znode))
++		return NULL;
++
++	INIT_RADIX_TREE(&new_znode->page_tree, GFP_NOWAIT);
++	spin_lock_init(&new_znode->tree_lock);
++	kref_init(&new_znode->refcount);
++	RB_CLEAR_NODE(&new_znode->rb_node);
++	new_znode->inode_no = inode_no;
++	new_znode->pool = zpool;
++
++	parent = NULL;
++	write_lock_irqsave(&zpool->tree_lock, flags);
++	link = &zpool->inode_tree.rb_node;
++	while (*link) {
++		struct zcache_inode_rb *znode;
++
++		znode = rb_entry(*link, struct zcache_inode_rb, rb_node);
++		parent = *link;
++
++		if (znode->inode_no > inode_no)
++			link = &(*link)->rb_left;
++		else if (znode->inode_no < inode_no)
++			link = &(*link)->rb_right;
++		else {
++			/*
++			 * New node added by racing zcache_put_page(). Free
++			 * this newly allocated node and use the existing one.
++			 */
++			kfree(new_znode);
++			new_znode = znode;
++			goto out;
++		}
++	}
++
++	rb_link_node(&new_znode->rb_node, parent, link);
++	rb_insert_color(&new_znode->rb_node, &zpool->inode_tree);
++
++out:
++	kref_get(&new_znode->refcount);
++	write_unlock_irqrestore(&zpool->tree_lock, flags);
++
++	return new_znode;
++}
++
++/*
++ * Called under zcache_inode_rb->tree_lock
++ */
++static int zcache_inode_is_empty(struct zcache_inode_rb *znode)
++{
++	return znode->page_tree.rnode == NULL;
++}
++
++/*
++ * kref_put callback for zcache node.
++ *
++ * The node must have been isolated already.
++ */
++static void zcache_inode_release(struct kref *kref)
++{
++	struct zcache_inode_rb *znode;
++
++	znode = container_of(kref, struct zcache_inode_rb, refcount);
++	BUG_ON(!zcache_inode_is_empty(znode));
++	kfree(znode);
++}
++
++/*
++ * Removes the given node from its inode_tree and drops corresponding
++ * refcount. Its called when someone removes the last page from a
++ * zcache node.
++ *
++ * Called under zcache_inode_rb->spin_lock
++ */
++static void zcache_inode_isolate(struct zcache_inode_rb *znode)
++{
++	unsigned long flags;
++	struct zcache_pool *zpool = znode->pool;
++
++	write_lock_irqsave(&zpool->tree_lock, flags);
++	/*
++	 * Someone can get reference on this node before we could
++	 * acquire write lock above. We want to remove it from its
++	 * inode_tree when only the caller and corresponding inode_tree
++	 * holds a reference to it. This ensures that a racing zcache
++	 * put will not end up adding a page to an isolated node and
++	 * thereby losing that memory.
++	 *
++	 */
++	if (atomic_read(&znode->refcount.refcount) == 2) {
++		rb_erase(&znode->rb_node, &znode->pool->inode_tree);
++		RB_CLEAR_NODE(&znode->rb_node);
++		kref_put(&znode->refcount, zcache_inode_release);
++	}
++	write_unlock_irqrestore(&zpool->tree_lock, flags);
++}
++
++/*
++ * Find inode in the given pool at location 'inode_no'.
++ *
++ * If found, return the node pointer and increment its reference
++ * count; NULL otherwise.
++ */
++static struct zcache_inode_rb *zcache_find_inode(struct zcache_pool *zpool,
++						ino_t inode_no)
++{
++	unsigned long flags;
++	struct rb_node *node;
++
++	read_lock_irqsave(&zpool->tree_lock, flags);
++	node = zpool->inode_tree.rb_node;
++	while (node) {
++		struct zcache_inode_rb *znode;
++
++		znode = rb_entry(node, struct zcache_inode_rb, rb_node);
++		if (znode->inode_no > inode_no)
++			node = node->rb_left;
++		else if (znode->inode_no < inode_no)
++			node = node->rb_right;
++		else {
++			/* found */
++			kref_get(&znode->refcount);
++			read_unlock_irqrestore(&zpool->tree_lock, flags);
++			return znode;
++		}
++	}
++	read_unlock_irqrestore(&zpool->tree_lock, flags);
++
++	/* not found */
++	return NULL;
++}
++
++static void zcache_handle_zero_page(struct page *page)
++{
++	void *user_mem;
++
++	user_mem = kmap_atomic(page, KM_USER0);
++	memset(user_mem, 0, PAGE_SIZE);
++	kunmap_atomic(user_mem, KM_USER0);
++
++	flush_dcache_page(page);
++}
++
++static int zcache_page_zero_filled(void *ptr)
++{
++	unsigned int pos;
++	unsigned long *page;
++
++	page = (unsigned long *)ptr;
++
++	for (pos = 0; pos != PAGE_SIZE / sizeof(*page); pos++) {
++		if (page[pos])
++			return 0;
++	}
++
++	return 1;
++}
++
++
++/*
++ * Identifies if the given radix node pointer actually refers
++ * to a zero-filled page.
++ */
++static int zcache_is_zero_page(void *ptr)
++{
++	return (unsigned long)(ptr) & ZCACHE_ZERO_PAGE_MARK_BIT;
++}
++
++/*
++ * Returns "pointer" value to be stored in radix node for
++ * zero-filled page at the given index.
++ */
++static void *zcache_index_to_ptr(unsigned long index)
++{
++	return (void *)((index << ZCACHE_ZERO_PAGE_INDEX_SHIFT) |
++				ZCACHE_ZERO_PAGE_MARK_BIT);
++}
++
++/*
++ * Encode <page, offset> as a single "pointer" value which is stored
++ * in corresponding radix node.
++ */
++static void *zcache_xv_location_to_ptr(struct page *page, u32 offset)
++{
++	unsigned long ptrval;
++
++	ptrval = page_to_pfn(page) << PAGE_SHIFT;
++	ptrval |= (offset & ~PAGE_MASK);
++
++	return (void *)ptrval;
++}
++
++/*
++ * Decode <page, offset> pair from "pointer" value returned from
++ * radix tree lookup.
++ */
++static void zcache_ptr_to_xv_location(void *ptr, struct page **page,
++				u32 *offset)
++{
++	unsigned long ptrval = (unsigned long)ptr;
++
++	*page = pfn_to_page(ptrval >> PAGE_SHIFT);
++	*offset = ptrval & ~PAGE_MASK;
++}
++
++/*
++ * Radix node contains "pointer" value which encode <page, offset>
++ * pair, locating the compressed object. Header of the object then
++ * contains corresponding 'index' value.
++ */
++static unsigned long zcache_ptr_to_index(void *ptr)
++{
++	u32 offset;
++	struct page *page;
++	unsigned long index;
++	struct zcache_objheader *zheader;
++
++	if (zcache_is_zero_page(ptr))
++		return (unsigned long)(ptr) >> ZCACHE_ZERO_PAGE_INDEX_SHIFT;
++
++	zcache_ptr_to_xv_location(ptr, &page, &offset);
++
++	zheader = kmap_atomic(page, KM_USER0) + offset;
++	index = zheader->index;
++	kunmap_atomic(zheader, KM_USER0);
++
++	return index;
++}
++
++void zcache_free_page(struct zcache_pool *zpool, void *ptr)
++{
++	int is_zero;
++	unsigned long flags;
++
++	if (unlikely(!ptr))
++		return;
++
++	is_zero = zcache_is_zero_page(ptr);
++	if (!is_zero) {
++		int clen;
++		void *obj;
++		u32 offset;
++		struct page *page;
++
++		zcache_ptr_to_xv_location(ptr, &page, &offset);
++		obj = kmap_atomic(page, KM_USER0) + offset;
++		clen = xv_get_object_size(obj) -
++				sizeof(struct zcache_objheader);
++		kunmap_atomic(obj, KM_USER0);
++
++		zcache_add_stat(zpool, ZPOOL_STAT_COMPR_SIZE, -clen);
++		local_irq_save(flags);
++		xv_free(zpool->xv_pool, page, offset);
++		local_irq_restore(flags);
++	}
++
++	zcache_dec_pages(zpool, is_zero);
++}
++
++/*
++ * Allocate memory for storing the given page and insert
++ * it in the given node's page tree at location 'index'.
++ * Parameter 'is_zero' specifies if the page is zero-filled.
++ *
++ * Returns 0 on success, negative error code on failure.
++ */
++static int zcache_store_page(struct zcache_inode_rb *znode,
++			pgoff_t index, struct page *page, int is_zero)
++{
++	int ret;
++	void *nodeptr;
++	size_t clen;
++	unsigned long flags;
++
++	u32 zoffset;
++	struct page *zpage;
++	unsigned char *zbuffer, *zworkmem;
++	unsigned char *src_data, *dest_data;
++
++	struct zcache_objheader *zheader;
++	struct zcache_pool *zpool = znode->pool;
++
++	if (is_zero) {
++		nodeptr = zcache_index_to_ptr(index);
++		goto out_store;
++	}
++
++	preempt_disable();
++	zbuffer = __get_cpu_var(compress_buffer);
++	zworkmem = __get_cpu_var(compress_workmem);
++	if (unlikely(!zbuffer || !zworkmem)) {
++		ret = -EFAULT;
++		preempt_enable();
++		goto out;
++	}
++
++	src_data = kmap_atomic(page, KM_USER0);
++	ret = lzo1x_1_compress(src_data, PAGE_SIZE, zbuffer, &clen, zworkmem);
++	kunmap_atomic(src_data, KM_USER0);
++
++	if (unlikely(ret != LZO_E_OK) || clen > zcache_max_page_size) {
++		ret = -EINVAL;
++		preempt_enable();
++		goto out;
++	}
++
++	local_irq_save(flags);
++	ret = xv_malloc(zpool->xv_pool, clen + sizeof(*zheader),
++			&zpage, &zoffset, GFP_NOWAIT);
++	local_irq_restore(flags);
++	if (unlikely(ret)) {
++		ret = -ENOMEM;
++		preempt_enable();
++		goto out;
++	}
++
++	dest_data = kmap_atomic(zpage, KM_USER0) + zoffset;
++
++	/* Store index value in header */
++	zheader = (struct zcache_objheader *)dest_data;
++	zheader->index = index;
++	dest_data += sizeof(*zheader);
++
++	memcpy(dest_data, zbuffer, clen);
++	kunmap_atomic(dest_data, KM_USER0);
++	preempt_enable();
++
++	nodeptr = zcache_xv_location_to_ptr(zpage, zoffset);
++
++out_store:
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	ret = radix_tree_insert(&znode->page_tree, index, nodeptr);
++	if (unlikely(ret)) {
++		spin_unlock_irqrestore(&znode->tree_lock, flags);
++		if (!is_zero)
++			__free_page(zpage);
++		goto out;
++	}
++	if (is_zero) {
++		zcache_inc_stat(zpool, ZPOOL_STAT_PAGES_ZERO);
++	} else {
++		int delta = zcache_max_page_size - clen;
++		zcache_add_stat(zpool, ZPOOL_STAT_COMPR_SIZE, -delta);
++		zcache_inc_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++		radix_tree_tag_set(&znode->page_tree, index,
++				ZCACHE_TAG_NONZERO_PAGE);
++	}
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++
++	ret = 0; /* success */
++
++out:
++	return ret;
++}
++
++/*
++ * Free 'pages_to_free' number of pages associated with the
++ * given zcache node. Actual number of pages freed might be
++ * less than this since the node might not contain enough
++ * pages.
++ *
++ * Called under zcache_inode_rb->tree_lock
++ * (Code adapted from brd.c)
++ */
++#define FREE_BATCH 16
++static void zcache_free_inode_pages(struct zcache_inode_rb *znode,
++				u32 pages_to_free, enum zcache_tag tag)
++{
++	int count;
++	unsigned long index = 0;
++	struct zcache_pool *zpool = znode->pool;
++
++	do {
++		int i;
++		void *objs[FREE_BATCH];
++
++		if (tag == ZCACHE_TAG_INVALID)
++			count = radix_tree_gang_lookup(&znode->page_tree,
++					objs, index, FREE_BATCH);
++		else
++			count = radix_tree_gang_lookup_tag(&znode->page_tree,
++					objs, index, FREE_BATCH, tag);
++
++		if (count > pages_to_free)
++			count = pages_to_free;
++
++		for (i = 0; i < count; i++) {
++			void *obj;
++			unsigned long index;
++
++			index = zcache_ptr_to_index(objs[i]);
++			obj = radix_tree_delete(&znode->page_tree, index);
++			BUG_ON(obj != objs[i]);
++			zcache_free_page(zpool, obj);
++		}
++
++		index++;
++		pages_to_free -= count;
++	} while (pages_to_free && (count == FREE_BATCH));
++}
++
++/*
++ * Returns number of pages stored in excess of currently
++ * set memlimit for the given pool.
++ */
++static u32 zcache_count_excess_pages(struct zcache_pool *zpool)
++{
++	u32 excess_pages, memlimit_pages, pages_stored;
++
++	memlimit_pages = zcache_get_memlimit(zpool) >> PAGE_SHIFT;
++	pages_stored = zcache_get_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++	excess_pages = pages_stored > memlimit_pages ?
++			pages_stored - memlimit_pages : 0;
++
++	return excess_pages;
++}
++
++/*
++ * Free pages from this pool till we come within its memlimit.
++ *
++ * Currently, its called only when user sets memlimit lower than the
++ * number of pages currently stored in that pool. We select nodes in
++ * order of increasing inode number. This, in general, has no correlation
++ * with the order in which these are added. So, it is essentially random
++ * selection of nodes. Pages within a victim node node are freed in order
++ * of increasing index number.
++ *
++ * Automatic cache resizing and better page replacement policies will
++ * be implemented later.
++ */
++static void zcache_shrink_pool(struct zcache_pool *zpool)
++{
++	struct rb_node *node;
++	struct zcache_inode_rb *znode;
++
++	read_lock(&zpool->tree_lock);
++	node = rb_first(&zpool->inode_tree);
++	if (unlikely(!node)) {
++		read_unlock(&zpool->tree_lock);
++		return;
++	}
++	znode = rb_entry(node, struct zcache_inode_rb, rb_node);
++	kref_get(&znode->refcount);
++	read_unlock(&zpool->tree_lock);
++
++	do {
++		u32 pages_to_free;
++		struct rb_node *next_node;
++		struct zcache_inode_rb *next_znode;
++
++		pages_to_free = zcache_count_excess_pages(zpool);
++		if (!pages_to_free) {
++			spin_lock(&znode->tree_lock);
++			if (zcache_inode_is_empty(znode))
++				zcache_inode_isolate(znode);
++			spin_unlock(&znode->tree_lock);
++
++			kref_put(&znode->refcount, zcache_inode_release);
++			break;
++		}
++
++		/*
++		 * Get the next victim node before we (possibly) isolate
++		 * the current node.
++		 */
++		read_lock(&zpool->tree_lock);
++		next_node = rb_next(node);
++		next_znode = NULL;
++		if (next_node) {
++			next_znode = rb_entry(next_node,
++				struct zcache_inode_rb, rb_node);
++			kref_get(&next_znode->refcount);
++		}
++		read_unlock(&zpool->tree_lock);
++
++		spin_lock(&znode->tree_lock);
++		/* Free 'pages_to_free' non-zero pages in the current node */
++		zcache_free_inode_pages(znode, pages_to_free,
++					ZCACHE_TAG_NONZERO_PAGE);
++		if (zcache_inode_is_empty(znode))
++			zcache_inode_isolate(znode);
++		spin_unlock(&znode->tree_lock);
++
++		kref_put(&znode->refcount, zcache_inode_release);
++
++		/* Avoid busy-looping */
++		cond_resched();
++
++		node = next_node;
++		znode = next_znode;
++	} while (znode);
++}
++
++#ifdef CONFIG_SYSFS
++
++#define ZCACHE_POOL_ATTR_RO(_name) \
++	static struct kobj_attribute _name##_attr = __ATTR_RO(_name)
++
++#define ZCACHE_POOL_ATTR(_name) \
++	static struct kobj_attribute _name##_attr = \
++		__ATTR(_name, 0644, _name##_show, _name##_store)
++
++static struct zcache_pool *zcache_kobj_to_pool(struct kobject *kobj)
++{
++	int i;
++
++	spin_lock(&zcache->pool_lock);
++	for (i = 0; i < MAX_ZCACHE_POOLS; i++)
++		if (zcache->pools[i]->kobj == kobj)
++			break;
++	spin_unlock(&zcache->pool_lock);
++
++	return zcache->pools[i];
++}
++
++static ssize_t zero_pages_show(struct kobject *kobj,
++				struct kobj_attribute *attr, char *buf)
++{
++	struct zcache_pool *zpool = zcache_kobj_to_pool(kobj);
++
++	return sprintf(buf, "%llu\n", zcache_get_stat(
++			zpool, ZPOOL_STAT_PAGES_ZERO));
++}
++ZCACHE_POOL_ATTR_RO(zero_pages);
++
++static ssize_t orig_data_size_show(struct kobject *kobj,
++			       struct kobj_attribute *attr, char *buf)
++{
++	struct zcache_pool *zpool = zcache_kobj_to_pool(kobj);
++
++	return sprintf(buf, "%llu\n", zcache_get_stat(
++			zpool, ZPOOL_STAT_PAGES_STORED) << PAGE_SHIFT);
++}
++ZCACHE_POOL_ATTR_RO(orig_data_size);
++
++static ssize_t compr_data_size_show(struct kobject *kobj,
++			       struct kobj_attribute *attr, char *buf)
++{
++	struct zcache_pool *zpool = zcache_kobj_to_pool(kobj);
++
++	return sprintf(buf, "%llu\n", zcache_get_stat(
++			zpool, ZPOOL_STAT_COMPR_SIZE));
++}
++ZCACHE_POOL_ATTR_RO(compr_data_size);
++
++/*
++ * Total memory used by this pool, including allocator fragmentation
++ * and metadata overhead.
++ */
++static ssize_t mem_used_total_show(struct kobject *kobj,
++			       struct kobj_attribute *attr, char *buf)
++{
++	struct zcache_pool *zpool = zcache_kobj_to_pool(kobj);
++
++	return sprintf(buf, "%llu\n", xv_get_total_size_bytes(zpool->xv_pool));
++}
++ZCACHE_POOL_ATTR_RO(mem_used_total);
++
++static void memlimit_sysfs_common(struct kobject *kobj, u64 *value, int store)
++{
++	struct zcache_pool *zpool = zcache_kobj_to_pool(kobj);
++
++	if (store) {
++		zcache_set_memlimit(zpool, *value);
++		if (zcache_count_excess_pages(zpool))
++			zcache_shrink_pool(zpool);
++	} else {
++		*value = zcache_get_memlimit(zpool);
++	}
++}
++
++static ssize_t memlimit_store(struct kobject *kobj,
++		struct kobj_attribute *attr, const char *buf, size_t len)
++{
++	int ret;
++	u64 memlimit;
++
++	ret = strict_strtoull(buf, 10, &memlimit);
++	if (ret)
++		return ret;
++
++	memlimit &= PAGE_MASK;
++	memlimit_sysfs_common(kobj, &memlimit, 1);
++
++	return len;
++}
++
++static ssize_t memlimit_show(struct kobject *kobj,
++			struct kobj_attribute *attr, char *buf)
++{
++	u64 memlimit;
++
++	memlimit_sysfs_common(kobj, &memlimit, 0);
++	return sprintf(buf, "%llu\n", memlimit);
++}
++ZCACHE_POOL_ATTR(memlimit);
++
++static struct attribute *zcache_pool_attrs[] = {
++	&zero_pages_attr.attr,
++	&orig_data_size_attr.attr,
++	&compr_data_size_attr.attr,
++	&mem_used_total_attr.attr,
++	&memlimit_attr.attr,
++	NULL,
++};
++
++static struct attribute_group zcache_pool_attr_group = {
++	.attrs = zcache_pool_attrs,
++};
++#endif	/* CONFIG_SYSFS */
++
++/*
++ * cleancache_ops.init_fs
++ *
++ * Called whenever a cleancache aware filesystem is mounted.
++ * Creates and initializes a new zcache pool and inserts it
++ * in zcache pool list.
++ *
++ * Returns pool id on success, negative error code on failure.
++ */
++static int zcache_init_fs(size_t pagesize)
++{
++	int ret, pool_id;
++	struct zcache_pool *zpool = NULL;
++
++	/*
++	 * pagesize parameter probably makes sense only for Xen's
++	 * cleancache_ops provider which runs inside guests, passing
++	 * pages to the host. Since a guest might have a different
++	 * page size than that of host (really?), they need to pass
++	 * around this value.
++	 *
++	 * However, zcache runs on the host (or natively), so there
++	 * is no point of different page sizes.
++	 */
++	if (pagesize != PAGE_SIZE) {
++		pr_info("Unsupported page size: %zu", pagesize);
++		ret = -EINVAL;
++		goto out;
++	}
++
++	pool_id = zcache_create_pool();
++	if (pool_id < 0) {
++		pr_info("Failed to create new pool\n");
++		ret = -ENOMEM;
++		goto out;
++	}
++	zpool = zcache->pools[pool_id];
++
++#ifdef CONFIG_SYSFS
++	snprintf(zpool->name, MAX_ZPOOL_NAME_LEN, "pool%d", pool_id);
++
++	/* Create /sys/kernel/mm/zcache/pool<id> (<id> = 0, 1, ...) */
++	zpool->kobj = kobject_create_and_add(zpool->name, zcache->kobj);
++	if (!zpool->kobj) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	/* Create various nodes under /sys/.../pool<id>/ */
++	ret = sysfs_create_group(zpool->kobj, &zcache_pool_attr_group);
++	if (ret) {
++		kobject_put(zpool->kobj);
++		goto out;
++	}
++#endif
++
++	ret = pool_id;	/* success */
++
++out:
++	if (ret < 0)	/* failure */
++		zcache_destroy_pool(zpool);
++
++	return ret;
++}
++
++/*
++ * cleancache_ops.init_shared_fs
++ *
++ * Called whenever a cleancache aware clustered filesystem is mounted.
++ */
++static int zcache_init_shared_fs(char *uuid, size_t pagesize)
++{
++	/*
++	 * In Xen's implementation, cleancache_ops provider runs in each
++	 * guest, sending/receiving pages to/from the host. For each guest
++	 * that participates in ocfs2 like cluster, the client passes the
++	 * same uuid to the host. This allows the host to create a single
++	 * "shared pool" for all such guests to allow for feature like
++	 * data de-duplication among these guests.
++	 *
++	 * Whereas, zcache run directly on the host (or natively). So, for
++	 * any shared resource like ocfs2 mount point on host, it implicitly
++	 * creates a single pool. Thus, we can simply ignore this 'uuid' and
++	 * treat it like a usual filesystem.
++	 */
++	return zcache_init_fs(pagesize);
++}
++
++/*
++ * cleancache_ops.get_page
++ *
++ * Locates stored zcache page using <pool_id, inode_no, index>.
++ * If found, copies it to the given output page 'page' and frees
++ * zcache copy of the same.
++ *
++ * Returns 0 on success, negative error code on failure.
++ */
++static int zcache_get_page(int pool_id, ino_t inode_no,
++			pgoff_t index, struct page *page)
++{
++	int ret;
++	void *nodeptr;
++	size_t clen;
++	unsigned long flags;
++
++	u32 offset;
++	struct page *src_page;
++	unsigned char *src_data, *dest_data;
++
++	struct zcache_inode_rb *znode;
++	struct zcache_objheader *zheader;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	znode = zcache_find_inode(zpool, inode_no);
++	if (!znode) {
++		ret = -EFAULT;
++		goto out;
++	}
++
++	BUG_ON(znode->inode_no != inode_no);
++
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	nodeptr = radix_tree_delete(&znode->page_tree, index);
++	if (zcache_inode_is_empty(znode))
++		zcache_inode_isolate(znode);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++
++	kref_put(&znode->refcount, zcache_inode_release);
++
++	if (!nodeptr) {
++		ret = -EFAULT;
++		goto out;
++	}
++
++	if (zcache_is_zero_page(nodeptr)) {
++		zcache_handle_zero_page(page);
++		goto out_free;
++	}
++
++	clen = PAGE_SIZE;
++	zcache_ptr_to_xv_location(nodeptr, &src_page, &offset);
++
++	src_data = kmap_atomic(src_page, KM_USER0) + offset;
++	zheader = (struct zcache_objheader *)src_data;
++	BUG_ON(zheader->index != index);
++
++	dest_data = kmap_atomic(page, KM_USER1);
++
++	ret = lzo1x_decompress_safe(src_data + sizeof(*zheader),
++			xv_get_object_size(src_data) - sizeof(*zheader),
++			dest_data, &clen);
++
++	kunmap_atomic(src_data, KM_USER0);
++	kunmap_atomic(dest_data, KM_USER1);
++
++	/* Failure here means bug in LZO! */
++	if (unlikely(ret != LZO_E_OK))
++		goto out_free;
++
++	flush_dcache_page(page);
++
++out_free:
++	zcache_free_page(zpool, nodeptr);
++	ret = 0; /* success */
++
++out:
++	return ret;
++}
++
++/*
++ * cleancache_ops.put_page
++ *
++ * Copies given input page 'page' to a newly allocated page.
++ * If allocation is successful, inserts it at zcache location
++ * <pool_id, inode_no, index>.
++ */
++static void zcache_put_page(int pool_id, ino_t inode_no,
++			pgoff_t index, struct page *page)
++{
++	int ret, is_zero;
++	unsigned long flags;
++	struct page *zpage;
++	struct zcache_inode_rb *znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	/*
++	 * Check if the page is zero-filled. We do not allocate any
++	 * memory for such pages and hence they do not contribute
++	 * towards pool's memory usage. So, we can keep accepting
++	 * such pages even after we have reached memlimit.
++	 */
++	void *src_data = kmap_atomic(page, KM_USER0);
++	is_zero = zcache_page_zero_filled(src_data);
++	kunmap_atomic(src_data, KM_USER0);
++	if (is_zero)
++		goto out_find_store;
++
++	/*
++	 * Incrementing local compr_size before summing it from
++	 * all CPUs makes sure we do not end up storing pages in
++	 * excess of memlimit. In case of failure, we revert back
++	 * this local increment.
++	 */
++	zcache_add_stat(zpool, ZPOOL_STAT_COMPR_SIZE, zcache_max_page_size);
++
++	/*
++	 * memlimit can be changed any time by user using sysfs. If
++	 * it is set to a value smaller than current number of pages
++	 * stored, then excess pages are freed synchronously when this
++	 * sysfs event occurs.
++	 */
++	if (zcache_get_stat(zpool, ZPOOL_STAT_COMPR_SIZE) >
++			zcache_get_memlimit(zpool)) {
++		zcache_add_stat(zpool, ZPOOL_STAT_COMPR_SIZE,
++				-zcache_max_page_size);
++		return;
++	}
++
++out_find_store:
++	znode = zcache_find_inode(zpool, inode_no);
++	if (!znode) {
++		znode = zcache_inode_create(pool_id, inode_no);
++		if (unlikely(!znode)) {
++			zcache_add_stat(zpool, ZPOOL_STAT_COMPR_SIZE,
++					-zcache_max_page_size);
++			return;
++		}
++	}
++
++	/* Free page that might already be present at this index */
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	zpage = radix_tree_delete(&znode->page_tree, index);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++	if (zpage)
++		zcache_free_page(zpool, zpage);
++
++	ret = zcache_store_page(znode, index, page, is_zero);
++	if (unlikely(ret)) {
++		zcache_add_stat(zpool, ZPOOL_STAT_COMPR_SIZE,
++				-zcache_max_page_size);
++		/*
++		 * Its possible that racing zcache get/flush could not
++		 * isolate this node since we held a reference to it.
++		 */
++		spin_lock_irqsave(&znode->tree_lock, flags);
++		if (zcache_inode_is_empty(znode))
++			zcache_inode_isolate(znode);
++		spin_unlock_irqrestore(&znode->tree_lock, flags);
++	}
++
++	kref_put(&znode->refcount, zcache_inode_release);
++}
++
++/*
++ * cleancache_ops.flush_page
++ *
++ * Locates and fees page at zcache location <pool_id, inode_no, index>
++ */
++static void zcache_flush_page(int pool_id, ino_t inode_no, pgoff_t index)
++{
++	unsigned long flags;
++	struct page *page;
++	struct zcache_inode_rb *znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	znode = zcache_find_inode(zpool, inode_no);
++	if (!znode)
++		return;
++
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	page = radix_tree_delete(&znode->page_tree, index);
++	if (zcache_inode_is_empty(znode))
++		zcache_inode_isolate(znode);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++
++	kref_put(&znode->refcount, zcache_inode_release);
++
++	zcache_free_page(zpool, page);
++}
++
++/*
++ * cleancache_ops.flush_inode
++ *
++ * Free all pages associated with the given inode.
++ */
++static void zcache_flush_inode(int pool_id, ino_t inode_no)
++{
++	unsigned long flags;
++	struct zcache_pool *zpool;
++	struct zcache_inode_rb *znode;
++
++	zpool = zcache->pools[pool_id];
++
++	znode = zcache_find_inode(zpool, inode_no);
++	if (!znode)
++		return;
++
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	zcache_free_inode_pages(znode, UINT_MAX, ZCACHE_TAG_INVALID);
++	if (zcache_inode_is_empty(znode))
++		zcache_inode_isolate(znode);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++
++	kref_put(&znode->refcount, zcache_inode_release);
++}
++
++/*
++ * cleancache_ops.flush_fs
++ *
++ * Called whenever a cleancache aware filesystem is unmounted.
++ * Frees all metadata and data pages in corresponding zcache pool.
++ */
++static void zcache_flush_fs(int pool_id)
++{
++	struct rb_node *node;
++	struct zcache_inode_rb *znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++#ifdef CONFIG_SYSFS
++	/* Remove per-pool sysfs entries */
++	sysfs_remove_group(zpool->kobj, &zcache_pool_attr_group);
++	kobject_put(zpool->kobj);
++#endif
++
++	/*
++	 * At this point, there is no active I/O on this filesystem.
++	 * So we can free all its pages without holding any locks.
++	 */
++	node = rb_first(&zpool->inode_tree);
++	while (node) {
++		znode = rb_entry(node, struct zcache_inode_rb, rb_node);
++		node = rb_next(node);
++		zcache_free_inode_pages(znode, UINT_MAX, ZCACHE_TAG_INVALID);
++		rb_erase(&znode->rb_node, &zpool->inode_tree);
++		kfree(znode);
++	}
++
++	zcache_destroy_pool(zpool);
++}
++
++/*
++ * Callback for CPU hotplug events. Allocates percpu compression buffers.
++ */
++static int zcache_cpu_notify(struct notifier_block *nb, unsigned long action,
++			void *pcpu)
++{
++	int cpu = (long)pcpu;
++
++	switch (action) {
++	case CPU_UP_PREPARE:
++		per_cpu(compress_buffer, cpu) = (void *)__get_free_pages(
++					GFP_KERNEL | __GFP_ZERO, 1);
++		per_cpu(compress_workmem, cpu) = kzalloc(
++					LZO1X_MEM_COMPRESS, GFP_KERNEL);
++
++		break;
++	case CPU_DEAD:
++	case CPU_UP_CANCELED:
++		free_pages((unsigned long)(per_cpu(compress_buffer, cpu)), 1);
++		per_cpu(compress_buffer, cpu) = NULL;
++
++		kfree(per_cpu(compress_buffer, cpu));
++		per_cpu(compress_buffer, cpu) = NULL;
++
++		break;
++	default:
++		break;
++	}
++
++	return NOTIFY_OK;
++}
++
++static struct notifier_block zcache_cpu_nb = {
++	.notifier_call = zcache_cpu_notify
++};
++
++static int __init zcache_init(void)
++{
++	int ret = -ENOMEM;
++	unsigned int cpu;
++
++	struct cleancache_ops ops = {
++		.init_fs = zcache_init_fs,
++		.init_shared_fs = zcache_init_shared_fs,
++		.get_page = zcache_get_page,
++		.put_page = zcache_put_page,
++		.flush_page = zcache_flush_page,
++		.flush_inode = zcache_flush_inode,
++		.flush_fs = zcache_flush_fs,
++	};
++
++	zcache = kzalloc(sizeof(*zcache), GFP_KERNEL);
++	if (!zcache)
++		goto out;
++
++	ret = register_cpu_notifier(&zcache_cpu_nb);
++	if (ret)
++		goto out;
++
++	for_each_online_cpu(cpu) {
++		void *pcpu = (void *)(long)cpu;
++		zcache_cpu_notify(&zcache_cpu_nb, CPU_UP_PREPARE, pcpu);
++	}
++
++#ifdef CONFIG_SYSFS
++	/* Create /sys/kernel/mm/zcache/ */
++	zcache->kobj = kobject_create_and_add("zcache", mm_kobj);
++	if (!zcache->kobj)
++		goto out;
++#endif
++
++	spin_lock_init(&zcache->pool_lock);
++	cleancache_ops = ops;
++
++	ret = 0; /* success */
++
++out:
++	if (ret)
++		kfree(zcache);
++
++	return 0;
++}
++
++module_init(zcache_init);
+diff --git a/drivers/staging/zram/zcache_drv.h b/drivers/staging/zram/zcache_drv.h
+new file mode 100644
+index 0000000..7283116
+--- /dev/null
++++ b/drivers/staging/zram/zcache_drv.h
+@@ -0,0 +1,90 @@
++/*
++ * Page cache compression support
++ *
++ * Copyright (C) 2010  Nitin Gupta
++ * Released under the terms of GNU General Public License Version 2.0
++ *
++ * Project home: http://compcache.googlecode.com/
++ */
++
++#ifndef _ZCACHE_DRV_H_
++#define _ZCACHE_DRV_H_
++
++#include <linux/kref.h>
++#include <linux/radix-tree.h>
++#include <linux/rbtree.h>
++#include <linux/rwlock.h>
++#include <linux/spinlock.h>
++#include <linux/seqlock.h>
++#include <linux/types.h>
++
++#define MAX_ZCACHE_POOLS	32	/* arbitrary */
++#define MAX_ZPOOL_NAME_LEN	8	/* "pool"+id (shown in sysfs) */
++
++enum zcache_pool_stats_index {
++	ZPOOL_STAT_PAGES_ZERO,
++	ZPOOL_STAT_PAGES_STORED,
++	ZPOOL_STAT_COMPR_SIZE,
++	ZPOOL_STAT_NSTATS,
++};
++
++/* Radix-tree tags */
++enum zcache_tag {
++	ZCACHE_TAG_NONZERO_PAGE,
++	ZCACHE_TAG_UNUSED,
++	ZCACHE_TAG_INVALID
++};
++
++/* Default zcache per-pool memlimit: 10% of total RAM */
++static const unsigned zcache_pool_default_memlimit_perc_ram = 10;
++
++ /* We only keep pages that compress to less than this size */
++static const int zcache_max_page_size = PAGE_SIZE / 2;
++
++/* Stored in the beginning of each compressed object */
++struct zcache_objheader {
++	unsigned long index;
++};
++
++/* Red-Black tree node. Maps inode to its page-tree */
++struct zcache_inode_rb {
++	struct radix_tree_root page_tree; /* maps inode index to page */
++	spinlock_t tree_lock;		/* protects page_tree */
++	struct kref refcount;
++	struct rb_node rb_node;
++	ino_t inode_no;
++	struct zcache_pool *pool;	/* back-reference to parent pool */
++};
++
++struct zcache_pool_stats_cpu {
++	s64 count[ZPOOL_STAT_NSTATS];
++	struct u64_stats_sync syncp;
++};
++
++/* One zcache pool per (cleancache aware) filesystem mount instance */
++struct zcache_pool {
++	struct rb_root inode_tree;	/* maps inode number to page tree */
++	rwlock_t tree_lock;		/* protects inode_tree */
++
++	seqlock_t memlimit_lock;	/* protects memlimit */
++	u64 memlimit;			/* bytes */
++
++	struct xv_pool *xv_pool;	/* xvmalloc pool */
++	struct zcache_pool_stats_cpu *stats;	/* percpu stats */
++#ifdef CONFIG_SYSFS
++	unsigned char name[MAX_ZPOOL_NAME_LEN];
++	struct kobject *kobj;		/* sysfs */
++#endif
++};
++
++/* Manage all zcache pools */
++struct zcache {
++	struct zcache_pool *pools[MAX_ZCACHE_POOLS];
++	u32 num_pools;		/* current no. of zcache pools */
++	spinlock_t pool_lock;	/* protects pools[] and num_pools */
++#ifdef CONFIG_SYSFS
++	struct kobject *kobj;	/* sysfs */
++#endif
++};
++
++#endif
+diff --git a/drivers/staging/zram/zram.txt b/drivers/staging/zram/zram.txt
+new file mode 100644
+index 0000000..520edc1
+--- /dev/null
++++ b/drivers/staging/zram/zram.txt
+@@ -0,0 +1,62 @@
++zram: Compressed RAM based block devices
++----------------------------------------
++
++Project home: http://compcache.googlecode.com/
++
++* Introduction
++
++The zram module creates RAM based block devices: /dev/ramX (X = 0, 1, ...).
++Pages written to these disks are compressed and stored in memory itself.
++These disks allow very fast I/O and compression provides good amounts of
++memory savings.
++
++See project home for use cases, performance numbers and a lot more.
++
++Individual zram devices are configured and initialized using zramconfig
++userspace utility as shown in examples below. See zramconfig man page for
++more details.
++
++* Usage
++
++Following shows a typical sequence of steps for using zram.
++
++1) Load Modules:
++	modprobe zram num_devices=4
++	This creates 4 (uninitialized) devices: /dev/zram{0,1,2,3}
++	(num_devices parameter is optional. Default: 1)
++
++2) Initialize:
++	Use zramconfig utility to configure and initialize individual
++	zram devices. For example:
++	zramconfig /dev/zram0 --init # uses default value of disksize_kb
++	zramconfig /dev/zram1 --disksize_kb=102400 # 100MB /dev/zram1
++
++	*See zramconfig man page for more details and examples*
++
++3) Activate:
++	mkswap /dev/zram0
++	swapon /dev/zram0
++
++	mkfs.ext4 /dev/zram1
++	mount /dev/zram1 /tmp
++
++4) Stats:
++	zramconfig /dev/zram0 --stats
++	zramconfig /dev/zram1 --stats
++
++5) Deactivate:
++	swapoff /dev/zram0
++	umount /dev/zram1
++
++6) Reset:
++	zramconfig /dev/zram0 --reset
++	zramconfig /dev/zram1 --reset
++	(This frees memory allocated for the given device).
++
++
++Please report any problems at:
++ - Mailing list: linux-mm-cc at laptop dot org
++ - Issue tracker: http://code.google.com/p/compcache/issues/list
++
++Nitin Gupta
++ngupta@vflare.org
+diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
+new file mode 100644
+index 0000000..77d4d71
+--- /dev/null
++++ b/drivers/staging/zram/zram_drv.c
+@@ -0,0 +1,805 @@
++/*
++ * Compressed RAM block device
++ *
++ * Copyright (C) 2008, 2009, 2010  Nitin Gupta
++ *
++ * This code is released using a dual license strategy: BSD/GPL
++ * You can choose the licence that better fits your requirements.
++ *
++ * Released under the terms of 3-clause BSD License
++ * Released under the terms of GNU General Public License Version 2.0
++ *
++ * Project home: http://compcache.googlecode.com
++ */
++
++#define KMSG_COMPONENT "zram"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/bio.h>
++#include <linux/bitops.h>
++#include <linux/blkdev.h>
++#include <linux/buffer_head.h>
++#include <linux/device.h>
++#include <linux/genhd.h>
++#include <linux/highmem.h>
++#include <linux/slab.h>
++#include <linux/lzo.h>
++#include <linux/string.h>
++#include <linux/vmalloc.h>
++
++#include "zram_drv.h"
++
++/* Globals */
++static int zram_major;
++static struct zram *devices;
++
++/* Module params (documentation at end) */
++static unsigned int num_devices;
++
++static int zram_test_flag(struct zram *zram, u32 index,
++			enum zram_pageflags flag)
++{
++	return zram->table[index].flags & BIT(flag);
++}
++
++static void zram_set_flag(struct zram *zram, u32 index,
++			enum zram_pageflags flag)
++{
++	zram->table[index].flags |= BIT(flag);
++}
++
++static void zram_clear_flag(struct zram *zram, u32 index,
++			enum zram_pageflags flag)
++{
++	zram->table[index].flags &= ~BIT(flag);
++}
++
++static int page_zero_filled(void *ptr)
++{
++	unsigned int pos;
++	unsigned long *page;
++
++	page = (unsigned long *)ptr;
++
++	for (pos = 0; pos != PAGE_SIZE / sizeof(*page); pos++) {
++		if (page[pos])
++			return 0;
++	}
++
++	return 1;
++}
++
++static void zram_set_disksize(struct zram *zram, size_t totalram_bytes)
++{
++	if (!zram->disksize) {
++		pr_info(
++		"disk size not provided. You can use disksize_kb module "
++		"param to specify size.\nUsing default: (%u%% of RAM).\n",
++		default_disksize_perc_ram
++		);
++		zram->disksize = default_disksize_perc_ram *
++					(totalram_bytes / 100);
++	}
++
++	if (zram->disksize > 2 * (totalram_bytes)) {
++		pr_info(
++		"There is little point creating a zram of greater than "
++		"twice the size of memory since we expect a 2:1 compression "
++		"ratio. Note that zram uses about 0.1%% of the size of "
++		"the disk when not in use so a huge zram is "
++		"wasteful.\n"
++		"\tMemory Size: %zu kB\n"
++		"\tSize you selected: %zu kB\n"
++		"Continuing anyway ...\n",
++		totalram_bytes >> 10, zram->disksize
++		);
++	}
++
++	zram->disksize &= PAGE_MASK;
++}
++
++static void zram_ioctl_get_stats(struct zram *zram,
++			struct zram_ioctl_stats *s)
++{
++	s->disksize = zram->disksize;
++
++#if defined(CONFIG_ZRAM_STATS)
++	{
++	struct zram_stats *rs = &zram->stats;
++	size_t succ_writes, mem_used;
++	unsigned int good_compress_perc = 0, no_compress_perc = 0;
++
++	mem_used = xv_get_total_size_bytes(zram->mem_pool)
++			+ (rs->pages_expand << PAGE_SHIFT);
++	succ_writes = zram_stat64_read(zram, &rs->num_writes) -
++			zram_stat64_read(zram, &rs->failed_writes);
++
++	if (succ_writes && rs->pages_stored) {
++		good_compress_perc = rs->good_compress * 100
++					/ rs->pages_stored;
++		no_compress_perc = rs->pages_expand * 100
++					/ rs->pages_stored;
++	}
++
++	s->num_reads = zram_stat64_read(zram, &rs->num_reads);
++	s->num_writes = zram_stat64_read(zram, &rs->num_writes);
++	s->failed_reads = zram_stat64_read(zram, &rs->failed_reads);
++	s->failed_writes = zram_stat64_read(zram, &rs->failed_writes);
++	s->invalid_io = zram_stat64_read(zram, &rs->invalid_io);
++	s->notify_free = zram_stat64_read(zram, &rs->notify_free);
++	s->pages_zero = rs->pages_zero;
++
++	s->good_compress_pct = good_compress_perc;
++	s->pages_expand_pct = no_compress_perc;
++
++	s->pages_stored = rs->pages_stored;
++	s->pages_used = mem_used >> PAGE_SHIFT;
++	s->orig_data_size = rs->pages_stored << PAGE_SHIFT;
++	s->compr_data_size = rs->compr_size;
++	s->mem_used_total = mem_used;
++	}
++#endif /* CONFIG_ZRAM_STATS */
++}
++
++static void zram_free_page(struct zram *zram, size_t index)
++{
++	u32 clen;
++	void *obj;
++
++	struct page *page = zram->table[index].page;
++	u32 offset = zram->table[index].offset;
++
++	if (unlikely(!page)) {
++		/*
++		 * No memory is allocated for zero filled pages.
++		 * Simply clear zero page flag.
++		 */
++		if (zram_test_flag(zram, index, ZRAM_ZERO)) {
++			zram_clear_flag(zram, index, ZRAM_ZERO);
++			zram_stat_dec(&zram->stats.pages_zero);
++		}
++		return;
++	}
++
++	if (unlikely(zram_test_flag(zram, index, ZRAM_UNCOMPRESSED))) {
++		clen = PAGE_SIZE;
++		__free_page(page);
++		zram_clear_flag(zram, index, ZRAM_UNCOMPRESSED);
++		zram_stat_dec(&zram->stats.pages_expand);
++		goto out;
++	}
++
++	obj = kmap_atomic(page, KM_USER0) + offset;
++	clen = xv_get_object_size(obj) - sizeof(struct zobj_header);
++	kunmap_atomic(obj, KM_USER0);
++
++	xv_free(zram->mem_pool, page, offset);
++	if (clen <= PAGE_SIZE / 2)
++		zram_stat_dec(&zram->stats.good_compress);
++
++out:
++	zram->stats.compr_size -= clen;
++	zram_stat_dec(&zram->stats.pages_stored);
++
++	zram->table[index].page = NULL;
++	zram->table[index].offset = 0;
++}
++
++static void handle_zero_page(struct page *page)
++{
++	void *user_mem;
++
++	user_mem = kmap_atomic(page, KM_USER0);
++	memset(user_mem, 0, PAGE_SIZE);
++	kunmap_atomic(user_mem, KM_USER0);
++
++	flush_dcache_page(page);
++}
++
++static void handle_uncompressed_page(struct zram *zram,
++				struct page *page, u32 index)
++{
++	unsigned char *user_mem, *cmem;
++
++	user_mem = kmap_atomic(page, KM_USER0);
++	cmem = kmap_atomic(zram->table[index].page, KM_USER1) +
++			zram->table[index].offset;
++
++	memcpy(user_mem, cmem, PAGE_SIZE);
++	kunmap_atomic(user_mem, KM_USER0);
++	kunmap_atomic(cmem, KM_USER1);
++
++	flush_dcache_page(page);
++}
++
++static int zram_read(struct zram *zram, struct bio *bio)
++{
++
++	int i;
++	u32 index;
++	struct bio_vec *bvec;
++
++	zram_stat64_inc(zram, &zram->stats.num_reads);
++
++	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
++	bio_for_each_segment(bvec, bio, i) {
++		int ret;
++		size_t clen;
++		struct page *page;
++		struct zobj_header *zheader;
++		unsigned char *user_mem, *cmem;
++
++		page = bvec->bv_page;
++
++		if (zram_test_flag(zram, index, ZRAM_ZERO)) {
++			handle_zero_page(page);
++			continue;
++		}
++
++		/* Requested page is not present in compressed area */
++		if (unlikely(!zram->table[index].page)) {
++			pr_debug("Read before write: sector=%lu, size=%u",
++				(ulong)(bio->bi_sector), bio->bi_size);
++			/* Do nothing */
++			continue;
++		}
++
++		/* Page is stored uncompressed since it's incompressible */
++		if (unlikely(zram_test_flag(zram, index, ZRAM_UNCOMPRESSED))) {
++			handle_uncompressed_page(zram, page, index);
++			continue;
++		}
++
++		user_mem = kmap_atomic(page, KM_USER0);
++		clen = PAGE_SIZE;
++
++		cmem = kmap_atomic(zram->table[index].page, KM_USER1) +
++				zram->table[index].offset;
++
++		ret = lzo1x_decompress_safe(
++			cmem + sizeof(*zheader),
++			xv_get_object_size(cmem) - sizeof(*zheader),
++			user_mem, &clen);
++
++		kunmap_atomic(user_mem, KM_USER0);
++		kunmap_atomic(cmem, KM_USER1);
++
++		/* Should NEVER happen. Return bio error if it does. */
++		if (unlikely(ret != LZO_E_OK)) {
++			pr_err("Decompression failed! err=%d, page=%u\n",
++				ret, index);
++			zram_stat64_inc(zram, &zram->stats.failed_reads);
++			goto out;
++		}
++
++		flush_dcache_page(page);
++		index++;
++	}
++
++	set_bit(BIO_UPTODATE, &bio->bi_flags);
++	bio_endio(bio, 0);
++	return 0;
++
++out:
++	bio_io_error(bio);
++	return 0;
++}
++
++static int zram_write(struct zram *zram, struct bio *bio)
++{
++	int i;
++	u32 index;
++	struct bio_vec *bvec;
++
++	zram_stat64_inc(zram, &zram->stats.num_writes);
++
++	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
++
++	bio_for_each_segment(bvec, bio, i) {
++		int ret;
++		u32 offset;
++		size_t clen;
++		struct zobj_header *zheader;
++		struct page *page, *page_store;
++		unsigned char *user_mem, *cmem, *src;
++
++		page = bvec->bv_page;
++		src = zram->compress_buffer;
++
++		/*
++		 * System overwrites unused sectors. Free memory associated
++		 * with this sector now.
++		 */
++		if (zram->table[index].page ||
++				zram_test_flag(zram, index, ZRAM_ZERO))
++			zram_free_page(zram, index);
++
++		mutex_lock(&zram->lock);
++
++		user_mem = kmap_atomic(page, KM_USER0);
++		if (page_zero_filled(user_mem)) {
++			kunmap_atomic(user_mem, KM_USER0);
++			mutex_unlock(&zram->lock);
++			zram_stat_inc(&zram->stats.pages_zero);
++			zram_set_flag(zram, index, ZRAM_ZERO);
++			continue;
++		}
++
++		ret = lzo1x_1_compress(user_mem, PAGE_SIZE, src, &clen,
++					zram->compress_workmem);
++
++		kunmap_atomic(user_mem, KM_USER0);
++
++		if (unlikely(ret != LZO_E_OK)) {
++			mutex_unlock(&zram->lock);
++			pr_err("Compression failed! err=%d\n", ret);
++			zram_stat64_inc(zram, &zram->stats.failed_writes);
++			goto out;
++		}
++
++		/*
++		 * Page is incompressible. Store it as-is (uncompressed)
++		 * since we do not want to return too many disk write
++		 * errors which has side effect of hanging the system.
++		 */
++		if (unlikely(clen > max_zpage_size)) {
++			clen = PAGE_SIZE;
++			page_store = alloc_page(GFP_NOIO | __GFP_HIGHMEM);
++			if (unlikely(!page_store)) {
++				mutex_unlock(&zram->lock);
++				pr_info("Error allocating memory for "
++					"incompressible page: %u\n", index);
++				zram_stat64_inc(zram,
++					&zram->stats.failed_writes);
++				goto out;
++			}
++
++			offset = 0;
++			zram_set_flag(zram, index, ZRAM_UNCOMPRESSED);
++			zram_stat_inc(&zram->stats.pages_expand);
++			zram->table[index].page = page_store;
++			src = kmap_atomic(page, KM_USER0);
++			goto memstore;
++		}
++
++		if (xv_malloc(zram->mem_pool, clen + sizeof(*zheader),
++				&zram->table[index].page, &offset,
++				GFP_NOIO | __GFP_HIGHMEM)) {
++			mutex_unlock(&zram->lock);
++			pr_info("Error allocating memory for compressed "
++				"page: %u, size=%zu\n", index, clen);
++			zram_stat64_inc(zram, &zram->stats.failed_writes);
++			goto out;
++		}
++
++memstore:
++		zram->table[index].offset = offset;
++
++		cmem = kmap_atomic(zram->table[index].page, KM_USER1) +
++				zram->table[index].offset;
++
++#if 0
++		/* Back-reference needed for memory defragmentation */
++		if (!zram_test_flag(zram, index, ZRAM_UNCOMPRESSED)) {
++			zheader = (struct zobj_header *)cmem;
++			zheader->table_idx = index;
++			cmem += sizeof(*zheader);
++		}
++#endif
++
++		memcpy(cmem, src, clen);
++
++		kunmap_atomic(cmem, KM_USER1);
++		if (unlikely(zram_test_flag(zram, index, ZRAM_UNCOMPRESSED)))
++			kunmap_atomic(src, KM_USER0);
++
++		/* Update stats */
++		zram->stats.compr_size += clen;
++		zram_stat_inc(&zram->stats.pages_stored);
++		if (clen <= PAGE_SIZE / 2)
++			zram_stat_inc(&zram->stats.good_compress);
++
++		mutex_unlock(&zram->lock);
++		index++;
++	}
++
++	set_bit(BIO_UPTODATE, &bio->bi_flags);
++	bio_endio(bio, 0);
++	return 0;
++
++out:
++	bio_io_error(bio);
++	return 0;
++}
++
++/*
++ * Check if request is within bounds and page aligned.
++ */
++static inline int valid_io_request(struct zram *zram, struct bio *bio)
++{
++	if (unlikely(
++		(bio->bi_sector >= (zram->disksize >> SECTOR_SHIFT)) ||
++		(bio->bi_sector & (SECTORS_PER_PAGE - 1)) ||
++		(bio->bi_size & (PAGE_SIZE - 1)))) {
++
++		return 0;
++	}
++
++	/* I/O request is valid */
++	return 1;
++}
++
++/*
++ * Handler function for all zram I/O requests.
++ */
++static int zram_make_request(struct request_queue *queue, struct bio *bio)
++{
++	int ret = 0;
++	struct zram *zram = queue->queuedata;
++
++	if (unlikely(!zram->init_done)) {
++		bio_io_error(bio);
++		return 0;
++	}
++
++	if (!valid_io_request(zram, bio)) {
++		zram_stat64_inc(zram, &zram->stats.invalid_io);
++		bio_io_error(bio);
++		return 0;
++	}
++
++	switch (bio_data_dir(bio)) {
++	case READ:
++		ret = zram_read(zram, bio);
++		break;
++
++	case WRITE:
++		ret = zram_write(zram, bio);
++		break;
++	}
++
++	return ret;
++}
++
++static void reset_device(struct zram *zram)
++{
++	size_t index;
++
++	/* Do not accept any new I/O request */
++	zram->init_done = 0;
++
++	/* Free various per-device buffers */
++	kfree(zram->compress_workmem);
++	free_pages((unsigned long)zram->compress_buffer, 1);
++
++	zram->compress_workmem = NULL;
++	zram->compress_buffer = NULL;
++
++	/* Free all pages that are still in this zram device */
++	for (index = 0; index < zram->disksize >> PAGE_SHIFT; index++) {
++		struct page *page;
++		u16 offset;
++
++		page = zram->table[index].page;
++		offset = zram->table[index].offset;
++
++		if (!page)
++			continue;
++
++		if (unlikely(zram_test_flag(zram, index, ZRAM_UNCOMPRESSED)))
++			__free_page(page);
++		else
++			xv_free(zram->mem_pool, page, offset);
++	}
++
++	vfree(zram->table);
++	zram->table = NULL;
++
++	xv_destroy_pool(zram->mem_pool);
++	zram->mem_pool = NULL;
++
++	/* Reset stats */
++	memset(&zram->stats, 0, sizeof(zram->stats));
++
++	zram->disksize = 0;
++}
++
++static int zram_ioctl_init_device(struct zram *zram)
++{
++	int ret;
++	size_t num_pages;
++
++	if (zram->init_done) {
++		pr_info("Device already initialized!\n");
++		return -EBUSY;
++	}
++
++	zram_set_disksize(zram, totalram_pages << PAGE_SHIFT);
++
++	zram->compress_workmem = kzalloc(LZO1X_MEM_COMPRESS, GFP_KERNEL);
++	if (!zram->compress_workmem) {
++		pr_err("Error allocating compressor working memory!\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++
++	zram->compress_buffer = (void *)__get_free_pages(__GFP_ZERO, 1);
++	if (!zram->compress_buffer) {
++		pr_err("Error allocating compressor buffer space\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++
++	num_pages = zram->disksize >> PAGE_SHIFT;
++	zram->table = vmalloc(num_pages * sizeof(*zram->table));
++	if (!zram->table) {
++		pr_err("Error allocating zram address table\n");
++		/* To prevent accessing table entries during cleanup */
++		zram->disksize = 0;
++		ret = -ENOMEM;
++		goto fail;
++	}
++	memset(zram->table, 0, num_pages * sizeof(*zram->table));
++
++	set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
++
++	/* zram devices sort of resembles non-rotational disks */
++	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, zram->disk->queue);
++
++	zram->mem_pool = xv_create_pool();
++	if (!zram->mem_pool) {
++		pr_err("Error creating memory pool\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++
++	zram->init_done = 1;
++
++	pr_debug("Initialization done!\n");
++	return 0;
++
++fail:
++	reset_device(zram);
++
++	pr_err("Initialization failed: err=%d\n", ret);
++	return ret;
++}
++
++static int zram_ioctl_reset_device(struct zram *zram)
++{
++	if (zram->init_done)
++		reset_device(zram);
++
++	return 0;
++}
++
++static int zram_ioctl(struct block_device *bdev, fmode_t mode,
++			unsigned int cmd, unsigned long arg)
++{
++	int ret = 0;
++	size_t disksize_kb;
++
++	struct zram *zram = bdev->bd_disk->private_data;
++
++	switch (cmd) {
++	case ZRAMIO_SET_DISKSIZE_KB:
++		if (zram->init_done) {
++			ret = -EBUSY;
++			goto out;
++		}
++		if (copy_from_user(&disksize_kb, (void *)arg,
++						_IOC_SIZE(cmd))) {
++			ret = -EFAULT;
++			goto out;
++		}
++		zram->disksize = disksize_kb << 10;
++		pr_info("Disk size set to %zu kB\n", disksize_kb);
++		break;
++
++	case ZRAMIO_GET_STATS:
++	{
++		struct zram_ioctl_stats *stats;
++		if (!zram->init_done) {
++			ret = -ENOTTY;
++			goto out;
++		}
++		stats = kzalloc(sizeof(*stats), GFP_KERNEL);
++		if (!stats) {
++			ret = -ENOMEM;
++			goto out;
++		}
++		zram_ioctl_get_stats(zram, stats);
++		if (copy_to_user((void *)arg, stats, sizeof(*stats))) {
++			kfree(stats);
++			ret = -EFAULT;
++			goto out;
++		}
++		kfree(stats);
++		break;
++	}
++	case ZRAMIO_INIT:
++		ret = zram_ioctl_init_device(zram);
++		break;
++
++	case ZRAMIO_RESET:
++		/* Do not reset an active device! */
++		if (bdev->bd_holders) {
++			ret = -EBUSY;
++			goto out;
++		}
++
++		/* Make sure all pending I/O is finished */
++		if (bdev)
++			fsync_bdev(bdev);
++
++		ret = zram_ioctl_reset_device(zram);
++		break;
++
++	default:
++		pr_info("Invalid ioctl %u\n", cmd);
++		ret = -ENOTTY;
++	}
++
++out:
++	return ret;
++}
++
++void zram_slot_free_notify(struct block_device *bdev, unsigned long index)
++{
++	struct zram *zram;
++
++	zram = bdev->bd_disk->private_data;
++	zram_free_page(zram, index);
++	zram_stat64_inc(zram, &zram->stats.notify_free);
++}
++
++static const struct block_device_operations zram_devops = {
++	.ioctl = zram_ioctl,
++	.swap_slot_free_notify = zram_slot_free_notify,
++	.owner = THIS_MODULE
++};
++
++static int create_device(struct zram *zram, int device_id)
++{
++	int ret = 0;
++
++	mutex_init(&zram->lock);
++	spin_lock_init(&zram->stat64_lock);
++
++	zram->queue = blk_alloc_queue(GFP_KERNEL);
++	if (!zram->queue) {
++		pr_err("Error allocating disk queue for device %d\n",
++			device_id);
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	blk_queue_make_request(zram->queue, zram_make_request);
++	zram->queue->queuedata = zram;
++
++	 /* gendisk structure */
++	zram->disk = alloc_disk(1);
++	if (!zram->disk) {
++		blk_cleanup_queue(zram->queue);
++		pr_warning("Error allocating disk structure for device %d\n",
++			device_id);
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	zram->disk->major = zram_major;
++	zram->disk->first_minor = device_id;
++	zram->disk->fops = &zram_devops;
++	zram->disk->queue = zram->queue;
++	zram->disk->private_data = zram;
++	snprintf(zram->disk->disk_name, 16, "zram%d", device_id);
++
++	/* Actual capacity set using ZRAMIO_SET_DISKSIZE_KB ioctl */
++	set_capacity(zram->disk, 0);
++
++	/*
++	 * To ensure that we always get PAGE_SIZE aligned
++	 * and n*PAGE_SIZED sized I/O requests.
++	 */
++	blk_queue_physical_block_size(zram->disk->queue, PAGE_SIZE);
++	blk_queue_logical_block_size(zram->disk->queue, PAGE_SIZE);
++	blk_queue_io_min(zram->disk->queue, PAGE_SIZE);
++	blk_queue_io_opt(zram->disk->queue, PAGE_SIZE);
++
++	add_disk(zram->disk);
++
++	zram->init_done = 0;
++
++out:
++	return ret;
++}
++
++static void destroy_device(struct zram *zram)
++{
++	if (zram->disk) {
++		del_gendisk(zram->disk);
++		put_disk(zram->disk);
++	}
++
++	if (zram->queue)
++		blk_cleanup_queue(zram->queue);
++}
++
++static int __init zram_init(void)
++{
++	int ret, dev_id;
++
++	if (num_devices > max_num_devices) {
++		pr_warning("Invalid value for num_devices: %u\n",
++				num_devices);
++		ret = -EINVAL;
++		goto out;
++	}
++
++	zram_major = register_blkdev(0, "zram");
++	if (zram_major <= 0) {
++		pr_warning("Unable to get major number\n");
++		ret = -EBUSY;
++		goto out;
++	}
++
++	if (!num_devices) {
++		pr_info("num_devices not specified. Using default: 1\n");
++		num_devices = 1;
++	}
++
++	/* Allocate the device array and initialize each one */
++	pr_info("Creating %u devices ...\n", num_devices);
++	devices = kzalloc(num_devices * sizeof(struct zram), GFP_KERNEL);
++	if (!devices) {
++		ret = -ENOMEM;
++		goto unregister;
++	}
++
++	for (dev_id = 0; dev_id < num_devices; dev_id++) {
++		ret = create_device(&devices[dev_id], dev_id);
++		if (ret)
++			goto free_devices;
++	}
++
++	return 0;
++
++free_devices:
++	while (dev_id)
++		destroy_device(&devices[--dev_id]);
++unregister:
++	unregister_blkdev(zram_major, "zram");
++out:
++	return ret;
++}
++
++static void __exit zram_exit(void)
++{
++	int i;
++	struct zram *zram;
++
++	for (i = 0; i < num_devices; i++) {
++		zram = &devices[i];
++
++		destroy_device(zram);
++		if (zram->init_done)
++			reset_device(zram);
++	}
++
++	unregister_blkdev(zram_major, "zram");
++
++	kfree(devices);
++	pr_debug("Cleanup done!\n");
++}
++
++module_param(num_devices, uint, 0);
++MODULE_PARM_DESC(num_devices, "Number of zram devices");
++
++module_init(zram_init);
++module_exit(zram_exit);
++
++MODULE_LICENSE("Dual BSD/GPL");
++MODULE_AUTHOR("Nitin Gupta <ngupta@vflare.org>");
++MODULE_DESCRIPTION("Compressed RAM Block Device");
+diff --git a/drivers/staging/zram/zram_drv.h b/drivers/staging/zram/zram_drv.h
+new file mode 100644
+index 0000000..945f974
+--- /dev/null
++++ b/drivers/staging/zram/zram_drv.h
+@@ -0,0 +1,164 @@
++/*
++ * Compressed RAM block device
++ *
++ * Copyright (C) 2008, 2009, 2010  Nitin Gupta
++ *
++ * This code is released using a dual license strategy: BSD/GPL
++ * You can choose the licence that better fits your requirements.
++ *
++ * Released under the terms of 3-clause BSD License
++ * Released under the terms of GNU General Public License Version 2.0
++ *
++ * Project home: http://compcache.googlecode.com
++ */
++
++#ifndef _ZRAM_DRV_H_
++#define _ZRAM_DRV_H_
++
++#include <linux/spinlock.h>
++#include <linux/mutex.h>
++
++#include "zram_ioctl.h"
++#include "xvmalloc.h"
++
++/*
++ * Some arbitrary value. This is just to catch
++ * invalid value for num_devices module parameter.
++ */
++static const unsigned max_num_devices = 32;
++
++/*
++ * Stored at beginning of each compressed object.
++ *
++ * It stores back-reference to table entry which points to this
++ * object. This is required to support memory defragmentation.
++ */
++struct zobj_header {
++#if 0
++	u32 table_idx;
++#endif
++};
++
++/*-- Configurable parameters */
++
++/* Default zram disk size: 25% of total RAM */
++static const unsigned default_disksize_perc_ram = 25;
++
++/*
++ * Pages that compress to size greater than this are stored
++ * uncompressed in memory.
++ */
++static const unsigned max_zpage_size = PAGE_SIZE / 4 * 3;
++
++/*
++ * NOTE: max_zpage_size must be less than or equal to:
++ *   XV_MAX_ALLOC_SIZE - sizeof(struct zobj_header)
++ * otherwise, xv_malloc() would always return failure.
++ */
++
++/*-- End of configurable params */
++
++#define SECTOR_SHIFT		9
++#define SECTOR_SIZE		(1 << SECTOR_SHIFT)
++#define SECTORS_PER_PAGE_SHIFT	(PAGE_SHIFT - SECTOR_SHIFT)
++#define SECTORS_PER_PAGE	(1 << SECTORS_PER_PAGE_SHIFT)
++
++/* Flags for zram pages (table[page_no].flags) */
++enum zram_pageflags {
++	/* Page is stored uncompressed */
++	ZRAM_UNCOMPRESSED,
++
++	/* Page consists entirely of zeros */
++	ZRAM_ZERO,
++
++	__NR_ZRAM_PAGEFLAGS,
++};
++
++/*-- Data structures */
++
++/* Allocated for each disk page */
++struct table {
++	struct page *page;
++	u16 offset;
++	u8 count;	/* object ref count (not yet used) */
++	u8 flags;
++} __attribute__((aligned(4)));
++
++struct zram_stats {
++	/* basic stats */
++	size_t compr_size;	/* compressed size of pages stored -
++				 * needed to enforce memlimit */
++	/* more stats */
++#if defined(CONFIG_ZRAM_STATS)
++	u64 num_reads;		/* failed + successful */
++	u64 num_writes;		/* --do-- */
++	u64 failed_reads;	/* should NEVER! happen */
++	u64 failed_writes;	/* can happen when memory is too low */
++	u64 invalid_io;		/* non-page-aligned I/O requests */
++	u64 notify_free;	/* no. of swap slot free notifications */
++	u32 pages_zero;		/* no. of zero filled pages */
++	u32 pages_stored;	/* no. of pages currently stored */
++	u32 good_compress;	/* % of pages with compression ratio<=50% */
++	u32 pages_expand;	/* % of incompressible pages */
++#endif
++};
++
++struct zram {
++	struct xv_pool *mem_pool;
++	void *compress_workmem;
++	void *compress_buffer;
++	struct table *table;
++	spinlock_t stat64_lock;	/* protect 64-bit stats */
++	struct mutex lock;	/* protect compression buffers against
++				 * concurrent writes */
++	struct request_queue *queue;
++	struct gendisk *disk;
++	int init_done;
++	/*
++	 * This is the limit on amount of *uncompressed* worth of data
++	 * we can store in a disk.
++	 */
++	size_t disksize;	/* bytes */
++
++	struct zram_stats stats;
++};
++
++/*-- */
++
++/* Debugging and Stats */
++#if defined(CONFIG_ZRAM_STATS)
++static void zram_stat_inc(u32 *v)
++{
++	*v = *v + 1;
++}
++
++static void zram_stat_dec(u32 *v)
++{
++	*v = *v - 1;
++}
++
++static void zram_stat64_inc(struct zram *zram, u64 *v)
++{
++	spin_lock(&zram->stat64_lock);
++	*v = *v + 1;
++	spin_unlock(&zram->stat64_lock);
++}
++
++static u64 zram_stat64_read(struct zram *zram, u64 *v)
++{
++	u64 val;
++
++	spin_lock(&zram->stat64_lock);
++	val = *v;
++	spin_unlock(&zram->stat64_lock);
++
++	return val;
++}
++#else
++#define zram_stat_inc(v)
++#define zram_stat_dec(v)
++#define zram_stat64_inc(r, v)
++#define zram_stat64_read(r, v)
++#endif /* CONFIG_ZRAM_STATS */
++
++#endif
+diff --git a/drivers/staging/zram/zram_ioctl.h b/drivers/staging/zram/zram_ioctl.h
+new file mode 100644
+index 0000000..5c415fa
+--- /dev/null
++++ b/drivers/staging/zram/zram_ioctl.h
+@@ -0,0 +1,41 @@
++/*
++ * Compressed RAM block device
++ *
++ * Copyright (C) 2008, 2009, 2010  Nitin Gupta
++ *
++ * This code is released using a dual license strategy: BSD/GPL
++ * You can choose the licence that better fits your requirements.
++ *
++ * Released under the terms of 3-clause BSD License
++ * Released under the terms of GNU General Public License Version 2.0
++ *
++ * Project home: http://compcache.googlecode.com
++ */
++
++#ifndef _ZRAM_IOCTL_H_
++#define _ZRAM_IOCTL_H_
++
++struct zram_ioctl_stats {
++	u64 disksize;		/* disksize in bytes (user specifies in KB) */
++	u64 num_reads;		/* failed + successful */
++	u64 num_writes;		/* --do-- */
++	u64 failed_reads;	/* should NEVER! happen */
++	u64 failed_writes;	/* can happen when memory is too low */
++	u64 invalid_io;		/* non-page-aligned I/O requests */
++	u64 notify_free;	/* no. of swap slot free notifications */
++	u32 pages_zero;		/* no. of zero filled pages */
++	u32 good_compress_pct;	/* no. of pages with compression ratio<=50% */
++	u32 pages_expand_pct;	/* no. of incompressible pages */
++	u32 pages_stored;
++	u32 pages_used;
++	u64 orig_data_size;
++	u64 compr_data_size;
++	u64 mem_used_total;
++} __attribute__ ((packed, aligned(4)));
++
++#define ZRAMIO_SET_DISKSIZE_KB	_IOW('z', 0, size_t)
++#define ZRAMIO_GET_STATS	_IOR('z', 1, struct zram_ioctl_stats)
++#define ZRAMIO_INIT		_IO('z', 2)
++#define ZRAMIO_RESET		_IO('z', 3)
++
++#endif
+diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+index d74e6af..096f8f6 100644
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -10,6 +10,7 @@
+ #include <linux/swap.h>
+ #include <linux/writeback.h>
+ #include <linux/pagevec.h>
++#include <linux/cleancache.h>
+ #include "extent_io.h"
+ #include "extent_map.h"
+ #include "compat.h"
+@@ -2027,6 +2028,13 @@ static int __extent_read_full_page(struct extent_io_tree *tree,
+ 
+ 	set_page_extent_mapped(page);
+ 
++	if (!PageUptodate(page)) {
++		if (cleancache_get_page(page) == 0) {
++			BUG_ON(blocksize != PAGE_SIZE);
++			goto out;
++		}
++	}
++
+ 	end = page_end;
+ 	while (1) {
+ 		lock_extent(tree, start, end, GFP_NOFS);
+@@ -2151,6 +2159,7 @@ static int __extent_read_full_page(struct extent_io_tree *tree,
+ 		cur = cur + iosize;
+ 		page_offset += iosize;
+ 	}
++out:
+ 	if (!nr) {
+ 		if (!PageError(page))
+ 			SetPageUptodate(page);
+diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
+index f2393b3..01650ba 100644
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -39,6 +39,7 @@
+ #include <linux/miscdevice.h>
+ #include <linux/magic.h>
+ #include <linux/slab.h>
++#include <linux/cleancache.h>
+ #include "compat.h"
+ #include "ctree.h"
+ #include "disk-io.h"
+@@ -479,6 +480,7 @@ static int btrfs_fill_super(struct super_block *sb,
+ 	sb->s_root = root_dentry;
+ 
+ 	save_mount_options(sb, data);
++	sb->cleancache_poolid = cleancache_init_fs(PAGE_SIZE);
+ 	return 0;
+ 
+ fail_close:
+diff --git a/fs/buffer.c b/fs/buffer.c
+index d54812b..99d05a9 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -41,6 +41,7 @@
+ #include <linux/bitops.h>
+ #include <linux/mpage.h>
+ #include <linux/bit_spinlock.h>
++#include <linux/cleancache.h>
+ 
+ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
+ 
+@@ -277,6 +278,10 @@ void invalidate_bdev(struct block_device *bdev)
+ 	invalidate_bh_lrus();
+ 	lru_add_drain_all();	/* make sure all lru add caches are flushed */
+ 	invalidate_mapping_pages(mapping, 0, -1);
++	/* 99% of the time, we don't need to flush the cleancache on the bdev.
++	 * But, for the strange corners, lets be cautious
++	 */
++	cleancache_flush_inode(mapping);
+ }
+ EXPORT_SYMBOL(invalidate_bdev);
+ 
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 6c953bb..790023d 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -37,6 +37,7 @@
+ #include <linux/quotaops.h>
+ #include <linux/seq_file.h>
+ #include <linux/log2.h>
++#include <linux/cleancache.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -1362,6 +1363,7 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
+ 	} else {
+ 		ext3_msg(sb, KERN_INFO, "using internal journal");
+ 	}
++	sb->cleancache_poolid = cleancache_init_fs(PAGE_SIZE);
+ 	return res;
+ }
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4e8983a..e7c2c07 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -39,6 +39,7 @@
+ #include <linux/ctype.h>
+ #include <linux/log2.h>
+ #include <linux/crc16.h>
++#include <linux/cleancache.h>
+ #include <asm/uaccess.h>
+ 
+ #include "ext4.h"
+@@ -1789,6 +1790,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 			EXT4_INODES_PER_GROUP(sb),
+ 			sbi->s_mount_opt);
+ 
++	sb->cleancache_poolid = cleancache_init_fs(PAGE_SIZE);
+ 	return res;
+ }
+ 
+diff --git a/fs/mpage.c b/fs/mpage.c
+index fd56ca2..47baec3 100644
+--- a/fs/mpage.c
++++ b/fs/mpage.c
+@@ -27,6 +27,7 @@
+ #include <linux/writeback.h>
+ #include <linux/backing-dev.h>
+ #include <linux/pagevec.h>
++#include <linux/cleancache.h>
+ 
+ /*
+  * I/O completion handler for multipage BIOs.
+@@ -286,6 +287,12 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
+ 		SetPageMappedToDisk(page);
+ 	}
+ 
++	if (fully_mapped && blocks_per_page == 1 && !PageUptodate(page) &&
++	    cleancache_get_page(page) == 0) {
++		SetPageUptodate(page);
++		goto confused;
++	}
++
+ 	/*
+ 	 * This page will go to BIO.  Do we need to send this BIO off first?
+ 	 */
+diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
+index 0eaa929..918cb11 100644
+--- a/fs/ocfs2/super.c
++++ b/fs/ocfs2/super.c
+@@ -42,6 +42,7 @@
+ #include <linux/seq_file.h>
+ #include <linux/quotaops.h>
+ #include <linux/smp_lock.h>
++#include <linux/cleancache.h>
+ 
+ #define MLOG_MASK_PREFIX ML_SUPER
+ #include <cluster/masklog.h>
+@@ -2285,6 +2286,8 @@ static int ocfs2_initialize_super(struct super_block *sb,
+ 		mlog_errno(status);
+ 		goto bail;
+ 	}
++	sb->cleancache_poolid =
++		cleancache_init_shared_fs((char *)&uuid_net_key, PAGE_SIZE);
+ 
+ bail:
+ 	mlog_exit(status);
+diff --git a/fs/super.c b/fs/super.c
+index 938119a..1c10e75 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -30,6 +30,7 @@
+ #include <linux/idr.h>
+ #include <linux/mutex.h>
+ #include <linux/backing-dev.h>
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ 
+@@ -95,6 +96,7 @@ static struct super_block *alloc_super(struct file_system_type *type)
+ 		s->s_maxbytes = MAX_NON_LFS;
+ 		s->s_op = &default_op;
+ 		s->s_time_gran = 1000000000;
++		s->cleancache_poolid = -1;
+ 	}
+ out:
+ 	return s;
+@@ -158,6 +160,11 @@ void deactivate_locked_super(struct super_block *s)
+ 	struct file_system_type *fs = s->s_type;
+ 	if (atomic_dec_and_test(&s->s_active)) {
+ 		fs->kill_sb(s);
++		if (s->cleancache_poolid >= 0) {
++			int cleancache_poolid = s->cleancache_poolid;
++			s->cleancache_poolid = -1; /* avoid races */
++			cleancache_flush_fs(cleancache_poolid);
++		}
+ 		put_filesystem(fs);
+ 		put_super(s);
+ 	} else {
+diff --git a/include/linux/cleancache.h b/include/linux/cleancache.h
+new file mode 100644
+index 0000000..4a083b4
+--- /dev/null
++++ b/include/linux/cleancache.h
+@@ -0,0 +1,88 @@
++#ifndef _LINUX_CLEANCACHE_H
++#define _LINUX_CLEANCACHE_H
++
++#include <linux/fs.h>
++#include <linux/mm.h>
++
++struct cleancache_ops {
++	int (*init_fs)(size_t);
++	int (*init_shared_fs)(char *uuid, size_t);
++	int (*get_page)(int, ino_t, pgoff_t, struct page *);
++	void (*put_page)(int, ino_t, pgoff_t, struct page *);
++	void (*flush_page)(int, ino_t, pgoff_t);
++	void (*flush_inode)(int, ino_t);
++	void (*flush_fs)(int);
++};
++
++extern struct cleancache_ops cleancache_ops;
++extern int __cleancache_get_page(struct page *);
++extern void __cleancache_put_page(struct page *);
++extern void __cleancache_flush_page(struct address_space *, struct page *);
++extern void __cleancache_flush_inode(struct address_space *);
++
++#ifdef CONFIG_CLEANCACHE
++#define cleancache_enabled (cleancache_ops.init_fs)
++#else
++#define cleancache_enabled (0)
++#endif
++
++/* called by a cleancache-enabled filesystem at time of mount */
++static inline int cleancache_init_fs(size_t pagesize)
++{
++	int ret = -1;
++
++	if (cleancache_enabled)
++		ret = (*cleancache_ops.init_fs)(pagesize);
++	return ret;
++}
++
++/* called by a cleancache-enabled clustered filesystem at time of mount */
++static inline int cleancache_init_shared_fs(char *uuid, size_t pagesize)
++{
++	int ret = -1;
++
++	if (cleancache_enabled)
++		ret = (*cleancache_ops.init_shared_fs)(uuid, pagesize);
++	return ret;
++}
++
++static inline int cleancache_get_page(struct page *page)
++{
++	int ret = -1;
++
++	if (cleancache_enabled)
++		ret = __cleancache_get_page(page);
++	return ret;
++}
++
++static inline void cleancache_put_page(struct page *page)
++{
++	if (cleancache_enabled)
++		__cleancache_put_page(page);
++}
++
++static inline void cleancache_flush_page(struct address_space *mapping,
++					struct page *page)
++{
++	if (cleancache_enabled)
++		__cleancache_flush_page(mapping, page);
++}
++
++static inline void cleancache_flush_inode(struct address_space *mapping)
++{
++	if (cleancache_enabled)
++		__cleancache_flush_inode(mapping);
++}
++
++/*
++ * called by any cleancache-enabled filesystem at time of unmount;
++ * note that pool_id is surrendered and may be returned by a subsequent
++ * cleancache_init_fs or cleancache_init_shared_fs
++ */
++static inline void cleancache_flush_fs(int pool_id)
++{
++	if (cleancache_enabled && pool_id >= 0)
++		(*cleancache_ops.flush_fs)(pool_id);
++}
++
++#endif /* _LINUX_CLEANCACHE_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 68ca1b0..4cc57ad 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1382,6 +1382,11 @@ struct super_block {
+ 	 * generic_show_options()
+ 	 */
+ 	char *s_options;
++
++	/*
++	 * Saved pool identifier for cleancache (-1 means none)
++	 */
++	int cleancache_poolid;
+ };
+ 
+ extern struct timespec current_fs_time(struct super_block *sb);
+diff --git a/include/linux/u64_stats_sync.h b/include/linux/u64_stats_sync.h
+new file mode 100644
+index 0000000..fa261a0
+--- /dev/null
++++ b/include/linux/u64_stats_sync.h
+@@ -0,0 +1,140 @@
++#ifndef _LINUX_U64_STATS_SYNC_H
++#define _LINUX_U64_STATS_SYNC_H
++
++/*
++ * To properly implement 64bits network statistics on 32bit and 64bit hosts,
++ * we provide a synchronization point, that is a noop on 64bit or UP kernels.
++ *
++ * Key points :
++ * 1) Use a seqcount on SMP 32bits, with low overhead.
++ * 2) Whole thing is a noop on 64bit arches or UP kernels.
++ * 3) Write side must ensure mutual exclusion or one seqcount update could
++ *    be lost, thus blocking readers forever.
++ *    If this synchronization point is not a mutex, but a spinlock or
++ *    spinlock_bh() or disable_bh() :
++ * 3.1) Write side should not sleep.
++ * 3.2) Write side should not allow preemption.
++ * 3.3) If applicable, interrupts should be disabled.
++ *
++ * 4) If reader fetches several counters, there is no guarantee the whole values
++ *    are consistent (remember point 1) : this is a noop on 64bit arches anyway)
++ *
++ * 5) readers are allowed to sleep or be preempted/interrupted : They perform
++ *    pure reads. But if they have to fetch many values, it's better to not allow
++ *    preemptions/interruptions to avoid many retries.
++ *
++ * 6) If counter might be written by an interrupt, readers should block interrupts.
++ *    (On UP, there is no seqcount_t protection, a reader allowing interrupts could
++ *     read partial values)
++ *
++ * 7) For softirq uses, readers can use u64_stats_fetch_begin_bh() and
++ *    u64_stats_fetch_retry_bh() helpers
++ *
++ * Usage :
++ *
++ * Stats producer (writer) should use following template granted it already got
++ * an exclusive access to counters (a lock is already taken, or per cpu
++ * data is used [in a non preemptable context])
++ *
++ *   spin_lock_bh(...) or other synchronization to get exclusive access
++ *   ...
++ *   u64_stats_update_begin(&stats->syncp);
++ *   stats->bytes64 += len; // non atomic operation
++ *   stats->packets64++;    // non atomic operation
++ *   u64_stats_update_end(&stats->syncp);
++ *
++ * While a consumer (reader) should use following template to get consistent
++ * snapshot for each variable (but no guarantee on several ones)
++ *
++ * u64 tbytes, tpackets;
++ * unsigned int start;
++ *
++ * do {
++ *         start = u64_stats_fetch_begin(&stats->syncp);
++ *         tbytes = stats->bytes64; // non atomic operation
++ *         tpackets = stats->packets64; // non atomic operation
++ * } while (u64_stats_fetch_retry(&stats->syncp, start));
++ *
++ *
++ * Example of use in drivers/net/loopback.c, using per_cpu containers,
++ * in BH disabled context.
++ */
++#include <linux/seqlock.h>
++
++struct u64_stats_sync {
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	seqcount_t	seq;
++#endif
++};
++
++static void inline u64_stats_update_begin(struct u64_stats_sync *syncp)
++{
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	write_seqcount_begin(&syncp->seq);
++#endif
++}
++
++static void inline u64_stats_update_end(struct u64_stats_sync *syncp)
++{
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	write_seqcount_end(&syncp->seq);
++#endif
++}
++
++static unsigned int inline u64_stats_fetch_begin(const struct u64_stats_sync *syncp)
++{
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	return read_seqcount_begin(&syncp->seq);
++#else
++#if BITS_PER_LONG==32
++	preempt_disable();
++#endif
++	return 0;
++#endif
++}
++
++static bool inline u64_stats_fetch_retry(const struct u64_stats_sync *syncp,
++					 unsigned int start)
++{
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	return read_seqcount_retry(&syncp->seq, start);
++#else
++#if BITS_PER_LONG==32
++	preempt_enable();
++#endif
++	return false;
++#endif
++}
++
++/*
++ * In case softirq handlers can update u64 counters, readers can use following helpers
++ * - SMP 32bit arches use seqcount protection, irq safe.
++ * - UP 32bit must disable BH.
++ * - 64bit have no problem atomically reading u64 values, irq safe.
++ */
++static unsigned int inline u64_stats_fetch_begin_bh(const struct u64_stats_sync *syncp)
++{
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	return read_seqcount_begin(&syncp->seq);
++#else
++#if BITS_PER_LONG==32
++	local_bh_disable();
++#endif
++	return 0;
++#endif
++}
++
++static bool inline u64_stats_fetch_retry_bh(const struct u64_stats_sync *syncp,
++					 unsigned int start)
++{
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	return read_seqcount_retry(&syncp->seq, start);
++#else
++#if BITS_PER_LONG==32
++	local_bh_enable();
++#endif
++	return false;
++#endif
++}
++
++#endif /* _LINUX_U64_STATS_SYNC_H */
+diff --git a/mm/Kconfig b/mm/Kconfig
+index 527136b..85d538f 100644
+--- a/mm/Kconfig
++++ b/mm/Kconfig
+@@ -298,3 +298,25 @@ config NOMMU_INITIAL_TRIM_EXCESS
+ 	  of 1 says that all excess pages should be trimmed.
+ 
+ 	  See Documentation/nommu-mmap.txt for more information.
++
++config CLEANCACHE
++	bool "Enable cleancache pseudo-RAM driver to cache clean pages"
++	default y
++	help
++ 	  Cleancache can be thought of as a page-granularity victim cache
++	  for clean pages that the kernel's pageframe replacement algorithm
++	  (PFRA) would like to keep around, but can't since there isn't enough
++	  memory.  So when the PFRA "evicts" a page, it first attempts to put
++	  it into a synchronous concurrency-safe page-oriented pseudo-RAM
++	  device (such as Xen's Transcendent Memory, aka "tmem") which is not
++	  directly accessible or addressable by the kernel and is of unknown
++	  (and possibly time-varying) size.  And when a cleancache-enabled
++	  filesystem wishes to access a page in a file on disk, it first
++	  checks cleancache to see if it already contains it; if it does,
++ 	  the page is copied into the kernel and a disk access is avoided.
++	  When a pseudo-RAM device is available, a significant I/O reduction
++	  may be achieved.  When none is available, all cleancache calls
++	  are reduced to a single pointer-compare-against-NULL resulting
++	  in a negligible performance hit.
++
++	  If unsure, say Y to enable cleancache
+diff --git a/mm/Makefile b/mm/Makefile
+index 8982504..9fc04c5 100644
+--- a/mm/Makefile
++++ b/mm/Makefile
+@@ -45,3 +45,4 @@ obj-$(CONFIG_MEMORY_FAILURE) += memory-failure.o
+ obj-$(CONFIG_HWPOISON_INJECT) += hwpoison-inject.o
+ obj-$(CONFIG_DEBUG_KMEMLEAK) += kmemleak.o
+ obj-$(CONFIG_DEBUG_KMEMLEAK_TEST) += kmemleak-test.o
++obj-$(CONFIG_CLEANCACHE) += cleancache.o
+diff --git a/mm/cleancache.c b/mm/cleancache.c
+new file mode 100644
+index 0000000..e0cfdfb
+--- /dev/null
++++ b/mm/cleancache.c
+@@ -0,0 +1,169 @@
++/*
++ * Cleancache frontend
++ *
++ * This code provides the generic "frontend" layer to call a matching
++ * "backend" driver implementation of cleancache.  See
++ * Documentation/vm/cleancache.txt for more information.
++ *
++ * Copyright (C) 2009-2010 Oracle Corp. All rights reserved.
++ * Author: Dan Magenheimer
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.
++ */
++
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/mm.h>
++#include <linux/cleancache.h>
++
++/*
++ * cleancache_ops contains the pointers to the cleancache "backend"
++ * implementation functions
++ */
++struct cleancache_ops cleancache_ops;
++EXPORT_SYMBOL(cleancache_ops);
++
++/* useful stats available in /sys/kernel/mm/cleancache */
++static unsigned long succ_gets;
++static unsigned long failed_gets;
++static unsigned long puts;
++static unsigned long flushes;
++
++/*
++ * "Get" data from cleancache associated with the poolid/inode/index
++ * that were specified when the data was put to cleanache and, if
++ * successful, use it to fill the specified page with data and return 0.
++ * The pageframe is unchanged and returns -1 if the get fails.
++ * Page must be locked by caller.
++ */
++int __cleancache_get_page(struct page *page)
++{
++	int ret = -1;
++	int pool_id;
++
++	VM_BUG_ON(!PageLocked(page));
++	pool_id = page->mapping->host->i_sb->cleancache_poolid;
++	if (pool_id >= 0) {
++		ret = (*cleancache_ops.get_page)(pool_id,
++						 page->mapping->host->i_ino,
++						 page->index,
++						 page);
++		if (ret == 0)
++			succ_gets++;
++		else
++			failed_gets++;
++	}
++	return ret;
++}
++EXPORT_SYMBOL(__cleancache_get_page);
++
++/*
++ * "Put" data from a page to cleancache and associate it with the
++ * (previously-obtained per-filesystem) poolid and the page's,
++ * inode and page index.  Page must be locked.  Note that a put_page
++ * always "succeeds", though a subsequent get_page may succeed or fail.
++ */
++void __cleancache_put_page(struct page *page)
++{
++	int pool_id;
++
++	VM_BUG_ON(!PageLocked(page));
++	pool_id = page->mapping->host->i_sb->cleancache_poolid;
++	if (pool_id >= 0) {
++		(*cleancache_ops.put_page)(pool_id, page->mapping->host->i_ino,
++					   page->index, page);
++		puts++;
++	}
++}
++
++/*
++ * Flush any data from cleancache associated with the poolid and the
++ * page's inode and page index so that a subsequent "get" will fail.
++ */
++void __cleancache_flush_page(struct address_space *mapping, struct page *page)
++{
++	int pool_id = mapping->host->i_sb->cleancache_poolid;
++
++	if (pool_id >= 0) {
++		VM_BUG_ON(!PageLocked(page));
++		(*cleancache_ops.flush_page)(pool_id, mapping->host->i_ino,
++					     page->index);
++		flushes++;
++	}
++}
++EXPORT_SYMBOL(__cleancache_flush_page);
++
++/*
++ * Flush all data from cleancache associated with the poolid and the
++ * mappings's inode so that all subsequent gets to this poolid/inode
++ * will fail.
++ */
++void __cleancache_flush_inode(struct address_space *mapping)
++{
++	int pool_id = mapping->host->i_sb->cleancache_poolid;
++
++	if (pool_id >= 0)
++		(*cleancache_ops.flush_inode)(pool_id, mapping->host->i_ino);
++}
++EXPORT_SYMBOL(__cleancache_flush_inode);
++
++#ifdef CONFIG_SYSFS
++
++/* see Documentation/ABI/xxx/sysfs-kernel-mm-cleancache */
++
++#define CLEANCACHE_ATTR_RO(_name) \
++	static struct kobj_attribute _name##_attr = __ATTR_RO(_name)
++
++static ssize_t succ_gets_show(struct kobject *kobj,
++			       struct kobj_attribute *attr, char *buf)
++{
++	return sprintf(buf, "%lu\n", succ_gets);
++}
++CLEANCACHE_ATTR_RO(succ_gets);
++
++static ssize_t failed_gets_show(struct kobject *kobj,
++			       struct kobj_attribute *attr, char *buf)
++{
++	return sprintf(buf, "%lu\n", failed_gets);
++}
++CLEANCACHE_ATTR_RO(failed_gets);
++
++static ssize_t puts_show(struct kobject *kobj,
++			       struct kobj_attribute *attr, char *buf)
++{
++	return sprintf(buf, "%lu\n", puts);
++}
++CLEANCACHE_ATTR_RO(puts);
++
++static ssize_t flushes_show(struct kobject *kobj,
++			       struct kobj_attribute *attr, char *buf)
++{
++	return sprintf(buf, "%lu\n", flushes);
++}
++CLEANCACHE_ATTR_RO(flushes);
++
++static struct attribute *cleancache_attrs[] = {
++	&succ_gets_attr.attr,
++	&failed_gets_attr.attr,
++	&puts_attr.attr,
++	&flushes_attr.attr,
++	NULL,
++};
++
++static struct attribute_group cleancache_attr_group = {
++	.attrs = cleancache_attrs,
++	.name = "cleancache",
++};
++
++#endif /* CONFIG_SYSFS */
++
++static int __init init_cleancache(void)
++{
++#ifdef CONFIG_SYSFS
++	int err;
++
++	err = sysfs_create_group(mm_kobj, &cleancache_attr_group);
++#endif /* CONFIG_SYSFS */
++	return 0;
++}
++module_init(init_cleancache)
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 20e5642..ee30365 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -34,6 +34,7 @@
+ #include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
+ #include <linux/memcontrol.h>
+ #include <linux/mm_inline.h> /* for page_is_file_cache() */
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ /*
+@@ -119,6 +120,16 @@ void __remove_from_page_cache(struct page *page)
+ {
+ 	struct address_space *mapping = page->mapping;
+ 
++	/*
++	 * if we're uptodate, flush out into the cleancache, otherwise
++	 * invalidate any existing cleancache entries.  We can't leave
++	 * stale data around in the cleancache once our page is gone
++	 */
++	if (PageUptodate(page))
++		cleancache_put_page(page);
++	else
++		cleancache_flush_page(mapping, page);
++
+ 	radix_tree_delete(&mapping->page_tree, page->index);
+ 	page->mapping = NULL;
+ 	mapping->nrpages--;
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 937571b..040108f 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -19,6 +19,7 @@
+ #include <linux/task_io_accounting_ops.h>
+ #include <linux/buffer_head.h>	/* grr. try_to_release_page,
+ 				   do_invalidatepage */
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ 
+@@ -51,6 +52,7 @@ void do_invalidatepage(struct page *page, unsigned long offset)
+ static inline void truncate_partial_page(struct page *page, unsigned partial)
+ {
+ 	zero_user_segment(page, partial, PAGE_CACHE_SIZE);
++	cleancache_flush_page(page->mapping, page);
+ 	if (page_has_private(page))
+ 		do_invalidatepage(page, partial);
+ }
+@@ -108,6 +110,10 @@ truncate_complete_page(struct address_space *mapping, struct page *page)
+ 	clear_page_mlock(page);
+ 	remove_from_page_cache(page);
+ 	ClearPageMappedToDisk(page);
++	/* this must be after the remove_from_page_cache which
++	 * calls cleancache_put_page (and note page->mapping is now NULL)
++	 */
++	cleancache_flush_page(mapping, page);
+ 	page_cache_release(page);	/* pagecache ref */
+ 	return 0;
+ }
+@@ -215,6 +221,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 	pgoff_t next;
+ 	int i;
+ 
++	cleancache_flush_inode(mapping);
+ 	if (mapping->nrpages == 0)
+ 		return;
+ 
+@@ -290,6 +297,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 		pagevec_release(&pvec);
+ 		mem_cgroup_uncharge_end();
+ 	}
++	cleancache_flush_inode(mapping);
+ }
+ EXPORT_SYMBOL(truncate_inode_pages_range);
+ 
+@@ -428,6 +436,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 	int did_range_unmap = 0;
+ 	int wrapped = 0;
+ 
++	cleancache_flush_inode(mapping);
+ 	pagevec_init(&pvec, 0);
+ 	next = start;
+ 	while (next <= end && !wrapped &&
+@@ -486,6 +495,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 		mem_cgroup_uncharge_end();
+ 		cond_resched();
+ 	}
++	cleancache_flush_inode(mapping);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(invalidate_inode_pages2_range);

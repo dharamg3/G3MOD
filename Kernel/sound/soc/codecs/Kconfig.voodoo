@@ -1,6 +1,6 @@
 menuconfig SND_VOODOO
 	bool "Voodoo sound driver"
-	depends on SND_SOC_WM8994 || SND_S3C24XX_SOC || SND_SOC_WM8994_P3
+	depends on SND_SOC_WM8994 || SND_S3C24XX_SOC
 	default y
 	help
 	  With this option enabled, the kernel compile an additionnal driver
@@ -44,6 +44,7 @@ config SND_VOODOO_FM
 	help
 	  Adds a control to enable or disable the high-pass filter on FM radio
 
+
 config SND_VOODOO_MODULE
 	tristate "Build also as module (incomplete)"
 	depends on SND_VOODOO && m && n
@@ -59,9 +60,3 @@ config SND_VOODOO_DEVELOPMENT
 	  Allow to codec dump registers and load register-address/value batchs
 	  Powerful but also dangerous tool
 
-config SND_VOODOO_DEBUG_LOG
-	bool "Log every wm8994_write"
-	depends on SND_VOODOO_DEBUG
-	default n
-	help
-	  Log codec writes

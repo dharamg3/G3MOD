@@ -59,7 +59,7 @@ SUBSYS(freezer)
 SUBSYS(net_cls)
 #endif
 
- /* */
+/* */
 
 #ifdef CONFIG_CGROUP_BFQIO
 SUBSYS(bfqio)

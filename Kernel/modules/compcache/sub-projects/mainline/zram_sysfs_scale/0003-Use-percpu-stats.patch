@@ -1,0 +1,412 @@
+From 749c687e149f063d66af8474dc87a3b7400472f6 Mon Sep 17 00:00:00 2001
+From: Nitin Gupta <ngupta@vflare.org>
+Date: Thu, 5 Aug 2010 11:01:17 +0530
+Subject: [PATCH 03/10] Use percpu stats
+
+Also remove references to removed stats (ex: good_comress).
+
+Signed-off-by: Nitin Gupta <ngupta@vflare.org>
+---
+ drivers/staging/zram/zram_drv.c   |   77 ++++++++++++++++--------------------
+ drivers/staging/zram/zram_drv.h   |   33 +++++++++-------
+ drivers/staging/zram/zram_sysfs.c |   46 +++++++++++++++-------
+ 3 files changed, 84 insertions(+), 72 deletions(-)
+
+diff --git a/drivers/staging/zram/zram_drv.c b/drivers/staging/zram/zram_drv.c
+index c5f84ee..f111b86 100644
+--- a/drivers/staging/zram/zram_drv.c
++++ b/drivers/staging/zram/zram_drv.c
+@@ -38,33 +38,27 @@ struct zram *devices;
+ /* Module params (documentation at end) */
+ unsigned int num_devices;
+ 
+-static void zram_stat_inc(u32 *v)
++static void zram_add_stat(struct zram *zram,
++			enum zram_stats_index idx, s64 val)
+ {
+-	*v = *v + 1;
++	struct zram_stats_cpu *stats;
++
++	preempt_disable();
++	stats = __this_cpu_ptr(zram->stats);
++	u64_stats_update_begin(&stats->syncp);
++	stats->count[idx] += val;
++	u64_stats_update_end(&stats->syncp);
++	preempt_enable();
+ }
+ 
+-static void zram_stat_dec(u32 *v)
++static void zram_inc_stat(struct zram *zram, enum zram_stats_index idx)
+ {
+-	*v = *v - 1;
++	zram_add_stat(zram, idx, 1);
+ }
+ 
+-static void zram_stat64_add(struct zram *zram, u64 *v, u64 inc)
++static void zram_dec_stat(struct zram *zram, enum zram_stats_index idx)
+ {
+-	spin_lock(&zram->stat64_lock);
+-	*v = *v + inc;
+-	spin_unlock(&zram->stat64_lock);
+-}
+-
+-static void zram_stat64_sub(struct zram *zram, u64 *v, u64 dec)
+-{
+-	spin_lock(&zram->stat64_lock);
+-	*v = *v - dec;
+-	spin_unlock(&zram->stat64_lock);
+-}
+-
+-static void zram_stat64_inc(struct zram *zram, u64 *v)
+-{
+-	zram_stat64_add(zram, v, 1);
++	zram_add_stat(zram, idx, -1);
+ }
+ 
+ static int zram_test_flag(struct zram *zram, u32 index,
+@@ -131,7 +125,7 @@ static void zram_set_disksize(struct zram *zram, size_t totalram_bytes)
+ 
+ static void zram_free_page(struct zram *zram, size_t index)
+ {
+-	u32 clen;
++	int clen;
+ 	void *obj;
+ 
+ 	struct page *page = zram->table[index].page;
+@@ -144,7 +138,7 @@ static void zram_free_page(struct zram *zram, size_t index)
+ 		 */
+ 		if (zram_test_flag(zram, index, ZRAM_ZERO)) {
+ 			zram_clear_flag(zram, index, ZRAM_ZERO);
+-			zram_stat_dec(&zram->stats.pages_zero);
++			zram_dec_stat(zram, ZRAM_STAT_PAGES_ZERO);
+ 		}
+ 		return;
+ 	}
+@@ -153,7 +147,7 @@ static void zram_free_page(struct zram *zram, size_t index)
+ 		clen = PAGE_SIZE;
+ 		__free_page(page);
+ 		zram_clear_flag(zram, index, ZRAM_UNCOMPRESSED);
+-		zram_stat_dec(&zram->stats.pages_expand);
++		zram_dec_stat(zram, ZRAM_STAT_PAGES_EXPAND);
+ 		goto out;
+ 	}
+ 
+@@ -162,12 +156,10 @@ static void zram_free_page(struct zram *zram, size_t index)
+ 	kunmap_atomic(obj, KM_USER0);
+ 
+ 	xv_free(zram->mem_pool, page, offset);
+-	if (clen <= PAGE_SIZE / 2)
+-		zram_stat_dec(&zram->stats.good_compress);
+ 
+ out:
+-	zram_stat64_sub(zram, &zram->stats.compr_size, clen);
+-	zram_stat_dec(&zram->stats.pages_stored);
++	zram_add_stat(zram, ZRAM_STAT_COMPR_SIZE, -clen);
++	zram_dec_stat(zram, ZRAM_STAT_PAGES_STORED);
+ 
+ 	zram->table[index].page = NULL;
+ 	zram->table[index].offset = 0;
+@@ -213,7 +205,7 @@ static int zram_read(struct zram *zram, struct bio *bio)
+ 		return 0;
+ 	}
+ 
+-	zram_stat64_inc(zram, &zram->stats.num_reads);
++	zram_inc_stat(zram, ZRAM_STAT_NUM_READS);
+ 	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
+ 
+ 	bio_for_each_segment(bvec, bio, i) {
+@@ -262,7 +254,6 @@ static int zram_read(struct zram *zram, struct bio *bio)
+ 		if (unlikely(ret != LZO_E_OK)) {
+ 			pr_err("Decompression failed! err=%d, page=%u\n",
+ 				ret, index);
+-			zram_stat64_inc(zram, &zram->stats.failed_reads);
+ 			goto out;
+ 		}
+ 
+@@ -291,7 +282,7 @@ static int zram_write(struct zram *zram, struct bio *bio)
+ 			goto out;
+ 	}
+ 
+-	zram_stat64_inc(zram, &zram->stats.num_writes);
++	zram_inc_stat(zram, ZRAM_STAT_NUM_WRITES);
+ 	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
+ 
+ 	bio_for_each_segment(bvec, bio, i) {
+@@ -318,7 +309,7 @@ static int zram_write(struct zram *zram, struct bio *bio)
+ 		if (page_zero_filled(user_mem)) {
+ 			kunmap_atomic(user_mem, KM_USER0);
+ 			mutex_unlock(&zram->lock);
+-			zram_stat_inc(&zram->stats.pages_zero);
++			zram_inc_stat(zram, ZRAM_STAT_PAGES_ZERO);
+ 			zram_set_flag(zram, index, ZRAM_ZERO);
+ 			continue;
+ 		}
+@@ -331,7 +322,6 @@ static int zram_write(struct zram *zram, struct bio *bio)
+ 		if (unlikely(ret != LZO_E_OK)) {
+ 			mutex_unlock(&zram->lock);
+ 			pr_err("Compression failed! err=%d\n", ret);
+-			zram_stat64_inc(zram, &zram->stats.failed_writes);
+ 			goto out;
+ 		}
+ 
+@@ -347,14 +337,12 @@ static int zram_write(struct zram *zram, struct bio *bio)
+ 				mutex_unlock(&zram->lock);
+ 				pr_info("Error allocating memory for "
+ 					"incompressible page: %u\n", index);
+-				zram_stat64_inc(zram,
+-					&zram->stats.failed_writes);
+ 				goto out;
+ 			}
+ 
+ 			offset = 0;
+ 			zram_set_flag(zram, index, ZRAM_UNCOMPRESSED);
+-			zram_stat_inc(&zram->stats.pages_expand);
++			zram_inc_stat(zram, ZRAM_STAT_PAGES_EXPAND);
+ 			zram->table[index].page = page_store;
+ 			src = kmap_atomic(page, KM_USER0);
+ 			goto memstore;
+@@ -366,7 +354,6 @@ static int zram_write(struct zram *zram, struct bio *bio)
+ 			mutex_unlock(&zram->lock);
+ 			pr_info("Error allocating memory for compressed "
+ 				"page: %u, size=%zu\n", index, clen);
+-			zram_stat64_inc(zram, &zram->stats.failed_writes);
+ 			goto out;
+ 		}
+ 
+@@ -392,10 +379,8 @@ memstore:
+ 			kunmap_atomic(src, KM_USER0);
+ 
+ 		/* Update stats */
+-		zram_stat64_add(zram, &zram->stats.compr_size, clen);
+-		zram_stat_inc(&zram->stats.pages_stored);
+-		if (clen <= PAGE_SIZE / 2)
+-			zram_stat_inc(&zram->stats.good_compress);
++		zram_add_stat(zram, ZRAM_STAT_COMPR_SIZE, clen);
++		zram_inc_stat(zram, ZRAM_STAT_PAGES_STORED);
+ 
+ 		mutex_unlock(&zram->lock);
+ 		index++;
+@@ -436,7 +421,7 @@ static int zram_make_request(struct request_queue *queue, struct bio *bio)
+ 	struct zram *zram = queue->queuedata;
+ 
+ 	if (!valid_io_request(zram, bio)) {
+-		zram_stat64_inc(zram, &zram->stats.invalid_io);
++		zram_inc_stat(zram, ZRAM_STAT_INVALID_IO);
+ 		bio_io_error(bio);
+ 		return 0;
+ 	}
+@@ -542,6 +527,13 @@ int zram_init_device(struct zram *zram)
+ 	/* zram devices sort of resembles non-rotational disks */
+ 	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, zram->disk->queue);
+ 
++	zram->stats = alloc_percpu(struct zram_stats_cpu);
++	if (!zram->stats) {
++		pr_err("Error allocating percpu stats\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++
+ 	zram->mem_pool = xv_create_pool();
+ 	if (!zram->mem_pool) {
+ 		pr_err("Error creating memory pool\n");
+@@ -569,7 +561,7 @@ void zram_slot_free_notify(struct block_device *bdev, unsigned long index)
+ 
+ 	zram = bdev->bd_disk->private_data;
+ 	zram_free_page(zram, index);
+-	zram_stat64_inc(zram, &zram->stats.notify_free);
++	zram_inc_stat(zram, ZRAM_STAT_NOTIFY_FREE);
+ }
+ 
+ static const struct block_device_operations zram_devops = {
+@@ -583,7 +575,6 @@ static int create_device(struct zram *zram, int device_id)
+ 
+ 	mutex_init(&zram->lock);
+ 	mutex_init(&zram->init_lock);
+-	spin_lock_init(&zram->stat64_lock);
+ 
+ 	zram->queue = blk_alloc_queue(GFP_KERNEL);
+ 	if (!zram->queue) {
+diff --git a/drivers/staging/zram/zram_drv.h b/drivers/staging/zram/zram_drv.h
+index a481551..88fddb4 100644
+--- a/drivers/staging/zram/zram_drv.h
++++ b/drivers/staging/zram/zram_drv.h
+@@ -15,8 +15,8 @@
+ #ifndef _ZRAM_DRV_H_
+ #define _ZRAM_DRV_H_
+ 
+-#include <linux/spinlock.h>
+ #include <linux/mutex.h>
++#include <linux/u64_stats_sync.h>
+ 
+ #include "xvmalloc.h"
+ 
+@@ -83,18 +83,22 @@ struct table {
+ 	u8 flags;
+ } __attribute__((aligned(4)));
+ 
+-struct zram_stats {
+-	u64 compr_size;		/* compressed size of pages stored */
+-	u64 num_reads;		/* failed + successful */
+-	u64 num_writes;		/* --do-- */
+-	u64 failed_reads;	/* should NEVER! happen */
+-	u64 failed_writes;	/* can happen when memory is too low */
+-	u64 invalid_io;		/* non-page-aligned I/O requests */
+-	u64 notify_free;	/* no. of swap slot free notifications */
+-	u32 pages_zero;		/* no. of zero filled pages */
+-	u32 pages_stored;	/* no. of pages currently stored */
+-	u32 good_compress;	/* % of pages with compression ratio<=50% */
+-	u32 pages_expand;	/* % of incompressible pages */
++enum zram_stats_index {
++	ZRAM_STAT_COMPR_SIZE,	/* compressed size of pages stored */
++	ZRAM_STAT_NUM_READS,	/* failed + successful */
++	ZRAM_STAT_NUM_WRITES,	/* --do-- */
++	ZRAM_STAT_INVALID_IO,	/* non-page-aligned I/O requests */
++	ZRAM_STAT_NOTIFY_FREE,	/* no. of swap slot free notifications */
++	ZRAM_STAT_DISCARD,	/* no. of block discard requests */
++	ZRAM_STAT_PAGES_ZERO,	/* no. of zero filled pages */
++	ZRAM_STAT_PAGES_STORED,	/* no. of pages currently stored */
++	ZRAM_STAT_PAGES_EXPAND,	/* no. of incompressible pages */
++	ZRAM_STAT_NSTATS,
++};
++
++struct zram_stats_cpu {
++	s64 count[ZRAM_STAT_NSTATS];
++	struct u64_stats_sync syncp;
+ };
+ 
+ struct zram {
+@@ -102,7 +106,6 @@ struct zram {
+ 	void *compress_workmem;
+ 	void *compress_buffer;
+ 	struct table *table;
+-	spinlock_t stat64_lock;	/* protect 64-bit stats */
+ 	struct mutex lock;	/* protect compression buffers against
+ 				 * concurrent writes */
+ 	struct request_queue *queue;
+@@ -116,7 +119,7 @@ struct zram {
+ 	 */
+ 	u64 disksize;	/* bytes */
+ 
+-	struct zram_stats stats;
++	struct zram_stats_cpu *stats;
+ };
+ 
+ extern struct zram *devices;
+diff --git a/drivers/staging/zram/zram_sysfs.c b/drivers/staging/zram/zram_sysfs.c
+index 6c574a9..43bcdd4 100644
+--- a/drivers/staging/zram/zram_sysfs.c
++++ b/drivers/staging/zram/zram_sysfs.c
+@@ -19,14 +19,30 @@
+ 
+ #ifdef CONFIG_SYSFS
+ 
+-static u64 zram_stat64_read(struct zram *zram, u64 *v)
++/*
++ * Individual percpu values can go negative but the sum across all CPUs
++ * must always be positive (we store various counts). So, return sum as
++ * unsigned value.
++ */
++static u64 zram_get_stat(struct zram *zram, enum zram_stats_index idx)
+ {
+-	u64 val;
+-
+-	spin_lock(&zram->stat64_lock);
+-	val = *v;
+-	spin_unlock(&zram->stat64_lock);
++	int cpu;
++	s64 val = 0;
++
++	for_each_possible_cpu(cpu) {
++		s64 temp;
++		unsigned int start;
++		struct zram_stats_cpu *stats;
++
++		stats = per_cpu_ptr(zram->stats, cpu);
++		do {
++			start = u64_stats_fetch_begin(&stats->syncp);
++			temp = stats->count[idx];
++		} while (u64_stats_fetch_retry(&stats->syncp, start));
++		val += temp;
++	}
+ 
++	WARN_ON(val < 0);
+ 	return val;
+ }
+ 
+@@ -119,7 +135,7 @@ static ssize_t num_reads_show(struct device *dev,
+ 	struct zram *zram = dev_to_zram(dev);
+ 
+ 	return sprintf(buf, "%llu\n",
+-		zram_stat64_read(zram, &zram->stats.num_reads));
++		zram_get_stat(zram, ZRAM_STAT_NUM_READS));
+ }
+ 
+ static ssize_t num_writes_show(struct device *dev,
+@@ -128,7 +144,7 @@ static ssize_t num_writes_show(struct device *dev,
+ 	struct zram *zram = dev_to_zram(dev);
+ 
+ 	return sprintf(buf, "%llu\n",
+-		zram_stat64_read(zram, &zram->stats.num_writes));
++		zram_get_stat(zram, ZRAM_STAT_NUM_WRITES));
+ }
+ 
+ static ssize_t invalid_io_show(struct device *dev,
+@@ -137,7 +153,7 @@ static ssize_t invalid_io_show(struct device *dev,
+ 	struct zram *zram = dev_to_zram(dev);
+ 
+ 	return sprintf(buf, "%llu\n",
+-		zram_stat64_read(zram, &zram->stats.invalid_io));
++		zram_get_stat(zram, ZRAM_STAT_INVALID_IO));
+ }
+ 
+ static ssize_t notify_free_show(struct device *dev,
+@@ -146,7 +162,7 @@ static ssize_t notify_free_show(struct device *dev,
+ 	struct zram *zram = dev_to_zram(dev);
+ 
+ 	return sprintf(buf, "%llu\n",
+-		zram_stat64_read(zram, &zram->stats.notify_free));
++		zram_get_stat(zram, ZRAM_STAT_NOTIFY_FREE));
+ }
+ 
+ static ssize_t zero_pages_show(struct device *dev,
+@@ -154,7 +170,8 @@ static ssize_t zero_pages_show(struct device *dev,
+ {
+ 	struct zram *zram = dev_to_zram(dev);
+ 
+-	return sprintf(buf, "%u\n", zram->stats.pages_zero);
++	return sprintf(buf, "%llu\n",
++		zram_get_stat(zram, ZRAM_STAT_PAGES_ZERO));
+ }
+ 
+ static ssize_t orig_data_size_show(struct device *dev,
+@@ -163,7 +180,7 @@ static ssize_t orig_data_size_show(struct device *dev,
+ 	struct zram *zram = dev_to_zram(dev);
+ 
+ 	return sprintf(buf, "%llu\n",
+-		(u64)(zram->stats.pages_stored) << PAGE_SHIFT);
++		zram_get_stat(zram, ZRAM_STAT_PAGES_STORED) << PAGE_SHIFT);
+ }
+ 
+ static ssize_t compr_data_size_show(struct device *dev,
+@@ -172,7 +189,7 @@ static ssize_t compr_data_size_show(struct device *dev,
+ 	struct zram *zram = dev_to_zram(dev);
+ 
+ 	return sprintf(buf, "%llu\n",
+-		zram_stat64_read(zram, &zram->stats.compr_size));
++		zram_get_stat(zram, ZRAM_STAT_COMPR_SIZE));
+ }
+ 
+ static ssize_t mem_used_total_show(struct device *dev,
+@@ -183,7 +200,8 @@ static ssize_t mem_used_total_show(struct device *dev,
+ 
+ 	if (zram->init_done) {
+ 		val = xv_get_total_size_bytes(zram->mem_pool) +
+-			((u64)(zram->stats.pages_expand) << PAGE_SHIFT);
++			(zram_get_stat(zram, ZRAM_STAT_PAGES_EXPAND)
++				<< PAGE_SHIFT);
+ 	}
+ 
+ 	return sprintf(buf, "%llu\n", val);
+-- 
+1.7.2.1
+

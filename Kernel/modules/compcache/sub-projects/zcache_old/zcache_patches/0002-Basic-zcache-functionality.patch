@@ -1,0 +1,895 @@
+From c211eae47a3b7089afdb19f61ad65b7bc0a0550d Mon Sep 17 00:00:00 2001
+From: Nitin Gupta <ngupta@vflare.org>
+Date: Mon, 12 Jul 2010 22:24:54 +0530
+Subject: [PATCH 2/8] Basic zcache functionality
+
+Implements callback functions for cleancache_ops [1] to provide
+page cache compression support. Along with other functioanlity,
+cleancache provides callbacks for events when a page is to be
+removed from the page cache and when it is required again. We
+use them to implement a 'second chance' cache for these evicted
+page cache pages by compressing and storing them in memory itself.
+
+zcache needs xvmalloc allocator for storing variable sized
+compressed chunks. So, it is placed in the same location as
+the existing zram driver. This can be a problem later when
+zram is moved over to drivers/block/ area since zcache itself
+is not a block driver. I think a better solution would be to
+move xvmalloc to lib/ and zcache to mm/?
+
+This particular patch implemets basic functionality only:
+ - No compression is done. Incoming pages are simply memcpy()'d
+to newly allocated pages.
+ - Per-pool memory limit is hard-coded to 10% of RAM size.
+ - No statistics are exported.
+
+[1] cleancache: http://lwn.net/Articles/393013/
+
+Signed-off-by: Nitin Gupta <ngupta@vflare.org>
+---
+ drivers/staging/Makefile          |    1 +
+ drivers/staging/zram/Kconfig      |   17 +
+ drivers/staging/zram/Makefile     |    2 +
+ drivers/staging/zram/zcache_drv.c |  731 +++++++++++++++++++++++++++++++++++++
+ drivers/staging/zram/zcache_drv.h |   63 ++++
+ 5 files changed, 814 insertions(+), 0 deletions(-)
+ create mode 100644 drivers/staging/zram/zcache_drv.c
+ create mode 100644 drivers/staging/zram/zcache_drv.h
+
+diff --git a/drivers/staging/Makefile b/drivers/staging/Makefile
+index 6de8564..3c1d91b 100644
+--- a/drivers/staging/Makefile
++++ b/drivers/staging/Makefile
+@@ -40,6 +40,7 @@ obj-$(CONFIG_MRST_RAR_HANDLER)	+= memrar/
+ obj-$(CONFIG_DX_SEP)		+= sep/
+ obj-$(CONFIG_IIO)		+= iio/
+ obj-$(CONFIG_ZRAM)		+= zram/
++obj-$(CONFIG_ZCACHE)		+= zram/
+ obj-$(CONFIG_XVMALLOC)		+= zram/
+ obj-$(CONFIG_WLAGS49_H2)	+= wlags49_h2/
+ obj-$(CONFIG_WLAGS49_H25)	+= wlags49_h25/
+diff --git a/drivers/staging/zram/Kconfig b/drivers/staging/zram/Kconfig
+index 9bf26ce..f9c8224 100644
+--- a/drivers/staging/zram/Kconfig
++++ b/drivers/staging/zram/Kconfig
+@@ -32,3 +32,20 @@ config ZRAM_STATS
+ 
+ 	  If unsure, say Y.
+ 
++config ZCACHE
++	bool "Page cache compression support"
++	depends on CLEANCACHE
++	select XVMALLOC
++	select LZO_COMPRESS
++	select LZO_DECOMPRESS
++	default n
++	help
++	  Compresses relatively unused page cache pages and stores them in
++	  memory itself. This increases effective memory size and can help
++	  reduce access to backing store device(s) which is typically much
++	  slower than access to main memory.
++
++	  Statistics are expoted through sysfs interface:
++	  /sys/kernel/mm/zcache/
++
++	  Project home: http://compcache.googlecode.com/
+diff --git a/drivers/staging/zram/Makefile b/drivers/staging/zram/Makefile
+index 9900f8b..ef05ee5 100644
+--- a/drivers/staging/zram/Makefile
++++ b/drivers/staging/zram/Makefile
+@@ -1,4 +1,6 @@
+ zram-objs	:=	zram_drv.o
++zcache-objs	:=	zcache_drv.o
+ 
+ obj-$(CONFIG_ZRAM)	+=	zram.o
++obj-$(CONFIG_ZCACHE)	+=	zcache.o
+ obj-$(CONFIG_XVMALLOC)	+=	xvmalloc.o
+diff --git a/drivers/staging/zram/zcache_drv.c b/drivers/staging/zram/zcache_drv.c
+new file mode 100644
+index 0000000..160c172
+--- /dev/null
++++ b/drivers/staging/zram/zcache_drv.c
+@@ -0,0 +1,731 @@
++/*
++ * Page cache compression support
++ *
++ * Copyright (C) 2010  Nitin Gupta
++ * Released under the terms of GNU General Public License Version 2.0
++ *
++ * Project home: http://compcache.googlecode.com/
++ *
++ * Design:
++ * zcache is implemented using 'cleancache' which provides callbacks
++ * (cleancache_ops) for events such as when a page is evicted from the
++ * (uncompressed) page cache (cleancache_ops.put_page), when it is
++ * needed again (cleancache_ops.get_page), when it needs to be freed
++ * (cleancache_ops.flush_page) and so on.
++ *
++ * A page in zcache is identified with tuple <pool_id, inode_no, index>
++ *  - pool_id: For every cleancache aware filesystem mounted, zcache
++ * creates a separate pool (struct zcache_pool). This is container for
++ * all metadata/data structures needed to locate pages cached for this
++ * instance of mounted filesystem.
++ *  - inode_no: This represents a file/inode within this filesystem. An
++ * inode is represented using struct zcache_inode_rb within zcache which
++ * are arranged in a red-black tree indexed using inode_no.
++ *  - index: This represents page/index within an inode. Pages within an
++ * inode are arranged in a radix tree. So, each node of red-black tree
++ * above refers to a separate radix tree.
++ *
++ * Locking order:
++ * 1. zcache_inode_rb->tree_lock	(spin_lock)
++ * 2. zcache_pool->tree_lock		(rwlock_t: write)
++ *
++ * Nodes in an inode tree are reference counted and are freed when they
++ * do not any pages i.e. corresponding radix tree, maintaining list of
++ * pages associated with this inode, is empty.
++ */
++
++#define KMSG_COMPONENT "zcache"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/cleancache.h>
++#include <linux/highmem.h>
++#include <linux/slab.h>
++#include <linux/u64_stats_sync.h>
++
++#include "zcache_drv.h"
++
++struct zcache *zcache;
++
++/*
++ * Individual percpu values can go negative but the sum across all CPUs
++ * must always be positive (we store various counts). So, return sum as
++ * unsigned value.
++ */
++static u64 zcache_get_stat(struct zcache_pool *zpool,
++		enum zcache_pool_stats_index idx)
++{
++	int cpu;
++	s64 val = 0;
++
++	for_each_possible_cpu(cpu) {
++		unsigned int start;
++		struct zcache_pool_stats_cpu *stats;
++
++		stats = per_cpu_ptr(zpool->stats, cpu);
++		do {
++			start = u64_stats_fetch_begin(&stats->syncp);
++			val += stats->count[idx];
++		} while (u64_stats_fetch_retry(&stats->syncp, start));
++	}
++
++	BUG_ON(val < 0);
++	return val;
++}
++
++static void zcache_add_stat(struct zcache_pool *zpool,
++		enum zcache_pool_stats_index idx, s64 val)
++{
++	struct zcache_pool_stats_cpu *stats;
++
++	preempt_disable();
++	stats = __this_cpu_ptr(zpool->stats);
++	u64_stats_update_begin(&stats->syncp);
++	stats->count[idx] += val;
++	u64_stats_update_end(&stats->syncp);
++	preempt_enable();
++
++}
++
++static void zcache_inc_stat(struct zcache_pool *zpool,
++		enum zcache_pool_stats_index idx)
++{
++	zcache_add_stat(zpool, idx, 1);
++}
++
++static void zcache_dec_stat(struct zcache_pool *zpool,
++		enum zcache_pool_stats_index idx)
++{
++	zcache_add_stat(zpool, idx, -1);
++}
++
++static u64 zcache_get_memlimit(struct zcache_pool *zpool)
++{
++	u64 memlimit;
++	unsigned int start;
++
++	do {
++		start = read_seqbegin(&zpool->memlimit_lock);
++		memlimit = zpool->memlimit;
++	} while (read_seqretry(&zpool->memlimit_lock, start));
++
++	return memlimit;
++}
++
++static void zcache_set_memlimit(struct zcache_pool *zpool, u64 memlimit)
++{
++	write_seqlock(&zpool->memlimit_lock);
++	zpool->memlimit = memlimit;
++	write_sequnlock(&zpool->memlimit_lock);
++}
++
++static void zcache_dump_stats(struct zcache_pool *zpool)
++{
++	enum zcache_pool_stats_index idx;
++
++	pr_debug("Dumping statistics for pool: %p\n", zpool);
++	pr_debug("%llu ", zpool->memlimit);
++	for (idx = 0; idx < ZPOOL_STAT_NSTATS; idx++)
++		pr_debug("%llu ", zcache_get_stat(zpool, idx));
++	pr_debug("\n");
++}
++
++static void zcache_destroy_pool(struct zcache_pool *zpool)
++{
++	int i;
++
++	if (!zpool)
++		return;
++
++	spin_lock(&zcache->pool_lock);
++	zcache->num_pools--;
++	for (i = 0; i < MAX_ZCACHE_POOLS; i++)
++		if (zcache->pools[i] == zpool)
++			break;
++	zcache->pools[i] = NULL;
++	spin_unlock(&zcache->pool_lock);
++
++	if (!RB_EMPTY_ROOT(&zpool->inode_tree)) {
++		pr_warn("Memory leak detected. Freeing non-empty pool!\n");
++		zcache_dump_stats(zpool);
++	}
++
++	free_percpu(zpool->stats);
++	kfree(zpool);
++}
++
++/*
++ * Allocate a new zcache pool and set default memlimit.
++ *
++ * Returns pool_id on success, negative error code otherwise.
++ */
++int zcache_create_pool(void)
++{
++	int ret;
++	u64 memlimit;
++	struct zcache_pool *zpool = NULL;
++
++	spin_lock(&zcache->pool_lock);
++	if (zcache->num_pools == MAX_ZCACHE_POOLS) {
++		spin_unlock(&zcache->pool_lock);
++		pr_info("Cannot create new pool (limit: %u)\n",
++					MAX_ZCACHE_POOLS);
++		ret = -EPERM;
++		goto out;
++	}
++	zcache->num_pools++;
++	spin_unlock(&zcache->pool_lock);
++
++	zpool = kzalloc(sizeof(*zpool), GFP_KERNEL);
++	if (!zpool) {
++		spin_lock(&zcache->pool_lock);
++		zcache->num_pools--;
++		spin_unlock(&zcache->pool_lock);
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	zpool->stats = alloc_percpu(struct zcache_pool_stats_cpu);
++	if (!zpool->stats) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	rwlock_init(&zpool->tree_lock);
++	seqlock_init(&zpool->memlimit_lock);
++	zpool->inode_tree = RB_ROOT;
++
++	memlimit = zcache_pool_default_memlimit_perc_ram *
++				((totalram_pages << PAGE_SHIFT) / 100);
++	memlimit &= PAGE_MASK;
++	zcache_set_memlimit(zpool, memlimit);
++
++	/* Add to pool list */
++	spin_lock(&zcache->pool_lock);
++	for (ret = 0; ret < MAX_ZCACHE_POOLS; ret++)
++		if (!zcache->pools[ret])
++			break;
++	zcache->pools[ret] = zpool;
++	spin_unlock(&zcache->pool_lock);
++
++out:
++	if (ret < 0)
++		zcache_destroy_pool(zpool);
++
++	return ret;
++}
++
++/*
++ * Allocate a new zcache node and insert it in given pool's
++ * inode_tree at location 'inode_no'.
++ *
++ * On success, returns newly allocated node and increments
++ * its refcount for caller. Returns NULL on failure.
++ */
++static struct zcache_inode_rb *zcache_inode_create(int pool_id,
++						ino_t inode_no)
++{
++	unsigned long flags;
++	struct rb_node *parent, **link;
++	struct zcache_inode_rb *new_znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	/*
++	 * We can end up allocating multiple nodes due to racing
++	 * zcache_put_page(). But only one will be added to zpool
++	 * inode tree and rest will be freed.
++	 *
++	 * To avoid this possibility of redundant allocation, we
++	 * could do it inside zpool tree lock. However, that seems
++	 * more wasteful.
++	 */
++	new_znode = kzalloc(sizeof(*new_znode), GFP_NOWAIT);
++	if (unlikely(!new_znode))
++		return NULL;
++
++	INIT_RADIX_TREE(&new_znode->page_tree, GFP_NOWAIT);
++	spin_lock_init(&new_znode->tree_lock);
++	kref_init(&new_znode->refcount);
++	RB_CLEAR_NODE(&new_znode->rb_node);
++	new_znode->inode_no = inode_no;
++	new_znode->pool = zpool;
++
++	parent = NULL;
++	write_lock_irqsave(&zpool->tree_lock, flags);
++	link = &zpool->inode_tree.rb_node;
++	while (*link) {
++		struct zcache_inode_rb *znode;
++
++		znode = rb_entry(*link, struct zcache_inode_rb, rb_node);
++		parent = *link;
++
++		if (znode->inode_no > inode_no)
++			link = &(*link)->rb_left;
++		else if (znode->inode_no < inode_no)
++			link = &(*link)->rb_right;
++		else {
++			/*
++			 * New node added by racing zcache_put_page(). Free
++			 * this newly allocated node and use the existing one.
++			 */
++			kfree(new_znode);
++			new_znode = znode;
++			goto out;
++		}
++	}
++
++	rb_link_node(&new_znode->rb_node, parent, link);
++	rb_insert_color(&new_znode->rb_node, &zpool->inode_tree);
++
++out:
++	kref_get(&new_znode->refcount);
++	write_unlock_irqrestore(&zpool->tree_lock, flags);
++
++	return new_znode;
++}
++
++/*
++ * Called under zcache_inode_rb->tree_lock
++ */
++static int zcache_inode_is_empty(struct zcache_inode_rb *znode)
++{
++	return znode->page_tree.rnode == NULL;
++}
++
++/*
++ * kref_put callback for zcache node.
++ *
++ * The node must have been isolated already.
++ */
++static void zcache_inode_release(struct kref *kref)
++{
++	struct zcache_inode_rb *znode;
++
++	znode = container_of(kref, struct zcache_inode_rb, refcount);
++	BUG_ON(!zcache_inode_is_empty(znode));
++	kfree(znode);
++}
++
++/*
++ * Removes the given node from its inode_tree and drops corresponding
++ * refcount. Its called when someone removes the last page from a
++ * zcache node.
++ *
++ * Called under zcache_inode_rb->spin_lock
++ */
++static void zcache_inode_isolate(struct zcache_inode_rb *znode)
++{
++	unsigned long flags;
++	struct zcache_pool *zpool = znode->pool;
++
++	write_lock_irqsave(&zpool->tree_lock, flags);
++	/*
++	 * Someone can get reference on this node before we could
++	 * acquire write lock above. We want to remove it from its
++	 * inode_tree when only the caller and corresponding inode_tree
++	 * holds a reference to it. This ensures that a racing zcache
++	 * put will not end up adding a page to an isolated node and
++	 * thereby losing that memory.
++	 *
++	 */
++	if (atomic_read(&znode->refcount.refcount) == 2) {
++		rb_erase(&znode->rb_node, &znode->pool->inode_tree);
++		RB_CLEAR_NODE(&znode->rb_node);
++		kref_put(&znode->refcount, zcache_inode_release);
++	}
++	write_unlock_irqrestore(&zpool->tree_lock, flags);
++}
++
++/*
++ * Find inode in the given pool at location 'inode_no'.
++ *
++ * If found, return the node pointer and increment its reference
++ * count; NULL otherwise.
++ */
++static struct zcache_inode_rb *zcache_find_inode(struct zcache_pool *zpool,
++						ino_t inode_no)
++{
++	unsigned long flags;
++	struct rb_node *node;
++
++	read_lock_irqsave(&zpool->tree_lock, flags);
++	node = zpool->inode_tree.rb_node;
++	while (node) {
++		struct zcache_inode_rb *znode;
++
++		znode = rb_entry(node, struct zcache_inode_rb, rb_node);
++		if (znode->inode_no > inode_no)
++			node = node->rb_left;
++		else if (znode->inode_no < inode_no)
++			node = node->rb_right;
++		else {
++			/* found */
++			kref_get(&znode->refcount);
++			read_unlock_irqrestore(&zpool->tree_lock, flags);
++			return znode;
++		}
++	}
++	read_unlock_irqrestore(&zpool->tree_lock, flags);
++
++	/* not found */
++	return NULL;
++}
++
++/*
++ * Allocate memory for storing the given page and insert
++ * it in the given node's page tree at location 'index'.
++ *
++ * Returns 0 on success, negative error code on failure.
++ */
++static int zcache_store_page(struct zcache_inode_rb *znode,
++			pgoff_t index, struct page *page)
++{
++	int ret;
++	unsigned long flags;
++	struct page *zpage;
++	void *src_data, *dest_data;
++
++	zpage = alloc_page(GFP_NOWAIT);
++	if (!zpage) {
++		ret = -ENOMEM;
++		goto out;
++	}
++	zpage->index = index;
++
++	src_data = kmap_atomic(page, KM_USER0);
++	dest_data = kmap_atomic(zpage, KM_USER1);
++	memcpy(dest_data, src_data, PAGE_SIZE);
++	kunmap_atomic(src_data, KM_USER0);
++	kunmap_atomic(dest_data, KM_USER1);
++
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	ret = radix_tree_insert(&znode->page_tree, index, zpage);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++	if (unlikely(ret))
++		__free_page(zpage);
++
++out:
++	return ret;
++}
++
++/*
++ * Frees all pages associated with the given zcache node.
++ * Code adapted from brd.c
++ *
++ * Called under zcache_inode_rb->tree_lock
++ */
++#define FREE_BATCH 16
++static void zcache_free_inode_pages(struct zcache_inode_rb *znode)
++{
++	int count;
++	unsigned long index = 0;
++	struct zcache_pool *zpool = znode->pool;
++
++	do {
++		int i;
++		struct page *pages[FREE_BATCH];
++
++		count = radix_tree_gang_lookup(&znode->page_tree,
++					(void **)pages, index, FREE_BATCH);
++
++		for (i = 0; i < count; i++) {
++			index = pages[i]->index;
++			radix_tree_delete(&znode->page_tree, index);
++			__free_page(pages[i]);
++			zcache_dec_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++		}
++
++		index++;
++	} while (count == FREE_BATCH);
++}
++
++/*
++ * cleancache_ops.init_fs
++ *
++ * Called whenever a cleancache aware filesystem is mounted.
++ * Creates and initializes a new zcache pool and inserts it
++ * in zcache pool list.
++ *
++ * Returns pool id on success, negative error code on failure.
++ */
++static int zcache_init_fs(size_t pagesize)
++{
++	int ret;
++
++	/*
++	 * pagesize parameter probably makes sense only for Xen's
++	 * cleancache_ops provider which runs inside guests, passing
++	 * pages to the host. Since a guest might have a different
++	 * page size than that of host (really?), they need to pass
++	 * around this value.
++	 *
++	 * However, zcache runs on the host (or natively), so there
++	 * is no point of different page sizes.
++	 */
++	if (pagesize != PAGE_SIZE) {
++		pr_info("Unsupported page size: %zu", pagesize);
++		ret = -EINVAL;
++		goto out;
++	}
++
++	ret = zcache_create_pool();
++	if (ret < 0) {
++		pr_info("Failed to create new pool\n");
++		ret = -ENOMEM;
++		goto out;
++	}
++
++out:
++	return ret;
++}
++
++/*
++ * cleancache_ops.init_shared_fs
++ *
++ * Called whenever a cleancache aware clustered filesystem is mounted.
++ */
++static int zcache_init_shared_fs(char *uuid, size_t pagesize)
++{
++	/*
++	 * In Xen's implementation, cleancache_ops provider runs in each
++	 * guest, sending/receiving pages to/from the host. For each guest
++	 * that participates in ocfs2 like cluster, the client passes the
++	 * same uuid to the host. This allows the host to create a single
++	 * "shared pool" for all such guests to allow for feature like
++	 * data de-duplication among these guests.
++	 *
++	 * Whereas, zcache run directly on the host (or natively). So, for
++	 * any shared resource like ocfs2 mount point on host, it implicitly
++	 * creates a single pool. Thus, we can simply ignore this 'uuid' and
++	 * treat it like a usual filesystem.
++	 */
++	return zcache_init_fs(pagesize);
++}
++
++/*
++ * cleancache_ops.get_page
++ *
++ * Locates stored zcache page using <pool_id, inode_no, index>.
++ * If found, copies it to the given output page 'page' and frees
++ * zcache copy of the same.
++ *
++ * Returns 0 if requested page found, -1 otherwise.
++ */
++static int zcache_get_page(int pool_id, ino_t inode_no,
++			pgoff_t index, struct page *page)
++{
++	int ret = -1;
++	unsigned long flags;
++	struct page *src_page;
++	void *src_data, *dest_data;
++	struct zcache_inode_rb *znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	znode = zcache_find_inode(zpool, inode_no);
++	if (!znode)
++		goto out;
++
++	BUG_ON(znode->inode_no != inode_no);
++
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	src_page = radix_tree_delete(&znode->page_tree, index);
++	if (zcache_inode_is_empty(znode))
++		zcache_inode_isolate(znode);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++
++	kref_put(&znode->refcount, zcache_inode_release);
++
++	if (!src_page)
++		goto out;
++
++	src_data = kmap_atomic(src_page, KM_USER0);
++	dest_data = kmap_atomic(page, KM_USER1);
++	memcpy(dest_data, src_data, PAGE_SIZE);
++	kunmap_atomic(src_data, KM_USER0);
++	kunmap_atomic(dest_data, KM_USER1);
++
++	flush_dcache_page(page);
++
++	__free_page(src_page);
++
++	zcache_dec_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++	ret = 0; /* success */
++
++out:
++	return ret;
++}
++
++/*
++ * cleancache_ops.put_page
++ *
++ * Copies given input page 'page' to a newly allocated page.
++ * If allocation is successful, inserts it at zcache location
++ * <pool_id, inode_no, index>.
++ */
++static void zcache_put_page(int pool_id, ino_t inode_no,
++			pgoff_t index, struct page *page)
++{
++	int ret;
++	unsigned long flags;
++	struct page *zpage;
++	struct zcache_inode_rb *znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	/*
++	 * Incrementing local pages_stored before summing it from
++	 * all CPUs makes sure we do not end up storing pages in
++	 * excess of memlimit. In case of failure, we revert back
++	 * this local increment.
++	 */
++	zcache_inc_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++
++	if (zcache_get_stat(zpool, ZPOOL_STAT_PAGES_STORED) >
++			zcache_get_memlimit(zpool) >> PAGE_SHIFT) {
++		zcache_dec_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++		return;
++	}
++
++	znode = zcache_find_inode(zpool, inode_no);
++	if (!znode) {
++		znode = zcache_inode_create(pool_id, inode_no);
++		if (!znode) {
++			zcache_dec_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++			return;
++		}
++	}
++
++	/* Free page that might already be present at this index */
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	zpage = radix_tree_delete(&znode->page_tree, index);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++	if (zpage) {
++		__free_page(zpage);
++		zcache_dec_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++	}
++
++	ret = zcache_store_page(znode, index, page);
++	if (ret) {	/* failure */
++		zcache_dec_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++
++		/*
++		 * Its possible that racing zcache get/flush could not
++		 * isolate this node since we held a reference to it.
++		 */
++		spin_lock_irqsave(&znode->tree_lock, flags);
++		if (zcache_inode_is_empty(znode))
++			zcache_inode_isolate(znode);
++		spin_unlock_irqrestore(&znode->tree_lock, flags);
++	}
++
++	kref_put(&znode->refcount, zcache_inode_release);
++}
++
++/*
++ * cleancache_ops.flush_page
++ *
++ * Locates and fees page at zcache location <pool_id, inode_no, index>
++ */
++static void zcache_flush_page(int pool_id, ino_t inode_no, pgoff_t index)
++{
++	unsigned long flags;
++	struct page *page;
++	struct zcache_inode_rb *znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	znode = zcache_find_inode(zpool, inode_no);
++	if (!znode)
++		return;
++
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	page = radix_tree_delete(&znode->page_tree, index);
++	if (zcache_inode_is_empty(znode))
++		zcache_inode_isolate(znode);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++
++	kref_put(&znode->refcount, zcache_inode_release);
++	if (!page)
++		return;
++
++	__free_page(page);
++
++	zcache_dec_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++}
++
++/*
++ * cleancache_ops.flush_inode
++ *
++ * Free all pages associated with the given inode.
++ */
++static void zcache_flush_inode(int pool_id, ino_t inode_no)
++{
++	unsigned long flags;
++	struct zcache_pool *zpool;
++	struct zcache_inode_rb *znode;
++
++	zpool = zcache->pools[pool_id];
++
++	znode = zcache_find_inode(zpool, inode_no);
++	if (!znode)
++		return;
++
++	spin_lock_irqsave(&znode->tree_lock, flags);
++	zcache_free_inode_pages(znode);
++	if (zcache_inode_is_empty(znode))
++		zcache_inode_isolate(znode);
++	spin_unlock_irqrestore(&znode->tree_lock, flags);
++
++	kref_put(&znode->refcount, zcache_inode_release);
++}
++
++/*
++ * cleancache_ops.flush_fs
++ *
++ * Called whenever a cleancache aware filesystem is unmounted.
++ * Frees all metadata and data pages in corresponding zcache pool.
++ */
++static void zcache_flush_fs(int pool_id)
++{
++	struct rb_node *node;
++	struct zcache_inode_rb *znode;
++	struct zcache_pool *zpool = zcache->pools[pool_id];
++
++	/*
++	 * At this point, there is no active I/O on this filesystem.
++	 * So we can free all its pages without holding any locks.
++	 */
++	node = rb_first(&zpool->inode_tree);
++	while (node) {
++		znode = rb_entry(node, struct zcache_inode_rb, rb_node);
++		node = rb_next(node);
++		zcache_free_inode_pages(znode);
++		rb_erase(&znode->rb_node, &zpool->inode_tree);
++		kfree(znode);
++	}
++
++	zcache_destroy_pool(zpool);
++}
++
++static int __init zcache_init(void)
++{
++	struct cleancache_ops ops = {
++		.init_fs = zcache_init_fs,
++		.init_shared_fs = zcache_init_shared_fs,
++		.get_page = zcache_get_page,
++		.put_page = zcache_put_page,
++		.flush_page = zcache_flush_page,
++		.flush_inode = zcache_flush_inode,
++		.flush_fs = zcache_flush_fs,
++	};
++
++	zcache = kzalloc(sizeof(*zcache), GFP_KERNEL);
++	if (!zcache)
++		return -ENOMEM;
++
++	spin_lock_init(&zcache->pool_lock);
++	cleancache_ops = ops;
++
++	return 0;
++}
++
++module_init(zcache_init);
+diff --git a/drivers/staging/zram/zcache_drv.h b/drivers/staging/zram/zcache_drv.h
+new file mode 100644
+index 0000000..bfba5d7
+--- /dev/null
++++ b/drivers/staging/zram/zcache_drv.h
+@@ -0,0 +1,63 @@
++/*
++ * Page cache compression support
++ *
++ * Copyright (C) 2010  Nitin Gupta
++ * Released under the terms of GNU General Public License Version 2.0
++ *
++ * Project home: http://compcache.googlecode.com/
++ */
++
++#ifndef _ZCACHE_DRV_H_
++#define _ZCACHE_DRV_H_
++
++#include <linux/kref.h>
++#include <linux/radix-tree.h>
++#include <linux/rbtree.h>
++#include <linux/rwlock.h>
++#include <linux/spinlock.h>
++#include <linux/seqlock.h>
++#include <linux/types.h>
++
++#define MAX_ZCACHE_POOLS	32	/* arbitrary */
++
++enum zcache_pool_stats_index {
++	ZPOOL_STAT_PAGES_STORED,
++	ZPOOL_STAT_NSTATS,
++};
++
++/* Default zcache per-pool memlimit: 10% of total RAM */
++static const unsigned zcache_pool_default_memlimit_perc_ram = 10;
++
++/* Red-Black tree node. Maps inode to its page-tree */
++struct zcache_inode_rb {
++	struct radix_tree_root page_tree; /* maps inode index to page */
++	spinlock_t tree_lock;		/* protects page_tree */
++	struct kref refcount;
++	struct rb_node rb_node;
++	ino_t inode_no;
++	struct zcache_pool *pool;	/* back-reference to parent pool */
++};
++
++struct zcache_pool_stats_cpu {
++	s64 count[ZPOOL_STAT_NSTATS];
++	struct u64_stats_sync syncp;
++};
++
++/* One zcache pool per (cleancache aware) filesystem mount instance */
++struct zcache_pool {
++	struct rb_root inode_tree;	/* maps inode number to page tree */
++	rwlock_t tree_lock;		/* protects inode_tree */
++
++	seqlock_t memlimit_lock;	/* protects memlimit */
++	u64 memlimit;			/* bytes */
++	struct zcache_pool_stats_cpu *stats;	/* percpu stats */
++};
++
++/* Manage all zcache pools */
++struct zcache {
++	struct zcache_pool *pools[MAX_ZCACHE_POOLS];
++	u32 num_pools;		/* current no. of zcache pools */
++	spinlock_t pool_lock;	/* protects pools[] and num_pools */
++};
++
++#endif
+-- 
+1.7.1.1
+

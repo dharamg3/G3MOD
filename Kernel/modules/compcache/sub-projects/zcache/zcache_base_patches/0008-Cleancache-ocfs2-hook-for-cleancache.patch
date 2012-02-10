@@ -1,0 +1,49 @@
+From f43b1c23916d01a5d695c8f85a734a624a86a772 Mon Sep 17 00:00:00 2001
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Date: Fri, 3 Sep 2010 13:05:14 -0700
+Subject: [PATCH 8/8] Cleancache: ocfs2 hook for cleancache
+
+[PATCH V5 8/8] Cleancache: ocfs2 hook for cleancache
+
+Filesystems must explicitly enable cleancache by calling
+cleancache_init_fs anytime a instance of the filesystem
+is mounted and must save the returned poolid.  Ocfs2 is
+currently the only user of the clustered filesystem
+interface but nevertheless, the cleancache hooks in the
+VFS layer are sufficient for ocfs2 including
+the matching cleancache_flush_fs hook which must be
+called on unmount.
+
+Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+Acked-by: Joel Becker <joel.becker@oracle.com>
+
+Diffstat:
+ super.c                                  |    2 ++
+ 1 file changed, 2 insertions(+)
+---
+ fs/ocfs2/super.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
+index 06d1f74..88c19b2 100644
+--- a/fs/ocfs2/super.c
++++ b/fs/ocfs2/super.c
+@@ -41,6 +41,7 @@
+ #include <linux/mount.h>
+ #include <linux/seq_file.h>
+ #include <linux/quotaops.h>
++#include <linux/cleancache.h>
+ 
+ #define MLOG_MASK_PREFIX ML_SUPER
+ #include <cluster/masklog.h>
+@@ -2374,6 +2375,7 @@ static int ocfs2_initialize_super(struct super_block *sb,
+ 		mlog_errno(status);
+ 		goto bail;
+ 	}
++	cleancache_init_shared_fs((char *)&uuid_net_key, sb);
+ 
+ bail:
+ 	mlog_exit(status);
+-- 
+1.7.3.5
+

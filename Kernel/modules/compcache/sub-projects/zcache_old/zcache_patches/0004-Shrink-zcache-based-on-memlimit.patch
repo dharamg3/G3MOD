@@ -1,0 +1,202 @@
+From 7367497e93e5e33f983a4da8e7ec778721862a5b Mon Sep 17 00:00:00 2001
+From: Nitin Gupta <ngupta@vflare.org>
+Date: Fri, 9 Jul 2010 13:43:12 +0530
+Subject: [PATCH 4/8] Shrink zcache based on memlimit
+
+User can change (per-pool) memlimit using sysfs node:
+/sys/kernel/mm/zcache/pool<id>/memlimit
+
+When memlimit is set to a value smaller than current
+number of pages allocated for that pool, excess pages
+are now freed immediately instead of waiting for get/
+flush for these pages.
+
+Currently, victim page selection is essentially random.
+Automatic cache resizing and better page replacement
+policies will be implemented later.
+
+Signed-off-by: Nitin Gupta <ngupta@vflare.org>
+---
+ drivers/staging/zram/zcache_drv.c |  115 ++++++++++++++++++++++++++++++++++---
+ 1 files changed, 106 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/staging/zram/zcache_drv.c b/drivers/staging/zram/zcache_drv.c
+index f680f19..c5de65d 100644
+--- a/drivers/staging/zram/zcache_drv.c
++++ b/drivers/staging/zram/zcache_drv.c
+@@ -41,6 +41,7 @@
+ #include <linux/kernel.h>
+ #include <linux/cleancache.h>
+ #include <linux/highmem.h>
++#include <linux/sched.h>
+ #include <linux/slab.h>
+ #include <linux/u64_stats_sync.h>
+ 
+@@ -416,7 +417,8 @@ out:
+  * Called under zcache_inode_rb->tree_lock
+  */
+ #define FREE_BATCH 16
+-static void zcache_free_inode_pages(struct zcache_inode_rb *znode)
++static void zcache_free_inode_pages(struct zcache_inode_rb *znode,
++				u32 pages_to_free)
+ {
+ 	int count;
+ 	unsigned long index = 0;
+@@ -428,6 +430,8 @@ static void zcache_free_inode_pages(struct zcache_inode_rb *znode)
+ 
+ 		count = radix_tree_gang_lookup(&znode->page_tree,
+ 					(void **)pages, index, FREE_BATCH);
++		if (count > pages_to_free)
++			count = pages_to_free;
+ 
+ 		for (i = 0; i < count; i++) {
+ 			index = pages[i]->index;
+@@ -437,7 +441,98 @@ static void zcache_free_inode_pages(struct zcache_inode_rb *znode)
+ 		}
+ 
+ 		index++;
+-	} while (count == FREE_BATCH);
++		pages_to_free -= count;
++	} while (pages_to_free && (count == FREE_BATCH));
++}
++
++/*
++ * Returns number of pages stored in excess of currently
++ * set memlimit for the given pool.
++ */
++static u32 zcache_count_excess_pages(struct zcache_pool *zpool)
++{
++	u32 excess_pages, memlimit_pages, pages_stored;
++
++	memlimit_pages = zcache_get_memlimit(zpool) >> PAGE_SHIFT;
++	pages_stored = zcache_get_stat(zpool, ZPOOL_STAT_PAGES_STORED);
++	excess_pages = pages_stored > memlimit_pages ?
++			pages_stored - memlimit_pages : 0;
++
++	return excess_pages;
++}
++
++/*
++ * Free pages from this pool till we come within its memlimit.
++ *
++ * Currently, its called only when user sets memlimit lower than the
++ * number of pages currently stored in that pool. We select nodes in
++ * order of increasing inode number. This, in general, has no correlation
++ * with the order in which these are added. So, it is essentially random
++ * selection of nodes. Pages within a victim node node are freed in order
++ * of increasing index number.
++ *
++ * Automatic cache resizing and better page replacement policies will
++ * be implemented later.
++ */
++static void zcache_shrink_pool(struct zcache_pool *zpool)
++{
++	struct rb_node *node;
++	struct zcache_inode_rb *znode;
++
++	read_lock(&zpool->tree_lock);
++	node = rb_first(&zpool->inode_tree);
++	if (unlikely(!node)) {
++		read_unlock(&zpool->tree_lock);
++		return;
++	}
++	znode = rb_entry(node, struct zcache_inode_rb, rb_node);
++	kref_get(&znode->refcount);
++	read_unlock(&zpool->tree_lock);
++
++	do {
++		u32 pages_to_free;
++		struct rb_node *next_node;
++		struct zcache_inode_rb *next_znode;
++
++		pages_to_free = zcache_count_excess_pages(zpool);
++		if (!pages_to_free) {
++			spin_lock(&znode->tree_lock);
++			if (zcache_inode_is_empty(znode))
++				zcache_inode_isolate(znode);
++			spin_unlock(&znode->tree_lock);
++
++			kref_put(&znode->refcount, zcache_inode_release);
++			break;
++		}
++
++		/*
++		 * Get the next victim node before we (possibly) isolate
++		 * the current node.
++		 */
++		read_lock(&zpool->tree_lock);
++		next_node = rb_next(node);
++		next_znode = NULL;
++		if (next_node) {
++			next_znode = rb_entry(next_node,
++				struct zcache_inode_rb, rb_node);
++			kref_get(&next_znode->refcount);
++		}
++		read_unlock(&zpool->tree_lock);
++
++		spin_lock(&znode->tree_lock);
++		zcache_free_inode_pages(znode, pages_to_free);
++		if (zcache_inode_is_empty(znode))
++			zcache_inode_isolate(znode);
++		spin_unlock(&znode->tree_lock);
++
++		kref_put(&znode->refcount, zcache_inode_release);
++
++		/* Avoid busy-looping */
++		cond_resched();
++
++		node = next_node;
++		znode = next_znode;
++	} while (znode);
+ }
+ 
+ #ifdef CONFIG_SYSFS
+@@ -476,10 +571,13 @@ static void memlimit_sysfs_common(struct kobject *kobj, u64 *value, int store)
+ {
+ 	struct zcache_pool *zpool = zcache_kobj_to_pool(kobj);
+ 
+-	if (store)
++	if (store) {
+ 		zcache_set_memlimit(zpool, *value);
+-	else
++		if (zcache_count_excess_pages(zpool))
++			zcache_shrink_pool(zpool);
++	} else {
+ 		*value = zcache_get_memlimit(zpool);
++	}
+ }
+ 
+ static ssize_t memlimit_store(struct kobject *kobj,
+@@ -687,9 +785,8 @@ static void zcache_put_page(int pool_id, ino_t inode_no,
+ 	/*
+ 	 * memlimit can be changed any time by user using sysfs. If
+ 	 * it is set to a value smaller than current number of pages
+-	 * stored, then excess pages are not freed immediately but
+-	 * further puts are blocked till sufficient number of pages
+-	 * are flushed/freed.
++	 * stored, then excess pages are freed synchronously when this
++	 * sysfs event occurs.
+ 	 */
+ 	if (zcache_get_stat(zpool, ZPOOL_STAT_PAGES_STORED) >
+ 			zcache_get_memlimit(zpool) >> PAGE_SHIFT) {
+@@ -781,7 +878,7 @@ static void zcache_flush_inode(int pool_id, ino_t inode_no)
+ 		return;
+ 
+ 	spin_lock_irqsave(&znode->tree_lock, flags);
+-	zcache_free_inode_pages(znode);
++	zcache_free_inode_pages(znode, UINT_MAX);
+ 	if (zcache_inode_is_empty(znode))
+ 		zcache_inode_isolate(znode);
+ 	spin_unlock_irqrestore(&znode->tree_lock, flags);
+@@ -815,7 +912,7 @@ static void zcache_flush_fs(int pool_id)
+ 	while (node) {
+ 		znode = rb_entry(node, struct zcache_inode_rb, rb_node);
+ 		node = rb_next(node);
+-		zcache_free_inode_pages(znode);
++		zcache_free_inode_pages(znode, UINT_MAX);
+ 		rb_erase(&znode->rb_node, &zpool->inode_tree);
+ 		kfree(znode);
+ 	}
+-- 
+1.7.1.1
+
