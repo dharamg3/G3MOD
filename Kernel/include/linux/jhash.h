@@ -57,6 +57,7 @@
 
 /* An arbitrary initial parameter */
 #define JHASH_INITVAL		0xdeadbeef
+#define JHASH_GOLDEN_RATIO JHASH_INITVAL
 
 /* jhash - hash an arbitrary key
  * @k: sequence of bytes as key
