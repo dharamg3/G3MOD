@@ -589,35 +589,29 @@ cd /
 # End of Hybrid Data2SD
 
 # Identify CyanogenMod or Samsung
+version=`grep 'ro.build.version.release' /system/build.prop | sed 's/ro\.build\.version\.release=\(.*\)/\1/' | sed 's/\(.*\)\../\1/'`
 androidfinger=`grep "ro.build.id" /system/build.prop|awk '{FS="="};{print $2}'`
 
+rm /init.rc
+rm /recover.rc
+
 echo "System detected: $androidfinger" >> /g3mod.log
-if [ "$androidfinger" == "GRJ22" ]; then
-	rm /init.rc
-	rm /recovery.rc
+if [ $bootmode = "2" ]; then
+       # Not used. Just in case the init binary can't handle recovery.rc
+       mv /init_froyo.rc /init.rc
+       mv /recovery_froyo.rc /recovery.rc
+       INITbin=init_froyo
+       echo "System booted with Gingerbread recovery mode" >> /g3mod.log
+elif [ "$version" == "2.3" ]; then
 	mv /init_ging.rc /init.rc
-	mv /recovery_ging.rc /recovery.rc
 	INITbin=init_ging
-
 	echo "System booted with AOSP Gingerbread Kernel mode" >> /g3mod.log
-elif [ "$androidfinger" == "ITL41D" ]; then
-	rm /init.rc
-	rm /recovery.rc
+elif [ "$version" == "4.0" ]; then
 	mv /init_ics.rc /init.rc
-	mv /recovery_ics.rc /recovery.rc
-	INITbin=init_ging
-elif [ "$androidfinger" == "ICS_MR0" ]; then
-	rm /init.rc
-	rm /recovery.rc
-	mv /init_ics.rc /init.rc
-	mv /recovery_ics.rc /recovery.rc
-	INITbin=init_ging
-
+	INITbin=init_ics
+	echo "System booted with ICS Kernel mode" >> /g3mod.log
 else
-	rm /init.rc
-	rm /recovery.rc
 	mv /init_froyo.rc /init.rc
-	mv /recovery_froyo.rc /recovery.rc
 	INITbin=init_froyo
 
 	if [ "$androidfinger" == "FRF91" ]; then
