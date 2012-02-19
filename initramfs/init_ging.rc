@@ -503,7 +503,7 @@ service bootsound /system/bin/playmp3
     group audio
     oneshot
 
-service playlogo /sbin/post-init.sh
+service playlogo /system/bin/playlogo
     user root
     oneshot
 
