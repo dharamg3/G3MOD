@@ -34,17 +34,19 @@ static spinlock_t dvfs_lock;
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
 struct cpufreq_frequency_table freq_tab[] = {
-        {0, 1000*KHZ_T},
-        {1, 900*KHZ_T},
-        {2, 800*KHZ_T},
-        {3, 700*KHZ_T},
-        {4, 600*KHZ_T},
-        {5, 500*KHZ_T},
-        {6, 400*KHZ_T},
-        {7, 300*KHZ_T},
-        {8, 200*KHZ_T},
-        {9, 83*KHZ_T},
-        {10, CPUFREQ_TABLE_END},
+		{0, 1200*KHZ_T},
+		{1, 1100*KHZ_T},
+        {2, 1000*KHZ_T},
+        {3, 900*KHZ_T},
+        {4, 800*KHZ_T},
+        {5, 700*KHZ_T},
+        {6, 600*KHZ_T},
+        {7, 500*KHZ_T},
+        {8, 400*KHZ_T},
+        {9, 300*KHZ_T},
+        {10, 200*KHZ_T},
+        {11, 83*KHZ_T},
+        {12, CPUFREQ_TABLE_END},
 };
 
 static unsigned char transition_state[][2] = {
@@ -58,6 +60,8 @@ static unsigned char transition_state[][2] = {
         {8, 7},
         {9, 8},
         {10, 9},
+        {11, 10},
+        {12, 11},
         {5, 0},
 };
 
@@ -67,16 +71,18 @@ static unsigned char transition_state[][2] = {
 /* frequency voltage matching table */
 unsigned int frequency_match[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {1000000, 1300, 1200, 0},
-        {900000, 1200, 1200, 1}, 
-        {800000, 1200, 1200, 2}, 
-        {700000, 1200, 1200, 3}, 
-        {600000, 1150, 1200, 4},
-        {500000, 1200, 1200, 5}, 
-        {400000, 1100, 1200, 6},
-        {300000, 1200, 1200, 7}, 
-        {200000, 1050, 1100, 8},
-        {83000, 950, 1100, 9},
+        {1200000, 1450, 1200, 0},
+        {1100000, 1325, 1200, 1},
+        {1000000, 1300, 1200, 2},
+        {900000, 1200, 1200, 3}, 
+        {800000, 1200, 1200, 4}, 
+        {700000, 1200, 1200, 5}, 
+        {600000, 1150, 1200, 6},
+        {500000, 1200, 1200, 7}, 
+        {400000, 1100, 1200, 8},
+        {300000, 1200, 1200, 9}, 
+        {200000, 1050, 1100, 10},
+        {83000, 950, 1100, 11},
 }; 
 
 extern int is_pmic_initialized(void);
