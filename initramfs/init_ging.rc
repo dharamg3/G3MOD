@@ -245,26 +245,19 @@ on post-fs
     # give system access to wpa_supplicant.conf for backup and restore
 
 # WiFi
-#wpa_supplicant.conf ends up here
+#wpa_supplicant control socket for android wifi.c (android private socket)
 mkdir /data/misc/wifi 0777 wifi wifi
 chown wifi wifi /data/misc/wifi
 chmod 0777 /data/misc/wifi
+mkdir /data/misc/wifi/sockets 0770 wifi wifi
+chown wifi wifi /data/misc/wifi/sockets
+chmod 07777 /data/misc/wifi/sockets
 
 #dhcp needs to be here
 mkdir /data/misc/dhcp 0777 dhcp dhcp
 chown dhcp dhcp /data/misc/dhcp
 chmod 0777 /data/misc/dhcp
-
-#sockets end up here hardcoded in wpa_ctrl.c
-mkdir /data/misc/wifi/sockets 0777 wifi wifi
-chown wifi wifi /data/misc/wifi/sockets
-chmod 07777 /data/misc/wifi/sockets
-
-#wpa_supplicant dir is hardcoded in wifi.c in legacy_hardware
-mkdir /data/system 0775 system system
-mkdir /data/system/wpa_supplicant 0777 wifi wifi
-chown wifi wifi /data/system/wpa_supplicant
-chmod 0777 /data/system/wpa_supplicant
+# End WiFi
 
 #protect the original conf?
 chmod 0664 /system/etc/wifi/wpa_supplicant.conf
@@ -609,6 +602,7 @@ service dumpstate /system/bin/dumpstate -s
 
 # to enable wifi
 service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf -dd
+  socket wpa_eth0 dgram 660 wifi wifi
   disabled
   oneshot
 
