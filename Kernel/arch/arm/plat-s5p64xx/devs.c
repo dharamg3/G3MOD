@@ -549,7 +549,7 @@ static struct android_pmem_platform_data pmem_pdata = {
  
 static struct android_pmem_platform_data pmem_gpu1_pdata = {
 	.name		= "pmem_gpu1",
-	.no_allocator	= 1,
+	.no_allocator	= 0,
 	.cached		= 1,
 	.buffered	= 1,
 };

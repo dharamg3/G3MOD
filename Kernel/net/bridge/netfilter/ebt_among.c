@@ -128,7 +128,7 @@ static int get_ip_src(const struct sk_buff *skb, __be32 *addr)
 }
 
 static bool
-ebt_among_mt(const struct sk_buff *skb, const struct xt_match_param *par)
+ebt_among_mt(const struct sk_buff *skb, const struct xt_action_param *par)
 {
 	const struct ebt_among_info *info = par->matchinfo;
 	const char *dmac, *smac;
@@ -171,7 +171,7 @@ ebt_among_mt(const struct sk_buff *skb, const struct xt_match_param *par)
 	return true;
 }
 
-static bool ebt_among_mt_check(const struct xt_mtchk_param *par)
+static int ebt_among_mt_check(const struct xt_mtchk_param *par)
 {
 	const struct ebt_among_info *info = par->matchinfo;
 	const struct ebt_entry_match *em =

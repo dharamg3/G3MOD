@@ -70,7 +70,6 @@ else
 obj-$(CONFIG_CPU_S5P6442_CLOCK)	+= s5p6442-clock.o
 obj-$(CONFIG_CPU_FREQ)         += s5p6442-dvfs.o changefreq.o
 endif
-
 obj-$(CONFIG_PM)                += pm.o
 obj-$(CONFIG_PM)                += sleep.o
 obj-$(CONFIG_PM)                +=power_clk_gating.o

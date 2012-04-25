@@ -293,7 +293,7 @@ void tick_nohz_stop_sched_tick(int inidle)
 	next_jiffies = get_next_timer_interrupt(last_jiffies);
 	delta_jiffies = next_jiffies - last_jiffies;
 
-	if (rcu_needs_cpu(cpu) || printk_needs_cpu(cpu)) 
+	if (rcu_needs_cpu(cpu) || printk_needs_cpu(cpu))
 		delta_jiffies = 1;
 	/*
 	 * Do not stop the tick, if we are only one off
@@ -395,7 +395,6 @@ void tick_nohz_stop_sched_tick(int inidle)
 		 * jiffie boundary. Update jiffies and raise the
 		 * softirq.
 		 */
-
 		tick_do_update_jiffies64(ktime_get());
 		cpumask_clear_cpu(cpu, nohz_cpu_mask);
 	}

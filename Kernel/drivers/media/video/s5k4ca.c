@@ -35,10 +35,10 @@
 /* Default resolution & pixelformat. plz ref s5k4ca_platform.h */
 #define DEFAULT_RES		XGA	/* Index of resoultion */
 #define DEFAUT_FPS_INDEX	S5K4CA_15FPS
-#define DEFAULT_FMT		V4L2_PIX_FMT_VYUY	/* YUV422 */
+#define DEFAULT_FMT		 V4L2_PIX_FMT_RGB565	/* YUV422 */
 
 //#define CONFIG_LOAD_FILE	//For techwin tunning binary
-#define VIEW_FUNCTION_CALL
+//#define VIEW_FUNCTION_CALL
 
 #ifndef VIEW_FUNCTION_CALL
 #define printk(...)

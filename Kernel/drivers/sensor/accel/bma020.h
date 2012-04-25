@@ -838,7 +838,7 @@ int bma020_read_reg(unsigned char , unsigned char *, unsigned char);
 
 int bma020_write_reg(unsigned char , unsigned char*, unsigned char );
 
-void bma020_set_delay(short);
+
 
 
 #endif   // __BMA380_H__

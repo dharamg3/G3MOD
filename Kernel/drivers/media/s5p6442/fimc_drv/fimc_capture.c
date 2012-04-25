@@ -616,7 +616,7 @@ int fimc_s_fmt_vid_capture(struct file *file, void *fh, struct v4l2_format *f)
 //I am assuming V4L2_PIX_FMT_NV12 to be preview format and all others to be picture format. If 
 //formats are changed, this also needs to be changed.
 	//if(cap->fmt.width < ctrl->cam->width_preview) {
-	if(f->fmt.pix.pixelformat == V4L2_PIX_FMT_NV12) {
+	if(f->fmt.pix.pixelformat == V4L2_PIX_FMT_NV12 || f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
 		ctrl->cam->width = ctrl->cam->width_preview;
 		ctrl->cam->height = ctrl->cam->height_preview;
 		memcpy(&(ctrl->cam->window), &(ctrl->cam->window_preview), sizeof(struct v4l2_rect));

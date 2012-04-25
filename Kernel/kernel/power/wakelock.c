@@ -23,10 +23,7 @@
 #include <linux/proc_fs.h>
 #endif
 #include "power.h"
-#ifdef CONFIG_SVNET_WHITELIST
-#include <linux/delay.h>
-#include "portlist.h"
-#endif /* CONFIG_SVNET_WHITELIST */
+
 enum {
 	DEBUG_EXIT_SUSPEND = 1U << 0,
 	DEBUG_WAKEUP = 1U << 1,
@@ -272,22 +269,6 @@ static void suspend(struct work_struct *work)
 			pr_info("suspend: abort suspend\n");
 		return;
 	}
-
-#ifdef CONFIG_SVNET_WHITELIST
-	// call process white list
-	ret = process_whilte_list();
-	if (unlikely(ret !=0)) {
-		printk("fail to send whitelist\n");
-		return;
-	} else {
-//		msleep(1000); // watch suspend condition change
-		if (has_wake_lock(WAKE_LOCK_SUSPEND)) {
-			if (debug_mask & DEBUG_SUSPEND)
-				pr_info("suspend: abort suspend after processing white list\n");
-			return;
-		}
-	} 
-#endif /* CONFIG_SVNET_WHITELIST */
 
 	entry_event_num = current_event_num;
 	sys_sync();

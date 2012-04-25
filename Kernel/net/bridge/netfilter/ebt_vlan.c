@@ -41,7 +41,7 @@ MODULE_LICENSE("GPL");
 #define EXIT_ON_MISMATCH(_MATCH_,_MASK_) {if (!((info->_MATCH_ == _MATCH_)^!!(info->invflags & _MASK_))) return false; }
 
 static bool
-ebt_vlan_mt(const struct sk_buff *skb, const struct xt_match_param *par)
+ebt_vlan_mt(const struct sk_buff *skb, const struct xt_action_param *par)
 {
 	const struct ebt_vlan_info *info = par->matchinfo;
 	const struct vlan_hdr *fp;
@@ -84,7 +84,7 @@ ebt_vlan_mt(const struct sk_buff *skb, const struct xt_match_param *par)
 	return true;
 }
 
-static bool ebt_vlan_mt_check(const struct xt_mtchk_param *par)
+static int ebt_vlan_mt_check(const struct xt_mtchk_param *par)
 {
 	struct ebt_vlan_info *info = par->matchinfo;
 	const struct ebt_entry *e = par->entryinfo;

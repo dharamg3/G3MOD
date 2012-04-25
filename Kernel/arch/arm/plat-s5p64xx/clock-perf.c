@@ -40,33 +40,34 @@
 
 /* ARMCLK, D0CLK, P0CLK, D1CLK, P1CLK, APLL_RATIO, D0CLK_RATIO, P0CLK_RATIO, D1CLK_RATIO, P1CLK_RATIO */
 static  u32 s5p_cpu_clk_tab_666_166MHz[][10] = {
-		{1200*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-        {1100*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-        {1000*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-        {900*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-        {800*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-        {700*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-        {600*MHZ, 180*MHZ, 180*MHZ, 180*MHZ, 180*MHZ, 0, 0, 1, 0, 1},
-        {500*MHZ, 180*MHZ, 180*MHZ, 180*MHZ, 180*MHZ, 0, 0, 1, 0, 1},
-        {400*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-        {300*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-        {200*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},
-		{83*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 166*MHZ, 0, 0, 1, 0, 1},   
+	{1200*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {1100*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {1000*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+	{900*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {800*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+	{700*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {600*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+	{500*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+        {400*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+	{300*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+	{200*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 0, 1, 0, 1},
+	{83*MHZ, 166*MHZ, (166*MHZ)/2, 166*MHZ, (166*MHZ)/2, 0, 1, 0, 1, 0}, 
 };
 
-u32 s5p_cpu_pll_tab[] = {
-((1 << 31) | (600 << 16) | (3 << 8) | 1), 
-((1 << 31) | (550 << 16) | (3 << 8) | 1), 
-((1 << 31) | (1000 << 16) | (6 << 8) | 1), 
-((1 << 31) | (900 << 16) | (6 << 8) | 1), 
-((1 << 31) | (800 << 16) | (6 << 8) | 1), 
-((1 << 31) | (700 << 16) | (6 << 8) | 1),
-((1 << 31) | (600 << 16) | (6 << 8) | 1),  
-((1 << 31) | (500 << 16) | (6 << 8) | 1),
-((1 << 31) | (400 << 16) | (6 << 8) | 1),
-((1 << 31) | (300 << 16) | (6 << 8) | 1),
-((1 << 31) | (200 << 16) | (6 << 8) | 1),   
-((1 << 31) | (83 << 16) | (6 << 8) | 1),   
+u32 s5p_cpu_pll_tab[][4] = {
+// A P L L                                 M P L L                                   E P L L                                     V P L L
+{((1 << 31) | (600 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (550 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (500 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},  
+{((1 << 31) | (450 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (400 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (350 << 16) | (3 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (600 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (500 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (400 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (300 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (200 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
+{((1 << 31) | (83 << 16) | (6 << 8) | 1), ((1 << 31) | (333 << 16) | (3 << 8) | 3), ((1 << 31) | (0x82d << 16) | (1 << 8) | 3), ((1 << 31) | (108 << 16) | (3 << 8) | 3)},
 };
 
 static u32 s5p_cpu_clkdiv_tab[][3] = {
@@ -165,6 +166,9 @@ int s5p6442_clk_set_rate(unsigned int target_freq,
 	if (index == cur_idx)
 		return 0;
 	
+	if(cpu_clk_tab[index][6] > 0)
+		__raw_writel(s5p_avg_prd_refresh_rate[S5P6442_FREQ_TAB * 2 + 1], S5P_DRAMC_TIMINGAREF);
+	
 	mask = (~S5P_CLKDIV0_APLL_MASK) & (~S5P_CLKDIV0_D0CLK_MASK) & (~S5P_CLKDIV0_P0CLK_MASK) & (~S5P_CLKDIV0_D1CLK_MASK) & (~S5P_CLKDIV0_P1CLK_MASK);
 	clk_div0 = __raw_readl(S5P_CLK_DIV0) & mask;
 	clk_div0 |= cpu_clk_tab[index][5] << S5P_CLKDIV0_APLL_SHIFT;
@@ -181,70 +185,54 @@ int s5p6442_clk_set_rate(unsigned int target_freq,
 
 	if (index > cur_idx) {
 		clk_tmp = __raw_readl(S5P_APLL_CON);
-//		printk("----> s5p6442 : APLL_CON = %x  - will be changed to apll_tab = %x (index=%d)\n", clk_tmp, s5p_cpu_pll_tab[index][0], index);
-		if (clk_tmp != s5p_cpu_pll_tab[index]) {
+		if (clk_tmp != s5p_cpu_pll_tab[index][0]) {
 		    pll_change = 1;
 		  __raw_writel(0xe10, S5P_APLL_LOCK);
-		  __raw_writel(s5p_cpu_pll_tab[index],S5P_APLL_CON);
-//		    printk("----> s5p6442 : apll changed\n");
+		  __raw_writel(s5p_cpu_pll_tab[index][0],S5P_APLL_CON);
 		}
 
-/*		clk_tmp = __raw_readl(S5P_MPLL_CON);
-//		printk("----> s5p6442 : MPLL_CON = %x  - will be changed to mpll_tab = %x (index=%d)\n", clk_tmp, s5p_cpu_pll_tab[index][1],index);
+		clk_tmp = __raw_readl(S5P_MPLL_CON);
 		if (clk_tmp != s5p_cpu_pll_tab[index][1]) {
 		    pll_change = 1;
 		    __raw_writel(0xe10, S5P_MPLL_LOCK);
 		    __raw_writel(s5p_cpu_pll_tab[index][1],S5P_MPLL_CON);
-//		    printk("----> s5p6442 : mpll changed\n");
 		}
-*/
-//	        printk("----> s5p6442 : clk_div0 before : %x \n", __raw_readl(S5P_CLK_DIV0));
-		s5p6442_changeDivider(clk_div0, (int) S5P_CLK_DIV0);
-//	        printk("----> s5p6442 : clk_div0 after : %x \n", __raw_readl(S5P_CLK_DIV0));
+
+		s5p6442_changeDivider(clk_div0, S5P_CLK_DIV0);
 	}
 	else
 	{
-//		printk("----> s5p6442 : clk_div0 before : %x \n", __raw_readl(S5P_CLK_DIV0));
-		s5p6442_changeDivider(clk_div0, (int) S5P_CLK_DIV0);
-//		printk("----> s5p6442 : clk_div0 after : %x \n", __raw_readl(S5P_CLK_DIV0));
-
+		s5p6442_changeDivider(clk_div0, S5P_CLK_DIV0);
 		clk_tmp = __raw_readl(S5P_APLL_CON);
-//		printk("----> s5p6442 : APLL_CON = %x  - will be changed to apll_tab = %x (index=%d)\n", clk_tmp, s5p_cpu_pll_tab[index][0], index);
-		if (clk_tmp != s5p_cpu_pll_tab[index]) {
+		if (clk_tmp != s5p_cpu_pll_tab[index][0]) {
 		    pll_change = 1;
 		  __raw_writel(0xe10, S5P_APLL_LOCK);
-		  __raw_writel(s5p_cpu_pll_tab[index],S5P_APLL_CON);
-//		    printk("----> s5p6442 : apll changed\n");
+		  __raw_writel(s5p_cpu_pll_tab[index][0],S5P_APLL_CON);
 		}
-/*
+
 		clk_tmp = __raw_readl(S5P_MPLL_CON);
-//		printk("----> s5p6442 : MPLL_CON = %x  - will be changed to mpll_tab = %x (index=%d)\n", clk_tmp, s5p_cpu_pll_tab[index][1],index);
 		if (clk_tmp != s5p_cpu_pll_tab[index][1]) {
 		    pll_change = 1;
 		   __raw_writel(0xe10, S5P_MPLL_LOCK);
                    __raw_writel(s5p_cpu_pll_tab[index][1],S5P_MPLL_CON);
-//		    printk("----> s5p6442 : mpll changed\n");
 		}
-*/
 	}
 
 
 	__raw_writel(0x00001111, S5P_CLK_SRC0);
 
 	arm_clk = s5p_fclk_get_rate();
-
-	__raw_writel(AVG_PRD_REFRESH_INTERVAL_166MHZ, S5P_DRAMC_TIMINGAREF);
+	if(cpu_clk_tab[index][6] == 0)
+		__raw_writel(s5p_avg_prd_refresh_rate[S5P6442_FREQ_TAB * 2], S5P_DRAMC_TIMINGAREF);
 
 	while(__raw_readl(S5P_CLK_DIV_STAT0) && (timeout > 0)){
 	                timeout--;
 	                udelay(10);
 	}
 
-
 	if (pll_change == 1) {
-		s5p_cpu_pll_tab[index] = __raw_readl(S5P_APLL_CON);
-//		s5p_cpu_pll_tab[index][1] = __raw_readl(S5P_MPLL_CON);
-//		printk("----> s5p6442 : stored new values : apll %x mpll %x\n", s5p_cpu_pll_tab[index][0], s5p_cpu_pll_tab[index][1]);
+		s5p_cpu_pll_tab[index][0] = __raw_readl(S5P_APLL_CON);
+		s5p_cpu_pll_tab[index][1] = __raw_readl(S5P_MPLL_CON);
 	}
 
 	clk_f.rate = arm_clk / (cpu_clk_tab[index][5] + 1);
@@ -256,9 +244,6 @@ int s5p6442_clk_set_rate(unsigned int target_freq,
 	/* For backward compatibility */
 	clk_h.rate = clk_hd1.rate;
 	clk_p.rate = clk_pd1.rate;
-//	      printk("#####arm_clk %d hd0_clk %d p0_clk %d hd1_clk %d p1_clk %d clkdiv0  %x timeout %d\n", clk_f.rate, clk_hd0.rate, clk_pd0.rate,
-//	                                              clk_hd1.rate, clk_pd1.rate, clk_div0, timeout);
-
 	cur_idx = index;
 
 	return 0;
@@ -679,3 +664,4 @@ void __init s5p64xx_register_clocks(void)
 		(clkp->enable)(clkp, 0);
 	}
 }
+

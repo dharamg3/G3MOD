@@ -17,13 +17,13 @@
 #include "wm8994_voodoo.h"
 
 #ifndef MODULE
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35) && !defined(GALAXY_TAB)
 #include "wm8994_samsung.h"
 #else
 #include "wm8994.h"
 #endif
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35) && !defined(GALAXY_TAB)
 #include "../wm8994_samsung.h"
 #else
 #include "../wm8994.h"
@@ -79,7 +79,9 @@ bool enable = false;
 
 bool dac_osr128 = true;
 bool adc_osr128 = false;
+#ifndef GALAXY_TAB_TEGRA
 bool fll_tuning = true;
+#endif
 bool dac_direct = true;
 bool mono_downmix = false;
 
@@ -221,8 +223,9 @@ void update_hpvol(bool with_fade)
 	    || (wm8994->codec_state & CALL_ACTIVE))
 		return;
 
+
 	if (!with_fade) {
-    bypass_write_hook = true;
+		bypass_write_hook = true;
 		write_hpvol(hpvol(0), hpvol(1));
 		bypass_write_hook = false;
 		return;
@@ -236,12 +239,12 @@ void update_hpvol(bool with_fade)
 		val &= ~(WM8994_HPOUT1L_MUTE_N_MASK);
 		hp_level_old[i] = val + (digital_gain / 1000);
 
-    if (hp_level_old[i] < 0)
-      hp_level_old[i] = 0;
+		if (hp_level_old[i] < 0)
+			hp_level_old[i] = 0;
 
 		if (debug_log(LOG_INFOS))
-      printk("Voodoo sound: previous hp_level[%hu]: %d\n",
-             i, hp_level_old[i]);
+			printk("Voodoo sound: previous hp_level[%hu]: %d\n",
+			       i, hp_level_old[i]);
 	}
 
 	// calculate number of steps for volume fade
@@ -263,9 +266,9 @@ void update_hpvol(bool with_fade)
 			printk("Voodoo sound: volume: %hu\n",
 			       (hpvol(0) - steps));
 
-    bypass_write_hook = true;
+		bypass_write_hook = true;
 		write_hpvol(hpvol(0) - steps, hpvol(1) - steps);
-    bypass_write_hook = false;
+		bypass_write_hook = false;
 
 		if (steps != 0)
 			udelay(1000);
@@ -480,14 +483,15 @@ bool is_path(int unified_path)
 
 	// headphones
 	case HEADPHONES:
-
+/*
 #ifdef NEXUS_S
-		return (wm8994->cur_path == HP);
+		return (wm8994->cur_path == HP
+			|| wm8994->cur_path == HP_NO_MIC);
 #else
 #ifdef GALAXY_TAB
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
-    return (wm8994->cur_path == HP
-      || wm8994->cur_path == HP_NO_MIC);
+		return (wm8994->cur_path == HP
+			|| wm8994->cur_path == HP_NO_MIC);
 #else
 		return (wm8994->cur_path == HP3P
 			|| wm8994->cur_path == HP4P
@@ -495,26 +499,29 @@ bool is_path(int unified_path)
 #endif
 #else
 #ifdef M110S
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+		return (wm8994->cur_path == HP
+			|| wm8994->cur_path == HP_NO_MIC);
+#else
 		return (wm8994->cur_path == HP);
+#endif
 #else
 #ifdef GALAXY_TAB_TEGRA
-    return (wm8994->cur_path == HP
-      || wm8994->cur_path == HP_NO_MIC);
+		return (wm8994->cur_path == HP
+			|| wm8994->cur_path == HP_NO_MIC);
 #else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
 		return (wm8994->cur_path == HP
-#ifndef M110S
-			|| wm8994->fmradio_path == FMR_HP
-#endif
-			);
-#else
+			|| wm8994->cur_path == HP_NO_MIC
+			|| wm8994->fmradio_path == FMR_HP);
+#else*/
 		return (wm8994->cur_path == HP
 			|| wm8994->fmradio_path == FMR_HP);
-#endif
-#endif
-#endif
-#endif
-#endif
+//#endif
+//#endif
+//#endif
+//#endif
+//#endif
 
 	// FM Radio on headphones
 	case RADIO_HEADPHONES:
@@ -525,7 +532,7 @@ bool is_path(int unified_path)
 		return false;
 #else
 #ifdef GALAXY_TAB_TEGRA
-    return false;
+		return false;
 #else
 #ifdef GALAXY_TAB
 		return false;
@@ -548,7 +555,7 @@ bool is_path(int unified_path)
 	return false;
 }
 
-bool is_path_media_or_fm_no_call_no_record() 
+bool is_path_media_or_fm_no_call_no_record()
 {
 
 	DECLARE_WM8994(codec);
@@ -759,9 +766,9 @@ unsigned short digital_gain_get_value(unsigned short val)
 
 			if (debug_log(LOG_INFOS))
 				printk("Voodoo sound: digital gain: %d mdB, "
-               "%d mdB steps: %d, "
-               "real AIF gain: %d mdB\n",
-               digital_gain, step, i, i * step);;
+				       "%d mdB steps: %d, "
+				       "real AIF gain: %d mdB\n",
+				       digital_gain, step, i, i * step);
 		}
 	}
 
@@ -796,8 +803,8 @@ void update_headphone_eq(bool update_bands)
 
 	if (debug_log(LOG_INFOS))
 		printk("Voodoo sound: EQ gains (dB): %hd, %hd, %hd, %hd, %hd\n",
-           eq_gains[0], eq_gains[1], eq_gains[2],
-           eq_gains[3], eq_gains[4]);
+		       eq_gains[0], eq_gains[1], eq_gains[2],
+		       eq_gains[3], eq_gains[4]);
 
 	gains_1 =
 	    ((eq_gains[0] + 12) << WM8994_AIF1DAC1_EQ_B1_GAIN_SHIFT) |
@@ -816,16 +823,16 @@ void update_headphone_eq(bool update_bands)
 	if (!headphone_eq)
 		return;
 
-  if (update_bands)
-    update_headphone_eq_bands();
+	if (update_bands)
+		update_headphone_eq_bands();
 }
 
 void update_headphone_eq_bands()
 {
-  int i;
-  int j;
-  int k = 0;
-  int first_reg = WM8994_AIF1_DAC1_EQ_BAND_1_A;
+	int i;
+	int j;
+	int k = 0;
+	int first_reg = WM8994_AIF1_DAC1_EQ_BAND_1_A;
 
 	for (i = 0; i < ARRAY_SIZE(eq_band_values); i++) {
 		if (debug_log(LOG_INFOS))
@@ -841,30 +848,30 @@ void update_headphone_eq_bands()
 
 void smooth_apply_eq_band_gain(int band, int start, int end, bool current_state)
 {
-  if (debug_log(LOG_INFOS))
-    printk("Voodoo sound: EQ smooth transition for Band %d "
-           "from %d to %d\n", band + 1, start, end);
+	if (debug_log(LOG_INFOS))
+		printk("Voodoo sound: EQ smooth transition for Band %d "
+		       "from %d to %d\n", band + 1, start, end);
 
-  if (start == end) {
-    if (end != 0)
-      update_headphone_eq(true);
-    else
-      update_headphone_eq(false);
-    return;
-  }
+	if (start == end) {
+		if (end != 0)
+			update_headphone_eq(true);
+		else
+			update_headphone_eq(false);
+		return;
+	}
 
-  if (current_state)
-    update_headphone_eq_bands();
+	if (current_state)
+		update_headphone_eq_bands();
 
-  while (start != end) {
-    if (start < end)
-      start++;
-    else
-      start--;
+	while (start != end) {
+		if (start < end)
+			start++;
+		else
+			start--;
 
-    eq_gains[band] = start;
-    update_headphone_eq(false);
-  }
+		eq_gains[band] = start;
+		update_headphone_eq(false);
+	}
 }
 
 void update_stereo_expansion(bool with_mute)
@@ -917,9 +924,8 @@ void apply_saturation_prevention_drc()
 	      || digital_gain >= 0))
 		return;
 
-
-  if (debug_log(LOG_INFOS))
-    printk("Voodoo sound: apply saturation prevention DRC\n");
+	if (debug_log(LOG_INFOS))
+		printk("Voodoo sound: apply saturation prevention DRC\n");
 
 	// configure the DRC to avoid saturation: not actually compress signal
 	// gain is unmodified. Should affect only what's higher than 0 dBFS
@@ -964,8 +970,8 @@ void apply_saturation_prevention_drc()
 
 		if (debug_log(LOG_INFOS))
 			printk("Voodoo sound: digital gain: %d mdB, "
-             "%d mdB steps: %d, real DRC gain: %d mdB\n",
-             digital_gain, step, i, i * step);
+			       "%d mdB steps: %d, real DRC gain: %d mdB\n",
+			       digital_gain, step, i, i * step);
 
 	}
 	wm8994_write(codec, WM8994_AIF1_DRC1_4, val);
@@ -1128,39 +1134,39 @@ static ssize_t digital_gain_store(struct device *dev,
 
 DECLARE_BOOL_SHOW(headphone_eq);
 static ssize_t headphone_eq_store(struct device *dev,
-          struct device_attribute *attr,
-          const char *buf, size_t size)
+				  struct device_attribute *attr,
+				  const char *buf, size_t size)
 {
-  unsigned short state;
-  bool current_state;
-  int i;
-  short eq_gains_copy[ARRAY_SIZE(eq_gains)];
+	unsigned short state;
+	bool current_state;
+	int i;
+	short eq_gains_copy[ARRAY_SIZE(eq_gains)];
 
-  if (sscanf(buf, "%hu", &state) == 1) {
-    current_state = state == 0 ? false : true;
-    if (debug_log(LOG_INFOS))
-      printk("Voodoo sound: EQ activation: %u\n", state);
+	if (sscanf(buf, "%hu", &state) == 1) {
+		current_state = state == 0 ? false : true;
+		if (debug_log(LOG_INFOS))
+			printk("Voodoo sound: EQ activation: %u\n", state);
 
-    if (current_state) {
-      // fade from 0dB each EQ band
-      headphone_eq = current_state;
-      for (i = 0; i < ARRAY_SIZE(eq_bands); i++)
-        smooth_apply_eq_band_gain(i, 0, eq_gains[i],
-                current_state);
-    } else {
-      // fade to 0dB each EQ band
-      for (i = 0; i < ARRAY_SIZE(eq_bands); i++) {
-        eq_gains_copy[i] = eq_gains[i];
-        smooth_apply_eq_band_gain(i, eq_gains[i], 0,
-                current_state);
-      }
-      // restore original gains in driver memory not codec
-      for (i = 0; i < ARRAY_SIZE(eq_bands); i++)
-        eq_gains[i] = eq_gains_copy[i];
-      headphone_eq = current_state;
-    }
-  }
-  return size;
+		if (current_state) {
+			// fade from 0dB each EQ band
+			headphone_eq = current_state;
+			for (i = 0; i < ARRAY_SIZE(eq_bands); i++)
+				smooth_apply_eq_band_gain(i, 0, eq_gains[i],
+							  current_state);
+		} else {
+			// fade to 0dB each EQ band
+			for (i = 0; i < ARRAY_SIZE(eq_bands); i++) {
+				eq_gains_copy[i] = eq_gains[i];
+				smooth_apply_eq_band_gain(i, eq_gains[i], 0,
+							  current_state);
+			}
+			// restore original gains in driver memory not codec
+			for (i = 0; i < ARRAY_SIZE(eq_bands); i++)
+				eq_gains[i] = eq_gains_copy[i];
+			headphone_eq = current_state;
+		}
+	}
+	return size;
 }
 
 DECLARE_EQ_GAIN_SHOW(1);
@@ -1863,3 +1869,4 @@ void voodoo_hook_wm8994_pcm_probe(struct snd_soc_codec *codec_)
 	// initialize eq_band_values[] from default codec EQ values
 	load_current_eq_values();
 }
+

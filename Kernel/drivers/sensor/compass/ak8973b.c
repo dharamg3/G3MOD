@@ -29,7 +29,6 @@
 #define I2C_DF_NOTIFY       0x01
 #define IRQ_COMPASS_INT IRQ_EINT(2) /* EINT(2) */
 
-extern void bma020_set_delay(short delay);
 static struct i2c_client *this_client;
 
 struct ak8973b_data {
@@ -199,6 +198,7 @@ static void AKECS_Report_Value(short *rbuf)
 			rbuf[12]=get_gp2a_proximity_value();		
 			input_report_abs(data->input_dev, ABS_DISTANCE, rbuf[12]);
 		}
+		gprintk("Proximity = %d\n", rbuf[12]);
 	}
 	
 	input_sync(data->input_dev);
@@ -408,7 +408,7 @@ static int AKECS_GetData (short *rbuf)
 
 static void AKECS_DATA_Measure(void)
 {
-	short  value[13];
+	short  value[12];
 	short mag_sensor[4] ={0, 0, 0, 0};
 
 	AKECS_GetData(mag_sensor);
@@ -424,7 +424,6 @@ static void AKECS_DATA_Measure(void)
 	value[9]=mag_sensor[1];		/* mag_x */
 	value[10]=mag_sensor[2];	/* mag_y */
 	value[11]=mag_sensor[3];	/* mag_z */
-	value[12]=0;			/* proximity */
 
 	AKECS_Report_Value(value);
 }
@@ -469,9 +468,8 @@ akm_aot_ioctl(struct inode *inode, struct file *file,
 				return -EINVAL;
 			break;
 		case ECS_IOCTL_APP_SET_DELAY:
-			if (copy_from_user(&flag, argp, sizeof(flag))) {
+			if (copy_from_user(&flag, argp, sizeof(flag)))
 				return -EFAULT;
-			}
 			break;
 		default:
 			break;
@@ -510,7 +508,6 @@ akm_aot_ioctl(struct inode *inode, struct file *file,
 			break;
 		case ECS_IOCTL_APP_SET_DELAY:
 			akmd_delay = flag;
-			bma020_set_delay(akmd_delay);
 			break;
 		case ECS_IOCTL_APP_GET_DELAY:
 			flag = akmd_delay;
@@ -601,31 +598,31 @@ akmd_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 			AKECS_Reset();
 			break;
 		case ECS_IOCTL_READ:
-//			gprintk("[AK8973B] ECS_IOCTL_READ %x\n", cmd);
+			gprintk("[AK8973B] ECS_IOCTL_READ %x\n", cmd);
 			//gprintk(" len %02x:", rwbuf[0]);
 			//gprintk(" addr %02x:", rwbuf[1]);
 			//gprintk("\n");
 			if (rwbuf[0] < 1)
 				return -EINVAL;
 			ret = AKI2C_RxData(&rwbuf[1], rwbuf[0]);
-//			for(i=0; i<rwbuf[0]; i++){
+			for(i=0; i<rwbuf[0]; i++){
 				// printk(" %02x", rwbuf[i+1]);
-//			}
-//			gprintk(" ret = %d\n", ret);
+			}
+			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
 				return ret;
 			break;
 		case ECS_IOCTL_WRITE:
-//			gprintk("[AK8973B] ECS_IOCTL_WRITE %x\n", cmd);
-//			gprintk(" len %02x:", rwbuf[0]);
-//			for(i=0; i<rwbuf[0]; i++){
+			gprintk("[AK8973B] ECS_IOCTL_WRITE %x\n", cmd);
+			gprintk(" len %02x:", rwbuf[0]);
+			for(i=0; i<rwbuf[0]; i++){
 				//gprintk(" %02x", rwbuf[i+1]);
-//			}
+			}
 			//gprintk("\n");
 			if (rwbuf[0] < 2)
 				return -EINVAL;
 			ret = AKI2C_TxData(&rwbuf[1], rwbuf[0]);
-///			gprintk(" ret = %d\n", ret);
+			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
 				return ret;
 			break;
@@ -642,29 +639,29 @@ akmd_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
 				return ret;
-//			for(i=0; i<ret; i++){
+			for(i=0; i<ret; i++){
 				//gprintk(" %02x", msg[i]);
-//			}
+			}
 			//gprintk("\n");
 			break;
 		case ECS_IOCTL_SET_YPR:
-//			gprintk("[AK8973B] ECS_IOCTL_SET_YPR %x ypr=%x\n", cmd, (unsigned int)value);
+			gprintk("[AK8973B] ECS_IOCTL_SET_YPR %x ypr=%x\n", cmd, (unsigned int)value);
 			AKECS_Report_Value(value);
 			break;
 		case ECS_IOCTL_GET_OPEN_STATUS:
-//			gprintk("[AK8973B] ECS_IOCTL_GET_OPEN_STATUS %x start\n", cmd);
+			gprintk("[AK8973B] ECS_IOCTL_GET_OPEN_STATUS %x start\n", cmd);
 			status = AKECS_GetOpenStatus();
-//			gprintk("[AK8973B] ECS_IOCTL_GET_OPEN_STATUS %x end status=%x\n", cmd, status);
+			gprintk("[AK8973B] ECS_IOCTL_GET_OPEN_STATUS %x end status=%x\n", cmd, status);
 
 			break;
 		case ECS_IOCTL_GET_CLOSE_STATUS:
-//			gprintk("[AK8973B] ECS_IOCTL_GET_CLOSE_STATUS %x start\n", cmd);
+			gprintk("[AK8973B] ECS_IOCTL_GET_CLOSE_STATUS %x start\n", cmd);
 			status = AKECS_GetCloseStatus();
-//			gprintk("[AK8973B] ECS_IOCTL_GET_CLOSE_STATUS %x end status=%x\n", cmd, status);
+			gprintk("[AK8973B] ECS_IOCTL_GET_CLOSE_STATUS %x end status=%x\n", cmd, status);
 			break;
 		case ECS_IOCTL_GET_DELAY:
 			delay = akmd_delay;
-//			gprintk("[AK8973B] ECS_IOCTL_GET_DELAY %x delay=%x\n", cmd, delay);
+			gprintk("[AK8973B] ECS_IOCTL_GET_DELAY %x delay=%x\n", cmd, delay);
 			break;
 		default:
 			gprintk("Unknown cmd %x\n", cmd);

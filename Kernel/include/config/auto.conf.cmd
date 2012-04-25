@@ -234,7 +234,7 @@ deps_config := \
 	drivers/char/agp/Kconfig \
 	drivers/video/Kconfig \
 	drivers/media/s5p6442/g2d_drv/Kconfig \
-	drivers/media/s5p6442/g3d_drv/Kconfig \
+	drivers/media/s5p6442/g3d_drv_openfimg/Kconfig \
 	drivers/media/s5p6442/jpeg_v2/Kconfig \
 	drivers/media/s5p6442/fimc_drv/Kconfig-camera \
 	drivers/media/s5p6442/fimc_drv/Kconfig \
@@ -342,7 +342,6 @@ deps_config := \
 	drivers/net/usb/Kconfig \
 	drivers/net/wimax/i2400m/Kconfig \
 	drivers/net/wimax/Kconfig \
-	drivers/net/wireless/bcm4329/Kconfig \
 	drivers/net/wireless/iwmc3200wifi/Kconfig \
 	drivers/net/wireless/wl12xx/Kconfig \
 	drivers/net/wireless/orinoco/Kconfig \

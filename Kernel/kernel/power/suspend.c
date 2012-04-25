@@ -82,6 +82,7 @@ static int suspend_test(int level)
 static int suspend_prepare(void)
 {
 	int error;
+
 	if (!suspend_ops || !suspend_ops->enter)
 		return -EPERM;
 
@@ -98,6 +99,7 @@ static int suspend_prepare(void)
 	error = suspend_freeze_processes();
 	if (!error)
 		return 0;
+
 	suspend_thaw_processes();
 	usermodehelper_enable();
  Finish:
@@ -285,7 +287,6 @@ int enter_state(suspend_state_t state)
 	if (suspend_test(TEST_FREEZER))
 		goto Finish;
 
-	printk("PM: Entering %s sleep\n", pm_states[state]);
 	pr_debug("PM: Entering %s sleep\n", pm_states[state]);
 	error = suspend_devices_and_enter(state);
 

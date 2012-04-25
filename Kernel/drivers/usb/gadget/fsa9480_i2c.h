@@ -11,7 +11,7 @@
 
 
 /* enalbing debug massage related with FSA9480*/
-//#define FSA9480_DBG_ENABLE
+#define FSA9480_DBG_ENABLE
 
 #ifdef  FSA9480_DBG_ENABLE
 #define DEBUG_FSA9480(fmt,args...) printk(fmt, ##args)

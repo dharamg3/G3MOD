@@ -338,7 +338,7 @@ void fsa9480_check_usb_connection(void)
 	printk("[FSA9480] C:0x%02x, I1:0x%02x, D1:0x%02x, D2:0x%02x\n", 
 				control, int1, deviceType1, deviceType2);
 /* DEBUG */
-#if 0
+#if 1
 	DEBUG_FSA9480("[FSA9480] CONTROL is 0x%02x\n ",control);
 	DEBUG_FSA9480("[FSA9480] INTERRUPT1 is 0x%02x\n ",int1);
 	DEBUG_FSA9480("[FSA9480] INTERRUPT2 is 0x%02x\n ",pData);

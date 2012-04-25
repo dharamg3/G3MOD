@@ -532,7 +532,7 @@ void lcd_power_ctrl(s32 value)
 	
 		/* Power On Sequence */
 #ifdef USE_GPIO_ENABLE_FOR_LCD_POWER
-	gpio_set_value(GPIO_MLCD_ON, GPIO_LEVEL_HIGH);
+//	gpio_set_value(GPIO_MLCD_ON, GPIO_LEVEL_HIGH);
 #else
 		if(TRUE != Set_MAX8998_PM_REG(ELDO12, 1) )			// VLCD 1.8V
 			{
@@ -598,7 +598,7 @@ void lcd_power_ctrl(s32 value)
 		gpio_set_value(GPIO_MLCD_RST, GPIO_LEVEL_LOW);		
 
 #ifdef USE_GPIO_ENABLE_FOR_LCD_POWER
-		gpio_set_value(GPIO_MLCD_ON, GPIO_LEVEL_LOW);
+//		gpio_set_value(GPIO_MLCD_ON, GPIO_LEVEL_LOW);
 #else
 		if(TRUE != Set_MAX8998_PM_REG(ELDO11, 0) )			// VLCD 3.0V
 			{
@@ -727,7 +727,7 @@ static int __init s6d04d1_init(void)
 
     printk("#####################  %s : START ##################\n",__FUNCTION__);
 #ifdef USE_GPIO_ENABLE_FOR_LCD_POWER
-	gpio_set_value(GPIO_MLCD_ON, GPIO_LEVEL_HIGH);
+//	gpio_set_value(GPIO_MLCD_ON, GPIO_LEVEL_HIGH);
 #else
 	if(TRUE != Set_MAX8998_PM_REG(ELDO12, 1) )			// VLCD 1.8V
 		{
@@ -826,7 +826,7 @@ static DEFINE_MUTEX(s6d04d1_backlight_lock);
 static void s6d04d1_set_backlight_level(int value)
 {
 	//printk("#####%s: value %d \n", __FUNCTION__, value);
-//	printk(KERN_INFO "#####%s: value %d \n", __FUNCTION__, value);
+	printk(KERN_INFO "#####%s: value %d \n", __FUNCTION__, value);
 	if (value == backlight_level)     /* Same Value */
 		return;
 
@@ -845,7 +845,7 @@ static void s6d04d1_set_backlight_level(int value)
 			}
 		}
 
-//	printk ( "@@@@@     %s : value %d\n", __func__, value );
+	printk ( "@@@@@     %s : value %d\n", __func__, value );
 	s6d04d1_set_brightness(value);		// 1~255
 	//s6d04d1_set_brightness((int)((value * 3)/4));		// 1~127 => 1~100
 

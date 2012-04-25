@@ -124,8 +124,6 @@ int fimc_g_fbuf(struct file *filp, void *fh, struct v4l2_framebuffer *fb)
 		bpp = 4;
 	else if (format == V4L2_PIX_FMT_RGB565)
 		bpp = 2;
-	else
-		bpp = 1;
 
 	ctrl->out->fbuf.fmt.bytesperline = fb->fmt.width * bpp;
 	fb->fmt.bytesperline = ctrl->out->fbuf.fmt.bytesperline;
@@ -159,8 +157,6 @@ int fimc_s_fbuf(struct file *filp, void *fh, struct v4l2_framebuffer *fb)
 			bpp = 4;
 		else if (format == V4L2_PIX_FMT_RGB565)
 			bpp = 2;
-		else
-			bpp = 1;
 
 		ctrl->out->fbuf.fmt.bytesperline = fb->fmt.width * bpp;
 		ctrl->out->fbuf.fmt.sizeimage = fb->fmt.sizeimage;

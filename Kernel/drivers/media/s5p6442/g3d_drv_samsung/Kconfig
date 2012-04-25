@@ -1,0 +1,15 @@
+#
+# G3D subsystem configuration
+#
+
+#menu "G3D Support"
+
+config VIDEO_G3D
+	tristate "Samsung FIMG-3DSE Driver"
+#	bool "Samsung FIMG-3DSE Driver"
+	depends on CPU_S5P6442
+	default n
+	help
+		FIMG-3D
+
+#endmenu

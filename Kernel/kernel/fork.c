@@ -141,7 +141,6 @@ static struct kmem_cache *mm_cachep;
 /* Notifier list called when a task struct is freed */
 static ATOMIC_NOTIFIER_HEAD(task_free_notifier);
 
-
 static void account_kernel_stack(struct thread_info *ti, int account)
 {
 	struct zone *zone = page_zone(virt_to_page(ti));
@@ -919,10 +918,6 @@ static int copy_signal(unsigned long clone_flags, struct task_struct *tsk)
 
 	tty_audit_fork(sig);
 
-#ifdef CONFIG_SCHED_AUTOGROUP
-        sched_autogroup_fork(sig);
-#endif
-
 	sig->oom_adj = current->signal->oom_adj;
 
 	return 0;
@@ -932,9 +927,6 @@ void __cleanup_signal(struct signal_struct *sig)
 {
 	thread_group_cputime_free(sig);
 	tty_kref_put(sig->tty);
-#ifdef CONFIG_SCHED_AUTOGROUP
-        sched_autogroup_exit(sig);
-#endif
 	kmem_cache_free(signal_cachep, sig);
 }
 
@@ -1754,9 +1746,8 @@ bad_unshare_cleanup_vm:
 
 bad_unshare_cleanup_sigh:
 	if (new_sigh)
-	  if (atomic_dec_and_test(&new_sigh->count)) {
-	    kmem_cache_free(sighand_cachep, new_sigh);
-	  }
+		if (atomic_dec_and_test(&new_sigh->count))
+			kmem_cache_free(sighand_cachep, new_sigh);
 
 bad_unshare_cleanup_fs:
 	if (new_fs)

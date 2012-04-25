@@ -106,7 +106,7 @@ static struct clk_sources clk_src_apll = {
 struct clksrc_clk clk_mout_apll = {
 	.clk	= {
 		.name		= "mout_apll",
-		.id		= -1,
+		.id		= -1,		
 	},
 	.shift		= S5P_CLKSRC0_APLL_SHIFT,
 	.mask		= S5P_CLKSRC0_APLL_MASK,
@@ -183,7 +183,7 @@ int fout_set_rate(struct clk *clk, unsigned long rate)
 {
 	unsigned int epll_con;
 	unsigned int epll_con1;
-
+	
 	epll_con = __raw_readl(S5P_EPLL_CON);
 
 	epll_con &= ~S5P_EPLLVAL(0x1, 0x1ff, 0x3f, 0x7); /* Clear V, M, P & S */
@@ -569,7 +569,7 @@ static struct clk *clkset_cam0_list[] = {
 	NULL,
 	&clk_srclk, /*XusbXTI*/
 	NULL,
-	NULL,
+	NULL,	
 	&clk_mout_mpll.clk,
 	&clk_mout_epll.clk,
 	&clk_mout_vpll.clk,
@@ -581,7 +581,7 @@ static struct clk *clkset_cam1_list[] = {
 	NULL,
 	&clk_srclk, /*XusbXTI*/
 	NULL,
-	NULL,
+	NULL,	
 	&clk_mout_mpll.clk,
 	&clk_mout_epll.clk,
 	&clk_mout_vpll.clk,
@@ -603,7 +603,7 @@ static struct clk *clkset_fimc0_list[] = {
 	NULL,
 	&clk_srclk, /*XusbXTI*/
 	NULL,
-	NULL,
+	NULL,	
 	&clk_mout_mpll.clk,
 	&clk_mout_epll.clk,
 	&clk_mout_vpll.clk,
@@ -615,7 +615,7 @@ static struct clk *clkset_fimc1_list[] = {
 	NULL,
 	&clk_srclk, /*XusbXTI*/
 	NULL,
-	NULL,
+	NULL,	
 	&clk_mout_mpll.clk,
 	&clk_mout_epll.clk,
 	&clk_mout_vpll.clk,
@@ -627,20 +627,18 @@ static struct clk *clkset_fimc2_list[] = {
 	NULL,
 	&clk_srclk, /*XusbXTI*/
 	NULL,
-	NULL,
+	NULL,	
 	&clk_mout_mpll.clk,
 	&clk_mout_epll.clk,
 	&clk_mout_vpll.clk,
 };
 
 static struct clk *clkset_g2d_list[] = {
-        [0] = &clk_dout_a2m,
+        [0] = &clk_dout_a2m,	
 	[1] = &clk_mout_mpll.clk,
 	[2] = &clk_mout_epll.clk,
 	[3] = &clk_mout_vpll.clk,
 };
-
-
 
 static struct clk_sources clkset_fimc0 = {
 	.sources	= clkset_fimc0_list,
@@ -661,8 +659,6 @@ static struct clk_sources clkset_g2d = {
         .sources        = clkset_g2d_list,
         .nr_sources     = ARRAY_SIZE(clkset_g2d_list),
 };
-
-
 
 
 static struct clk *clkset_spi_list[] = {
@@ -759,7 +755,7 @@ static unsigned long s5p64xx_roundrate_clksrc(struct clk *clk,
 	unsigned long parent_rate = clk_get_rate(clk->parent);
 	int div;
 
-	if (rate >= parent_rate)
+	if (rate >= parent_rate) 
 		rate = parent_rate;
 	else {
 		div = parent_rate / rate;
@@ -978,7 +974,7 @@ static struct clk_sources clkset_audss_hclk = {
 
 static struct clksrc_clk clk_audss_hclk = {
         .clk    = {
-                .name           = "audss_hclk",
+                .name           = "audss_hclk", 
                 .id             = -1,
                 .ctrlbit        = S5P_AUDSS_CLKGATE_HCLKI2S,
                 .enable         = s5p64xx_audss_clkctrl,
@@ -1023,7 +1019,7 @@ static struct clksrc_clk clk_mmc1 = {
 		.enable		= s5p64xx_clk_ip2_ctrl,
 		.set_parent	= s5p64xx_setparent_clksrc,
 		.get_rate	= s5p64xx_getrate_clksrc,
-		.set_rate	= s5p64xx_setrate_clksrc,
+		.set_rate	= s5p64xx_setrate_clksrc,		
 		.round_rate	= s5p64xx_roundrate_clksrc,
 	},
 	.shift		= S5P_CLKSRC4_MMC1_SHIFT,
@@ -1196,7 +1192,7 @@ static struct clksrc_clk clk_g2d = {
                 .get_rate       = s5p64xx_getrate_clksrc,
                 .set_rate       = s5p64xx_setrate_clksrc,
                 .round_rate     = s5p64xx_roundrate_clksrc,
-        },
+        },	
         .shift          = S5P_CLKSRC2_G2D_SEL_SHIFT,
         .mask           = S5P_CLKSRC2_G2D_MASK,
         .sources        = &clkset_g2d,
@@ -1204,8 +1200,6 @@ static struct clksrc_clk clk_g2d = {
         .reg_divider    = S5P_CLK_DIV2,
         .reg_source     = S5P_CLK_SRC2,
 };
-
-
 
 static struct clksrc_clk clk_fimc0 = {
 	.clk	= {
@@ -1281,8 +1275,8 @@ static struct clksrc_clk *init_parents[] = {
 	&clk_uart1,
 	&clk_uart2,
 	&clk_spi,
-//	&clk_audio0,
-//	&clk_audio1,
+	&clk_audio0,
+	&clk_audio1,
 	&clk_lcd,
 	&clk_cam0,
 	&clk_cam1,
@@ -1291,8 +1285,8 @@ static struct clksrc_clk *init_parents[] = {
 	&clk_fimc2,
 	&clk_g2d,
 	&clk_i2s,
-	&clk_audss_hclk, // 091014 Univ6442 Sound (beta3)
-        &clk_i2smain,    // 091014 Univ6442 Sound (beta3)
+	&clk_audss_hclk, // 091014 Univ6442 Sound (beta3) 
+        &clk_i2smain,    // 091014 Univ6442 Sound (beta3)     
 };
 
 static void __init_or_cpufreq s5p6442_set_clksrc(struct clksrc_clk *clk)
@@ -1340,28 +1334,28 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	u32 mux_stat1;
 
 	printk(KERN_DEBUG "%s: registering clocks\n", __func__);
-	
-	//s5p6442_preclock();
-        //__raw_writel(((1 << 31) | (800 << 16) | (6 << 8) | 1),S5P_APLL_CON);
-	//s5p6442_postclock();
 
 	clkdiv0 = __raw_readl(S5P_CLK_DIV0);
 
 #ifdef MUXD0D1_A2M
 	clkdiv0 &= (~S5P_CLKDIV0_A2M_MASK);
 	clkdiv0 |= 3 << S5P_CLKDIV0_A2M_SHIFT;
-	__raw_writel(clkdiv0, S5P_CLK_DIV0);
+	__raw_writel(clkdiv0, S5P_CLK_DIV0); 
 #endif
+	printk(KERN_INFO "%s: clkdiv0 = %08x\n", __func__, clkdiv0);
 
 	clkdiv3 = __raw_readl(S5P_CLK_DIV3);
+	printk(KERN_INFO "%s: clkdiv3 = %08x\n", __func__, clkdiv3);
 
 	clkSrc0 = __raw_readl(S5P_CLK_SRC0);
 #ifdef MUXD0D1_A2M
 	clkSrc0 |= 1 << S5P_CLKSRC0_MUXD0_SHIFT;   //MUXD0
-     //   clkSrc0 |= 1 << S5P_CLKSRC0_MUXD1_SHIFT;   //MUXD1
-	__raw_writel(clkSrc0, S5P_CLK_SRC0);
+        clkSrc0 |= 1 << S5P_CLKSRC0_MUXD1_SHIFT;   //MUXD1
+	__raw_writel(clkSrc0, S5P_CLK_SRC0); 
 #endif
 	clkSrc1 = __raw_readl(S5P_CLK_SRC1);
+	clkSrc2 = __raw_readl(S5P_CLK_SRC2);
+	printk(KERN_INFO "%s: clkSrc0 = %08x clkSrc1 = %08x clkSrc2 = %08x\n", __func__, clkSrc0, clkSrc1, clkSrc2);
 
 	xtal_clk = clk_get(NULL, "xtal");
 	BUG_ON(IS_ERR(xtal_clk));
@@ -1369,10 +1363,16 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	xtal = clk_get_rate(xtal_clk);
 	clk_put(xtal_clk);
 
+	printk(KERN_DEBUG "%s: xtal is %ld\n", __func__, xtal);
+
 	apll = s5p64xx_get_pll(xtal, __raw_readl(S5P_APLL_CON), S5P64XX_PLL_APLL);
 	mpll = s5p64xx_get_pll(xtal, __raw_readl(S5P_MPLL_CON), S5P64XX_PLL_MPLL);
 	epll = s5p64xx_get_pll(xtal, __raw_readl(S5P_EPLL_CON), S5P64XX_PLL_EPLL);
 	vpll = s5p64xx_get_pll(xtal, __raw_readl(S5P_VPLL_CON), S5P64XX_PLL_VPLL);
+
+	printk(KERN_INFO "S5P64XX: PLL settings, A=%ld.%ldMHz, M=%ld.%ldMHz," \
+							" E=%ld.%ldMHz\n",
+	       print_mhz(apll), print_mhz(mpll), print_mhz(epll));
 
 	fclk = apll / GET_DIV(clkdiv0, S5P_CLKDIV0_APLL);
 
@@ -1393,7 +1393,7 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 			break;
 		default:
 			break;
-
+			
 		}
 
 		break;
@@ -1417,15 +1417,13 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 			pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
 			break;
 		case 0x2:	/* A2M source */
-		//	a2m = apll / GET_DIV(clkdiv0, S5P_CLKDIV0_A2M);
-		//	hclkd1 = a2m / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
-		//	pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
-			hclkd1 = mpll / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
+			a2m = apll / GET_DIV(clkdiv0, S5P_CLKDIV0_A2M);
+			hclkd1 = a2m / GET_DIV(clkdiv0, S5P_CLKDIV0_D1CLK);
 			pclkd1 = hclkd1 / GET_DIV(clkdiv0, S5P_CLKDIV0_P1CLK);
 			break;
 		default:
 			break;
-
+			
 		}
 
 		break;
@@ -1439,7 +1437,12 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 		break;
 		/* Synchronous mode */
 
-	}
+	} 
+
+	printk(KERN_INFO "S5P64XX: HCLKD0=%ld.%ldMHz, HCLKD1=%ld.%ldMHz," \
+				" PCLKD0=%ld.%ldMHz, PCLKD1=%ld.%ldMHz\n",
+			       print_mhz(hclkd0), print_mhz(hclkd1),
+			       print_mhz(pclkd0), print_mhz(pclkd1));
 
 	clk_fout_mpll.rate = mpll;
 	clk_fout_epll.rate = epll;
@@ -1453,7 +1456,7 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	clk_pd1.rate = pclkd1;
 
 	clk_srclk.rate = xtal; //24MHz
-
+	
 	/* For backward compatibility */
 	clk_h.rate = hclkd1;
 	clk_p.rate = pclkd1;
@@ -1475,13 +1478,13 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
 	clk_set_parent(&clk_uart1.clk, &clk_mout_mpll.clk);
 	clk_set_parent(&clk_uart2.clk, &clk_mout_mpll.clk);
 	 clk_set_parent(&clk_lcd.clk, &clk_mout_mpll.clk);
-
-// 091014 Univ6442 Sound (beta3) : clk_set_parent(&clk_i2s.clk, &clk_i2s_cd0);
-	clk_set_parent(&clk_i2smain.clk, &clk_fout_epll);
+	
+// 091014 Univ6442 Sound (beta3) : clk_set_parent(&clk_i2s.clk, &clk_i2s_cd0); 
+	clk_set_parent(&clk_i2smain.clk, &clk_fout_epll);	
 	clk_set_parent(&clk_i2s.clk, &clk_i2smain);
 
 	/* For I2S CLK_OUT 12Mhz */
-	clk_set_parent(&clk_clk_out.clk, &clk_oscclk);
+	clk_set_parent(&clk_clk_out.clk, &clk_oscclk); 
 
 	for (ptr = 0; ptr < ARRAY_SIZE(init_parents); ptr++)
 		s5p6442_set_clksrc(init_parents[ptr]);
@@ -1489,8 +1492,6 @@ void __init_or_cpufreq s5p6442_setup_clocks(void)
         clk_set_rate(&clk_mmc0.clk, 50*MHZ);
         clk_set_rate(&clk_mmc1.clk, 50*MHZ);
         clk_set_rate(&clk_mmc2.clk, 50*MHZ);
-
-	clk_set_rate(&clk_g2d.clk, 400*MHZ);
 }
 
 static struct clk *clks[] __initdata = {
@@ -1502,7 +1503,7 @@ static struct clk *clks[] __initdata = {
 	&clk_mout_mpll.clk,
 	&clk_srclk,
 	&clk_mmc0.clk,
-	&clk_mmc1.clk,
+	&clk_mmc1.clk,	
 	&clk_mmc2.clk,
 	&clk_uart0.clk,
 	&clk_uart1.clk,
@@ -1515,9 +1516,9 @@ static struct clk *clks[] __initdata = {
 	&clk_cam1.clk,
 	&clk_fimc0.clk,
 	&clk_fimc1.clk,
-	&clk_fimc2.clk,
-	&clk_g2d.clk,
-        &clk_i2s_cd0,    // 091014 Univ6442 Sound (beta3)
+	&clk_fimc2.clk,	
+	&clk_g2d.clk,	
+        &clk_i2s_cd0,    // 091014 Univ6442 Sound (beta3)	
 	&clk_i2s.clk,
         &clk_audss_hclk.clk,  // 091014 Univ6442 Sound (beta3)
         &clk_i2smain.clk,     // 091014 Univ6442 Sound (beta3)

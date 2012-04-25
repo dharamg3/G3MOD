@@ -31,13 +31,11 @@ struct as_io_context {
 	sector_t seek_mean;
 };
 
-//struct cfq_queue;
 struct cfq_io_context {
 	void *key;
 	unsigned long dead_key;
 
-//	struct cfq_queue *cfqq[2];
-        void *cfqq[2];
+	void *cfqq[2];
 
 	struct io_context *ioc;
 
@@ -61,6 +59,7 @@ struct cfq_io_context {
 	struct rcu_head rcu_head;
 };
 
+
 /*
  * Indexes into the ioprio_changed bitmap.  A bit set indicates that
  * the corresponding I/O scheduler needs to see a ioprio update.
@@ -83,8 +82,7 @@ struct io_context {
 	spinlock_t lock;
 
 	unsigned short ioprio;
-	//unsigned short ioprio_changed;
-        DECLARE_BITMAP(ioprio_changed, IOC_IOPRIO_CHANGED_BITS);
+	DECLARE_BITMAP(ioprio_changed, IOC_IOPRIO_CHANGED_BITS);
 
 	/*
 	 * For request batching

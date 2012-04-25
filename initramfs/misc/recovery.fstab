@@ -1,0 +1,8 @@
+# mount     fstype      device                  
+
+/boot       bml         boot
+/system     SYSTEM_FS   /dev/block/stl6
+/data       DATA_FS     /dev/block/stl7
+/cache      CACHE_FS    /dev/block/stl8
+/sdcard     vfat        /dev/block/mmcblk0p1
+/sd-ext     SDEXT_FS    /dev/block/mmcblk0p2

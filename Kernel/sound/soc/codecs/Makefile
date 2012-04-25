@@ -31,11 +31,7 @@ snd-soc-wm8753-objs := wm8753.o
 snd-soc-wm8776-objs := wm8776.o
 snd-soc-wm8900-objs := wm8900.o
 snd-soc-wm8903-objs := wm8903.o
-# ifeq ($(CONFIG_SND_VOODOO),y)
 snd-soc-wm8994-objs := wm8994.o wm8994_apollo.o wm8994_gain.o wm8994_voodoo.o
-# else
-# snd-soc-wm8994-objs := wm8994.o wm8994_apollo.o wm8994_gain.o
-# endif
 snd-soc-wm8940-objs := wm8940.o
 snd-soc-wm8960-objs := wm8960.o
 snd-soc-wm8961-objs := wm8961.o
@@ -108,5 +104,4 @@ obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
-
 

@@ -12,6 +12,7 @@
 #include <linux/irq.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+#include <linux/module.h> 
 #include <plat/regs-clock.h>
 #include <plat/regs-gpio.h>
 #include <plat/gpio-cfg.h>
@@ -47,6 +48,8 @@ int s5p6442_clkgate_config(unsigned int clkblkID, unsigned int flag)
 	}
 	return 0;
 }
+
+EXPORT_SYMBOL(s5p6442_clkgate_config);
 
 void s5p6442_clkgate_init(void)
 {
@@ -122,6 +125,8 @@ int s5p6442_blkpower_state(unsigned int blkID)
 	spin_unlock_irqrestore(&power_lock, flags);
 	return normal_cfg;
 }
+
+EXPORT_SYMBOL(s5p6442_blkpower_state);
 
 void s5p6442_idle_pm_gpiocfg(unsigned int blkID, unsigned int flag)
 {
@@ -266,6 +271,8 @@ s5p_wait_blk_pwr_stable_end:
 	spin_unlock_irqrestore(&power_lock, flags);	
 	return ret;
 }
+
+EXPORT_SYMBOL(s5p6442_pwrgate_config);
 
 void s5p6442_pwrgate_init(void)
 {

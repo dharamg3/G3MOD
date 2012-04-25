@@ -120,7 +120,7 @@ static bool ebt_filter_config(const struct ebt_stp_info *info,
 }
 
 static bool
-ebt_stp_mt(const struct sk_buff *skb, const struct xt_match_param *par)
+ebt_stp_mt(const struct sk_buff *skb, const struct xt_action_param *par)
 {
 	const struct ebt_stp_info *info = par->matchinfo;
 	const struct stp_header *sp;
@@ -135,8 +135,8 @@ ebt_stp_mt(const struct sk_buff *skb, const struct xt_match_param *par)
 	if (memcmp(sp, header, sizeof(header)))
 		return false;
 
-	if (info->bitmask & EBT_STP_TYPE
-	    && FWINV(info->type != sp->type, EBT_STP_TYPE))
+	if (info->bitmask & EBT_STP_TYPE &&
+	    FWINV(info->type != sp->type, EBT_STP_TYPE))
 		return false;
 
 	if (sp->type == BPDU_TYPE_CONFIG &&
@@ -153,7 +153,7 @@ ebt_stp_mt(const struct sk_buff *skb, const struct xt_match_param *par)
 	return true;
 }
 
-static bool ebt_stp_mt_check(const struct xt_mtchk_param *par)
+static int ebt_stp_mt_check(const struct xt_mtchk_param *par)
 {
 	const struct ebt_stp_info *info = par->matchinfo;
 	const uint8_t bridge_ula[6] = {0x01, 0x80, 0xc2, 0x00, 0x00, 0x00};

@@ -47,6 +47,11 @@ static inline void *ERR_CAST(const void *ptr)
 	return (void *) ptr;
 }
 
+static inline long __must_check IS_ERR_OR_NULL(const void *ptr)
+{
+        return !ptr || IS_ERR_VALUE((unsigned long)ptr);
+}
+ 
 #endif
 
 #endif /* _LINUX_ERR_H */

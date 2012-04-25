@@ -62,7 +62,7 @@
 #include "g2d.h"
 
 //#define G2D_DEBUG
-#define USE_G2D_MMAP
+//#define USE_G2D_MMAP
 #define G2D_CLK_CTRL
 #ifdef G2D_CLK_CTRL
 #include <plat/regs-clock.h>

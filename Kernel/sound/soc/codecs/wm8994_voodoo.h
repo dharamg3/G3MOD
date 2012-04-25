@@ -13,8 +13,7 @@
 	|| defined (CONFIG_SAMSUNG_CAPTIVATE)				       \
 	|| defined (CONFIG_SAMSUNG_VIBRANT)				       \
 	|| defined (CONFIG_SAMSUNG_FASCINATE)				       \
-	|| defined (CONFIG_SAMSUNG_EPIC) \
-	|| defined (CONFIG_MACH_APOLLO)
+	|| defined (CONFIG_SAMSUNG_EPIC)
 #define NEXUS_S
 #endif
 
@@ -26,12 +25,12 @@
 #define M110S
 #endif
 
-#ifdef CONFIG_TDMB_T3700
-#define M110S
-#endif
-
 #ifdef CONFIG_MACH_SAMSUNG_VARIATION_TEGRA
 #define GALAXY_TAB_TEGRA
+#endif
+
+#ifdef CONFIG_TDMB_T3700
+#define M110S
 #endif
 
 enum debug_log { LOG_OFF, LOG_INFOS, LOG_VERBOSE };

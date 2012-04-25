@@ -51,15 +51,20 @@ struct fimc_limit fimc_limits[FIMC_DEVICES] = {
 int fimc_hwset_camera_source(struct fimc_control *ctrl)
 {
 	struct s3c_platform_camera *cam = ctrl->cam;
+	struct fimc_capinfo *cap = ctrl->cap;
 	u32 cfg = 0;
 
 	/* for now, we support only ITU601 8 bit mode */
 	cfg |= S3C_CISRCFMT_ITU601_8BIT;
-	cfg |= cam->order422;
+
+	if (cap->fmt.pixelformat == V4L2_PIX_FMT_RGB32 ||
+                cap->fmt.pixelformat == V4L2_PIX_FMT_RGB565)
+                cfg |= CAM_ORDER422_8BIT_CRYCBY;
+        else
+                cfg |= cam->order422;
 
 	if (cam->type == CAM_TYPE_ITU)
 		cfg |= cam->fmt;
-
 	cfg |= S3C_CISRCFMT_SOURCEHSIZE(cam->width);
 	cfg |= S3C_CISRCFMT_SOURCEVSIZE(cam->height);
 

@@ -76,7 +76,6 @@
 #include <asm/irq_regs.h>
 
 #include "sched_cpupri.h"
-#include "sched_autogroup.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
@@ -273,9 +272,6 @@ struct task_group {
 	struct task_group *parent;
 	struct list_head siblings;
 	struct list_head children;
-#ifdef CONFIG_SCHED_AUTOGROUP
-	struct autogroup *autogroup;
-#endif
 };
 
 #ifdef CONFIG_USER_SCHED
@@ -362,7 +358,7 @@ static inline struct task_group *task_group(struct task_struct *p)
 #else
 	tg = &init_task_group;
 #endif
-	return autogroup_task_group(p, tg);
+	return tg;
 }
 
 /* Change a task's cfs_rq and parent entity if it moves across CPUs/groups */
@@ -874,26 +870,6 @@ static inline u64 global_rt_runtime(void)
 static inline int task_current(struct rq *rq, struct task_struct *p)
 {
 	return rq->curr == p;
-}
-
-/*
- * Look for any tasks *anywhere* that are running nice 0 or better. We do
- * this lockless for overhead reasons since the occasional wrong result
- * is harmless.
- */
-int above_background_load(void)
-{
-  struct task_struct *cpu_curr;
-  unsigned long cpu;
-
-  for_each_online_cpu(cpu) {
-    cpu_curr = cpu_rq(cpu)->curr;
-    if (unlikely(!cpu_curr))
-    continue;
-    if (PRIO_TO_NICE(cpu_curr->static_prio) < 1)
-    return 1;
-  }
-  return 0;
 }
 
 #ifndef __ARCH_WANT_UNLOCKED_CTXSW
@@ -1843,7 +1819,6 @@ static void update_sysctl(void);
 #include "sched_idletask.c"
 #include "sched_fair.c"
 #include "sched_rt.c"
-#include "sched_autogroup.c"
 #ifdef CONFIG_SCHED_DEBUG
 # include "sched_debug.c"
 #endif
@@ -5214,21 +5189,7 @@ cputime_t task_stime(struct task_struct *p)
 {
 	return p->stime;
 }
-
-void thread_group_times(struct task_struct *p, cputime_t *ut, cputime_t *st)
-{
-	struct task_cputime cputime;
-
-	thread_group_cputime(p, &cputime);
-
-	*ut = cputime.utime;
-	*st = cputime.stime;
-}
 #else
-#ifndef nsecs_to_cputime
-# define nsecs_to_cputime(__nsecs) \
-	msecs_to_cputime(div_u64((__nsecs), NSEC_PER_MSEC))
-#endif
 cputime_t task_utime(struct task_struct *p)
 {
 	clock_t utime = cputime_to_clock_t(p->utime),
@@ -5266,37 +5227,6 @@ cputime_t task_stime(struct task_struct *p)
 		p->prev_stime = max(p->prev_stime, clock_t_to_cputime(stime));
 
 	return p->prev_stime;
-}
-
-/*
- * Must be called with siglock held.
- */
-void thread_group_times(struct task_struct *p, cputime_t *ut, cputime_t *st)
-{
-	struct signal_struct *sig = p->signal;
-	struct task_cputime cputime;
-	cputime_t rtime, utime, total;
-
-	thread_group_cputime(p, &cputime);
-
-	total = cputime_add(cputime.utime, cputime.stime);
-	rtime = nsecs_to_cputime(cputime.sum_exec_runtime);
-
-	if (total) {
-		u64 temp = rtime;
-
-		temp *= cputime.utime;
-		do_div(temp, total);
-		utime = (cputime_t)temp;
-	} else
-		utime = rtime;
-
-	sig->prev_utime = max(sig->prev_utime, utime);
-	sig->prev_stime = max(sig->prev_stime,
-			      cputime_sub(rtime, sig->prev_utime));
-
-	*ut = sig->prev_utime;
-	*st = sig->prev_stime;
 }
 #endif
 
@@ -9538,7 +9468,7 @@ void __init sched_init(void)
 #ifdef CONFIG_GROUP_SCHED
 	list_add(&init_task_group.list, &task_groups);
 	INIT_LIST_HEAD(&init_task_group.children);
-	autogroup_init(&init_task);
+
 #ifdef CONFIG_USER_SCHED
 	INIT_LIST_HEAD(&root_task_group.children);
 	init_task_group.parent = &root_task_group;
@@ -11043,5 +10973,3 @@ void synchronize_sched_expedited(void)
 EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
 
 #endif /* #else #ifndef CONFIG_SMP */
-EXPORT_SYMBOL_GPL(nr_running);
-

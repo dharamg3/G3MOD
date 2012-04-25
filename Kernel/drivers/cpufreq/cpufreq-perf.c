@@ -35,7 +35,7 @@
 int *FakeShmoo_UV_mV_Ptr; // Stored voltage table from cpufreq sysfs
 //extern NvRmCpuShmoo fake_CpuShmoo;  // Stored faked CpuShmoo values
 //extern NvRmDfs *fakeShmoo_Dfs;
-extern unsigned int frequency_match[][4];
+extern unsigned int frequency_match_666_166MHz[][4];
 extern u32 s5p_cpu_pll_tab[][4];
 
 #endif // USE_FAKE_SHMOO
@@ -680,7 +680,7 @@ static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy, char 
 
 	for( i=0; i<12; i++ )
 	{
-		table += sprintf(table, "%d %d %d\n", frequency_match[i][0], frequency_match[i][1], frequency_match[i][1] - FakeShmoo_UV_mV_Ptr[i] );
+		table += sprintf(table, "%d %d %d\n", frequency_match_666_166MHz[i][0], frequency_match_666_166MHz[i][1], frequency_match_666_166MHz[i][1] - FakeShmoo_UV_mV_Ptr[i] );
 	}
 	return table - buf;
 }
@@ -700,29 +700,23 @@ static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 
 static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, const char *buf, size_t count)
 {
-	int ret = sscanf( buf, "%i %i %i %i %i %i %i %i %i %i %i %i %i %i", &FakeShmoo_UV_mV_Ptr[0], &FakeShmoo_UV_mV_Ptr[1],
-								&FakeShmoo_UV_mV_Ptr[2], &FakeShmoo_UV_mV_Ptr[3],
-								&FakeShmoo_UV_mV_Ptr[4], &FakeShmoo_UV_mV_Ptr[5],
-								&FakeShmoo_UV_mV_Ptr[6], &FakeShmoo_UV_mV_Ptr[7],
-								&FakeShmoo_UV_mV_Ptr[8], &FakeShmoo_UV_mV_Ptr[9],
-								&FakeShmoo_UV_mV_Ptr[10], &FakeShmoo_UV_mV_Ptr[11],
-								&FakeShmoo_UV_mV_Ptr[12], &FakeShmoo_UV_mV_Ptr[13] );
-
-	if (ret != 1)
-		return -EINVAL;
-
+	int ret = sscanf( buf, "%i %i %i %i %i %i %i %i %i %i %i %i", &FakeShmoo_UV_mV_Ptr[0], &FakeShmoo_UV_mV_Ptr[1], &FakeShmoo_UV_mV_Ptr[2], &FakeShmoo_UV_mV_Ptr[3], &FakeShmoo_UV_mV_Ptr[4], &FakeShmoo_UV_mV_Ptr[5], &FakeShmoo_UV_mV_Ptr[6], &FakeShmoo_UV_mV_Ptr[7], &FakeShmoo_UV_mV_Ptr[8], &FakeShmoo_UV_mV_Ptr[9], &FakeShmoo_UV_mV_Ptr[10], &FakeShmoo_UV_mV_Ptr[11]);
+	printk("---> voltage store : 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d 8=%d 9=%d 10=%d 11=%d\n", FakeShmoo_UV_mV_Ptr[0], FakeShmoo_UV_mV_Ptr[1], FakeShmoo_UV_mV_Ptr[2], FakeShmoo_UV_mV_Ptr[3], FakeShmoo_UV_mV_Ptr[4], FakeShmoo_UV_mV_Ptr[5], FakeShmoo_UV_mV_Ptr[6], FakeShmoo_UV_mV_Ptr[7], FakeShmoo_UV_mV_Ptr[8], FakeShmoo_UV_mV_Ptr[9], FakeShmoo_UV_mV_Ptr[10], FakeShmoo_UV_mV_Ptr[11]);
+	printk("---> voltage : index = %d\n", s5p6442_cpufreq_index);
+	printk("---> set voltage!\n");
 	ret = set_voltage(s5p6442_cpufreq_index, true);
-	if (ret != 1)
+	printk("---> set voltage : ret=%d\n", ret);
+	if (ret != 0)
 		return -EINVAL;
-
 	return count;
 }
+
 
 static ssize_t show_plls_table(struct cpufreq_policy *policy, char *buf)
 {
 	int i;
 	char *table = buf;
-	table = sprintf(table, "index - apll\n%d %x \n", s5p6442_cpufreq_index, s5p_cpu_pll_tab[s5p6442_cpufreq_index][0]);
+	table = sprintf(table, "index - apll - mpll\n%d %x %x %x %x\n", s5p6442_cpufreq_index, s5p_cpu_pll_tab[s5p6442_cpufreq_index][0], s5p_cpu_pll_tab[s5p6442_cpufreq_index][1]);
 
 	return table - buf;
 }
@@ -731,15 +725,26 @@ static ssize_t store_plls_table(struct cpufreq_policy *policy, const char *buf, 
 {
     int index= 0;
     u32 apll;
+    u32 mpll;
 
+    printk("---> voltage store pll : in store_plls_table\n");
 
-	int ret = sscanf( buf, "%i %x", &index, &apll);
+	int ret = sscanf( buf, "%i %x %x %x %x", &index, &apll,&mpll);
 
 	//if (ret != 1)
 	//	return -EINVAL;
+    printk("---> ret = %d\n",ret);
+
+    printk("---> voltage store pll : index=%d apll=%x mpll=%x epll=%x vpll=%x\n", index, apll, mpll );
+
     if (apll != 0)
         s5p_cpu_pll_tab[index][0] = apll;
+    if (mpll != 0)
+        s5p_cpu_pll_tab[index][1] = mpll;
 
+    printk("---> voltage store pll : index=%d apll=%x mpll=%x\n", index, s5p_cpu_pll_tab[index][0],s5p_cpu_pll_tab[index][1] );
+
+    printk("---> voltage store pll - call s5p6442_clk_set_rate\n");
     s5p6442_clk_set_rate(0,index);
 
 	return 0;
@@ -2148,7 +2153,7 @@ static int __init cpufreq_core_init(void)
 
 #ifdef USE_FAKE_SHMOO
 	// Allocate some memory for the voltage tab
-	FakeShmoo_UV_mV_Ptr = kzalloc(sizeof(int)*(14), GFP_KERNEL);
+	FakeShmoo_UV_mV_Ptr = kzalloc(sizeof(int)*(12), GFP_KERNEL);
 #endif // USE_FAKE_SHMOO
 
 	for_each_possible_cpu(cpu) {

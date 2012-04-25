@@ -107,7 +107,7 @@
 #define AK8973B_PERIOD 500000000 //0.5 sec
 
 /*********** for debug **********************************************************/
-#if 1 
+#if 0 
 #define gprintk(fmt, x... ) printk( "%s(%d): " fmt, __FUNCTION__ ,__LINE__, ## x)
 #else
 #define gprintk(x...) do { } while (0)

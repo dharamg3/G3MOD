@@ -27,13 +27,15 @@
 #include <linux/io.h>
 #include <plat/map.h>
 
+unsigned int S5P6442_MAXFREQLEVEL = 5;
+unsigned int S5P6442_MAXFREQLEVEL_ONLYCPU = 5;
 static unsigned int s5p6442_cpufreq_level = 0;
-unsigned int s5p6442_cpufreq_index = 0;
+unsigned int s5p6442_cpufreq_index = 5;
 static spinlock_t dvfs_lock;
  
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
-struct cpufreq_frequency_table freq_tab[] = {
+static struct cpufreq_frequency_table freq_table_666_166MHz[] = {
         {0, 667*KHZ_T},
         {1, 333*KHZ_T},
         {2, 222*KHZ_T},
@@ -42,27 +44,37 @@ struct cpufreq_frequency_table freq_tab[] = {
         {5, CPUFREQ_TABLE_END},
 };
 
-static unsigned char transition_state[][2] = {
+static unsigned char transition_state_666_166MHz[][2] = {
         {1, 0},
         {2, 1},
         {3, 2},
         {4, 3},
-        {5, 4},
-        {5, 0},
+        {3, 1},
 };
 
-
 /* frequency voltage matching table */
-unsigned int frequency_match[][4] = {
+unsigned int frequency_match_666_166MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {667000, 1200, 1200, 0},  
+        {667000, 1200, 1200, 0},
         {333000, 1200, 1200, 1},
         {222000, 1200, 1200, 2},
-        {166000, 1150, 1100, 3},
-        {83000, 1100, 1100, 4},
+        {166000, 1150, 1150, 3},
+        {83000,  1100, 1100, 4},
 }; 
 
 extern int is_pmic_initialized(void);
+unsigned int (*frequency_match[1])[4] = {
+	frequency_match_666_166MHz,
+};
+
+static unsigned char (*transition_state[1])[2] = {
+	transition_state_666_166MHz,
+	
+};
+
+static struct cpufreq_frequency_table *s5p6442_freq_table[] = {
+	freq_table_666_166MHz,
+};
 
 int set_max_freq_flag = 0;
 int dvfs_change_quick = 0;
@@ -98,7 +110,7 @@ void set_dvfs_level(int flag)
 			spin_unlock_irqrestore(&dvfs_lock,irq_flags);
 			return;
 		}
-		s5p6442_cpufreq_level = 4;
+		s5p6442_cpufreq_level = S5P6442_MAXFREQLEVEL_ONLYCPU;
 		dvfs_level_count++;
 	}
 	else {
@@ -107,7 +119,7 @@ void set_dvfs_level(int flag)
 			spin_unlock_irqrestore(&dvfs_lock,irq_flags);
 			return;
 		}
-		s5p6442_cpufreq_level = 0;
+		s5p6442_cpufreq_level = S5P6442_MAXFREQLEVEL;
 		dvfs_level_count--;
 	}
 	spin_unlock_irqrestore(&dvfs_lock,irq_flags);
@@ -164,11 +176,12 @@ int set_voltage(unsigned int freq_index, bool force)
 	vcc_arm = get_voltage(VCC_ARM);
 	vcc_int = get_voltage(VCC_INT);
 	
-	arm_voltage = frequency_match[index][1];
-	int_voltage = frequency_match[index][2];
+	arm_voltage = frequency_match[S5P6442_FREQ_TAB][index][1];
+	int_voltage = frequency_match[S5P6442_FREQ_TAB][index][2];
 
-	if( FakeShmoo_UV_mV_Ptr != NULL ) {
+if( FakeShmoo_UV_mV_Ptr != NULL ) {
 		arm_voltage -= FakeShmoo_UV_mV_Ptr[index];
+		int_voltage -= FakeShmoo_UV_mV_Ptr[index];
 	}
 
 #if 1 // future work
@@ -187,7 +200,7 @@ int set_voltage(unsigned int freq_index, bool force)
 	if(int_voltage != vcc_int) {
 		set_pmic(VCC_INT, int_voltage);
 	}
-
+	printk("---> voltage : index = %d, armvoltage = %d\n", s5p6442_cpufreq_index,arm_voltage);
 
 	udelay(delay);
 
@@ -200,6 +213,7 @@ unsigned int s5p6442_target_frq(unsigned int pred_freq,
 {
 	int index; 
 	unsigned int freq;
+	struct cpufreq_frequency_table *freq_tab = s5p6442_freq_table[S5P6442_FREQ_TAB];
 
 	spin_lock(&dvfs_lock);
 
@@ -216,9 +230,9 @@ unsigned int s5p6442_target_frq(unsigned int pred_freq,
 	
 	if(freq_tab[index].frequency == pred_freq) {	
 		if(flag == 1)
-			index = transition_state[index][1];
+			index = transition_state[S5P6442_FREQ_TAB][index][1];
 		else
-			index = transition_state[index][0];
+			index = transition_state[S5P6442_FREQ_TAB][index][0];
 	}
 	else if(flag == -1) {
 		index = 1;
@@ -227,7 +241,7 @@ unsigned int s5p6442_target_frq(unsigned int pred_freq,
 		index = 0; 
 	}
 s5p6442_target_frq_end:
-	//index = CLIP_LEVEL(index, s5p6442_cpufreq_level);
+	index = CLIP_LEVEL(index, s5p6442_cpufreq_level);
 	s5p6442_cpufreq_index = index;
 	
 	freq = freq_tab[index].frequency;
@@ -239,6 +253,8 @@ int s5p6442_target_freq_index(unsigned int freq)
 {
 	int index = 0;
 	
+	struct cpufreq_frequency_table *freq_tab = s5p6442_freq_table[S5P6442_FREQ_TAB];
+
 	if(freq >= freq_tab[index].frequency) {
 		goto s5p6442_target_freq_index_end;
 	}
@@ -265,7 +281,11 @@ int s5p6442_target_freq_index(unsigned int freq)
 	}
 
 s5p6442_target_freq_index_end:
+	spin_lock(&dvfs_lock);	
+	index = CLIP_LEVEL(index, s5p6442_cpufreq_level);
+	spin_unlock(&dvfs_lock);
 	s5p6442_cpufreq_index = index;
+	
 	return index; 
 } 
 
@@ -274,7 +294,7 @@ int s5p6442_verify_speed(struct cpufreq_policy *policy)
 	if(policy->cpu)
 		return -EINVAL;
 
-	return cpufreq_frequency_table_verify(policy, freq_tab);
+	return cpufreq_frequency_table_verify(policy, s5p6442_freq_table[S5P6442_FREQ_TAB]);
 }
 
 extern unsigned long s5p_fclk_get_rate(void);
@@ -311,18 +331,19 @@ static int s5p6442_target(struct cpufreq_policy *policy,
 	if(!is_pmic_initialized())
 		return ret;
 #endif
+//	printk("---> [s5p6442_target] : target_freq : %d\n", target_freq);
 	mpu_clk = clk_get(NULL, MPU_CLK);
 	if(IS_ERR(mpu_clk))
 		return PTR_ERR(mpu_clk);
 
 	freqs.old = s5p6442_getspeed(0);
-
-	if(freqs.old == freq_tab[0].frequency) {
+//	printk("---> [s5p6442_target] : freqs.old : %d freq_table (%d) : %d\n", freqs.old, S5P6442_FREQ_TAB, s5p6442_freq_table[S5P6442_FREQ_TAB][0].frequency);
+	if(freqs.old == s5p6442_freq_table[S5P6442_FREQ_TAB][0].frequency) {
 		prevIndex = 0;
 	}
 	
 	index = s5p6442_target_freq_index(target_freq);
-
+//	printk("---> [s5p6442_target] : index : %d - previndex : %d\n", index, prevIndex);
 	if(index == INDX_ERROR) {
 		printk(KERN_ERR "s5p6442_target: INDX_ERROR \n");
 		return -EINVAL;
@@ -331,7 +352,7 @@ static int s5p6442_target(struct cpufreq_policy *policy,
 	if(prevIndex == index)
 		return ret;
 
-	arm_clk = freq_tab[index].frequency;
+	arm_clk = s5p6442_freq_table[S5P6442_FREQ_TAB][index].frequency;
 	freqs.new = arm_clk;
 	freqs.cpu = 0;
 //	freqs.new_hclk = 166000;
@@ -389,6 +410,7 @@ void dvfs_set_max_freq_lock(void)
 	//Interrupts must be enabled when this function is called.
    //there may be race..but no problem
 	//don't use locks...locks might cause soft lockup here
+   struct cpufreq_frequency_table *freq_tab = s5p6442_freq_table[S5P6442_FREQ_TAB];
 	set_max_freq_flag = 1;
 	s5p6442_cpufreq_level = 0;
 	s5p6442_target(NULL, freq_tab[0].frequency, 1);
@@ -401,10 +423,10 @@ void dvfs_set_max_freq_unlock(void)
 {
         set_max_freq_flag = 0;
 	if (dvfs_level_count > 0) {
-        	s5p6442_cpufreq_level = 1;
+        	s5p6442_cpufreq_level = S5P6442_MAXFREQLEVEL_ONLYCPU;
 	}
 	else {
-		s5p6442_cpufreq_level = 0;
+		s5p6442_cpufreq_level = S5P6442_MAXFREQLEVEL;
 	}
 	return;
 
@@ -412,7 +434,7 @@ void dvfs_set_max_freq_unlock(void)
 
 unsigned int get_min_cpufreq(void)
 {
-	return (freq_tab[5].frequency);
+	return (s5p6442_freq_table[S5P6442_FREQ_TAB][S5P6442_MAXFREQLEVEL].frequency);
 }
 
 static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
@@ -426,14 +448,18 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 
 	if(policy->cpu != 0)
 		return -EINVAL;
-	policy->min = 100000;
-	policy->cur = policy->max = 1000000;
+	policy->min = s5p6442_freq_table[S5P6442_FREQ_TAB][4].frequency;
+	policy->cur = policy->max = s5p6442_getspeed(0);
 //	printk("---> [s5p6442_cpu_init] : getspeed(0) : %d\n", s5p6442_getspeed(0));
 
-  //      printk("##s5p6442###%s::max_freq %d FREQ_TAB %d\n", __FUNCTION__, policy->max, S5P6442_FREQ_TAB);
-	s5p6442_cpufreq_level = 0;
+	S5P6442_FREQ_TAB = 0;
+	S5P6442_MAXFREQLEVEL_ONLYCPU = 5;
+	S5P6442_MAXFREQLEVEL = 5;
 
-	cpufreq_frequency_table_get_attr(freq_tab, policy->cpu);
+  //      printk("##s5p6442###%s::max_freq %d FREQ_TAB %d\n", __FUNCTION__, policy->max, S5P6442_FREQ_TAB);
+	s5p6442_cpufreq_level = S5P6442_MAXFREQLEVEL;
+
+	cpufreq_frequency_table_get_attr(s5p6442_freq_table[S5P6442_FREQ_TAB], policy->cpu);
 
 	policy->cpuinfo.transition_latency = 20000;
 
@@ -441,7 +467,7 @@ static int __init s5p6442_cpu_init(struct cpufreq_policy *policy)
 
 	spin_lock_init(&dvfs_lock);
 
-	return cpufreq_frequency_table_cpuinfo(policy, freq_tab);
+	return cpufreq_frequency_table_cpuinfo(policy, s5p6442_freq_table[S5P6442_FREQ_TAB]);
 }
 
 static struct freq_attr *s5p6442_cpufreq_attr[] = {
@@ -456,7 +482,7 @@ static struct cpufreq_driver s5p6442_driver = {
 	.get		= s5p6442_getspeed,
 	.init		= s5p6442_cpu_init,
 	.name		= "s5p6442",
-        .attr		= s5p6442_cpufreq_attr,
+	.attr		= s5p6442_cpufreq_attr,
 };
 
 static int __init s5p6442_cpufreq_init(void)

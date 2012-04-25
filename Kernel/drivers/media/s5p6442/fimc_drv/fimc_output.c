@@ -51,7 +51,7 @@ static __u32 fimc_get_pixel_format_type(__u32 pixelformat)
 			return FIMC_YUV422;
 
 		default:
-			return FIMC_YUV420;
+			return FIMC_YUV444;
 	}
 }
 void fimc_outdev_set_src_addr(struct fimc_control *ctrl, dma_addr_t *base)
