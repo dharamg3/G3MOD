@@ -612,10 +612,3 @@ service dumpstate /system/bin/dumpstate -s
     disabled
     oneshot
 
-# akmd service
-service akmd2 /system/bin/akmd2
-   class main
-   user system
-   group system
-   oneshot
-
